@@ -10,9 +10,11 @@ var (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "outport",
-	Short: "Dev port manager for multi-project, multi-worktree development",
-	Long:  "Outport allocates deterministic, non-conflicting ports for your projects and writes them to .env files.",
+	Use:           "outport",
+	Short:         "Dev port manager for multi-project, multi-worktree development",
+	Long:          "Outport allocates deterministic, non-conflicting ports for your projects and writes them to .env files.",
+	SilenceUsage:  true,
+	SilenceErrors: true,
 }
 
 func Execute() error {
