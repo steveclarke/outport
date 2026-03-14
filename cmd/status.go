@@ -6,8 +6,8 @@ import (
 	"os"
 	"strings"
 
-	"charm.land/lipgloss/v2"
 	"charm.land/huh/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/outport-app/outport/internal/config"
 	"github.com/outport-app/outport/internal/portcheck"
 	"github.com/outport-app/outport/internal/registry"
