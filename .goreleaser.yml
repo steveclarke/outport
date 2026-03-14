@@ -28,7 +28,7 @@ changelog:
       - "^chore:"
       - "^test:"
 
-homebrew_casks:
+brews:
   - repository:
       owner: steveclarke
       name: homebrew-tap
@@ -36,4 +36,4 @@ homebrew_casks:
     name: outport
     homepage: "https://outport.app"
     description: "Dev port manager for multi-project, multi-worktree development"
-    commit_msg_template: "Brew cask update for {{ .ProjectName }} version {{ .Tag }}"
+    commit_msg_template: "Brew formula update for {{ .ProjectName }} version {{ .Tag }}"
