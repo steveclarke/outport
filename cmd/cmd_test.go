@@ -180,9 +180,11 @@ func TestPorts_ShowsAllocatedPorts(t *testing.T) {
 	output := executeCmd(t, "ports", "--json")
 
 	var result struct {
-		Project  string         `json:"project"`
-		Instance string         `json:"instance"`
-		Services map[string]int `json:"services"`
+		Project  string `json:"project"`
+		Instance string `json:"instance"`
+		Services map[string]struct {
+			Port int `json:"port"`
+		} `json:"services"`
 	}
 	if err := json.Unmarshal([]byte(output), &result); err != nil {
 		t.Fatalf("invalid JSON: %v\nOutput: %s", err, output)
@@ -193,6 +195,11 @@ func TestPorts_ShowsAllocatedPorts(t *testing.T) {
 	}
 	if len(result.Services) != 2 {
 		t.Errorf("services count = %d, want 2", len(result.Services))
+	}
+	for name, svc := range result.Services {
+		if svc.Port == 0 {
+			t.Errorf("service %q has port 0", name)
+		}
 	}
 }
 

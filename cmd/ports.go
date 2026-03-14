@@ -62,14 +62,25 @@ func runPorts(cmd *cobra.Command, args []string) error {
 }
 
 func printPortsJSON(cmd *cobra.Command, cfg *config.Config, wt *worktree.Info, alloc registry.Allocation) error {
-	out := struct {
-		Project  string         `json:"project"`
-		Instance string         `json:"instance"`
-		Services map[string]int `json:"services"`
-	}{
+	services := make(map[string]svcJSON)
+	for name, svc := range cfg.Services {
+		port := alloc.Ports[name]
+		s := svcJSON{
+			Port:     port,
+			EnvVar:   svc.EnvVar,
+			Protocol: svc.Protocol,
+			EnvFiles: svc.EnvFiles,
+			Group:    svc.Group,
+		}
+		if svc.Protocol == "http" || svc.Protocol == "https" {
+			s.URL = fmt.Sprintf("%s://localhost:%d", svc.Protocol, port)
+		}
+		services[name] = s
+	}
+	out := upJSON{
 		Project:  cfg.Name,
 		Instance: wt.Instance,
-		Services: alloc.Ports,
+		Services: services,
 	}
 	data, err := json.MarshalIndent(out, "", "  ")
 	if err != nil {
@@ -91,25 +102,24 @@ func printPortsStyled(cmd *cobra.Command, cfg *config.Config, wt *worktree.Info,
 	lipgloss.Fprintln(w, header)
 	lipgloss.Fprintln(w)
 
-	svcNames := make([]string, 0, len(alloc.Ports))
+	serviceNames := make([]string, 0, len(alloc.Ports))
 	for s := range alloc.Ports {
-		svcNames = append(svcNames, s)
+		serviceNames = append(serviceNames, s)
 	}
-	sort.Strings(svcNames)
+	sort.Strings(serviceNames)
 
-	for _, svcName := range svcNames {
-		port := alloc.Ports[svcName]
-		envVar := svcName
-		if svc, ok := cfg.Services[svcName]; ok {
-			envVar = svc.EnvVar
+	hasGroups := false
+	for _, svcName := range serviceNames {
+		if svc, ok := cfg.Services[svcName]; ok && svc.Group != "" {
+			hasGroups = true
+			break
 		}
-		line := fmt.Sprintf("  %s  %s  %s %s",
-			ui.ServiceStyle.Render(fmt.Sprintf("%-16s", svcName)),
-			ui.EnvVarStyle.Render(fmt.Sprintf("%-20s", envVar)),
-			ui.Arrow,
-			ui.PortStyle.Render(fmt.Sprintf("%d", port)),
-		)
-		lipgloss.Fprintln(w, line)
+	}
+
+	if hasGroups {
+		printGroupedServices(w, cfg, serviceNames, alloc.Ports)
+	} else {
+		printFlatServices(w, cfg, serviceNames, alloc.Ports)
 	}
 
 	return nil
