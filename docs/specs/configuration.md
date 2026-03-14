@@ -8,7 +8,7 @@ This spec captures design thinking from early conversations. It is NOT finalized
 
 ## Core Principle
 
-The developer should not have to think about port numbers. The default experience is: declare your services, run `outport up`, get deterministic ports. Done.
+The developer should not have to think about port numbers. The default experience is: declare your services, run `outport register`, get deterministic ports. Done.
 
 Port numbers are an implementation detail that Outport abstracts away — the same way DNS abstracts away IP addresses.
 
@@ -41,36 +41,34 @@ services:
 | `env_file` | No | Where to write the env var. Defaults to `.env`. Can be a string or array for multi-file writes. |
 | `fixed_port` | No | Lock this service to a specific port. See "Fixed Ports" below. |
 
-### Groups (monorepo support)
+### Multiple .env files (monorepo support)
+
+Use per-service `env_file` to write to different `.env` files:
 
 ```yaml
 name: my-monorepo
-groups:
-  backend:
+services:
+  rails:
+    env_var: RAILS_PORT
+    protocol: http
     env_file: backend/.env
-    services:
-      rails:
-        env_var: RAILS_PORT
-        protocol: http
-      postgres:
-        env_var: DB_PORT
-  frontend:
-    services:
-      web:
-        env_var: NUXT_PORT
-        protocol: http
+  postgres:
+    env_var: DB_PORT
+    env_file: backend/.env
+  web:
+    env_var: NUXT_PORT
+    protocol: http
 ```
 
-- Groups share an `env_file` — services inherit it
-- Per-service `env_file` overrides the group default
-- Groups are flattened into the services map during load — they're an organizational concept, not a runtime one
+- `env_file` defaults to `.env` in the project root if omitted
+- Can be a string or array (write same var to multiple files)
 
 ## Port Assignment (Default Behavior)
 
 When no `fixed_port` is specified, Outport assigns a deterministic port via FNV-32a hash on `{project}/{instance}/{service}`. The hash maps to the range 10000–39999.
 
 - **Deterministic**: same project + worktree + service = same port, every time
-- **Order-independent**: doesn't matter which project runs `outport up` first
+- **Order-independent**: doesn't matter which project runs `outport register` first
 - **Collision-free**: linear probing resolves hash collisions across all registered projects
 
 This is the primary and recommended mode. Most developers should never specify a port number.
@@ -200,7 +198,6 @@ Reads `.outport.yml`, allocates ports, saves to the central registry, writes `.e
 
 Removes the project/instance from the central registry, freeing its ports. Replaces the concept from issue #12 (`outport down`).
 
-- Optionally cleans up managed lines from `.env`
 - Does NOT stop any running services
 
 ### Future commands
@@ -208,32 +205,10 @@ Removes the project/instance from the central registry, freeing its ports. Repla
 - `outport up` / `outport down` — reserved for starting/stopping the DNS + proxy daemon (not port allocation)
 - `outport share` — tunneling
 
-### Current → future command mapping
-
-| Current | Future | Why |
-|---------|--------|-----|
-| `outport up` | `outport register` | It registers, it doesn't bring anything "up" |
-| `outport reset` | `outport register --force` | Reset is just a forced re-registration |
-| `outport down` (issue #12) | `outport unregister` | Explicit about what it does |
-| `outport up` (future) | `outport up` | Reserved for DNS/proxy daemon lifecycle |
-
-## Migration from `preferred_port`
-
-The current config uses `preferred_port` as a required field. This needs to become optional and eventually give way to `fixed_port` as the opt-in override.
-
-Migration path:
-- `preferred_port` continues to work (backward compat) but is treated as "try this first, fall back to hash"
-- `fixed_port` is the new field — means "this port exactly, error if taken"
-- If neither is specified, pure hash-based assignment
-- `outport init` stops generating `preferred_port` in new configs
-- Existing configs with `preferred_port` continue to work — no forced migration
-
 ## Validation Rules
 
 - `name` is required
 - At least one service is required
 - Every service must have `env_var`
 - `env_var` must be unique per target `env_file`
-- Service names must be unique across all groups
-- Groups must not be empty
 - `fixed_port` must be a valid port number if specified
