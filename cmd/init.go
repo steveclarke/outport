@@ -1,12 +1,12 @@
 package cmd
 
 import (
-	"bufio"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"charm.land/huh/v2"
 	"github.com/outport-app/outport/internal/config"
 	"github.com/spf13/cobra"
 )
@@ -46,33 +46,45 @@ func runInit(cmd *cobra.Command, args []string) error {
 
 	configPath := filepath.Join(dir, config.FileName)
 	if _, err := os.Stat(configPath); err == nil {
-		return fmt.Errorf("%s already exists", config.FileName)
+		return fmt.Errorf("%s already exists.", config.FileName)
 	}
-
-	reader := bufio.NewReader(os.Stdin)
 
 	dirName := filepath.Base(dir)
-	fmt.Fprintf(cmd.OutOrStdout(), "Project name [%s]: ", dirName)
-	name, _ := reader.ReadString('\n')
-	name = strings.TrimSpace(name)
-	if name == "" {
-		name = dirName
+	name := dirName
+
+	huh.NewInput().
+		Title("Project name").
+		Value(&name).
+		Run()
+
+	// Build multi-select options from presets
+	var options []huh.Option[string]
+	for _, p := range presets {
+		label := fmt.Sprintf("%s (port %d)", p.Name, p.PreferredPort)
+		options = append(options, huh.NewOption(label, p.Name))
 	}
 
-	fmt.Fprintln(cmd.OutOrStdout(), "\nSelect services (y/n):")
+	var selected []string
+	huh.NewMultiSelect[string]().
+		Title("Select services").
+		Options(options...).
+		Value(&selected).
+		Run()
+
+	// Map selected names back to presets
 	var selectedServices []servicePreset
-	for _, preset := range presets {
-		fmt.Fprintf(cmd.OutOrStdout(), "  %s (preferred port %d)? [y/N]: ", preset.Name, preset.PreferredPort)
-		answer, _ := reader.ReadString('\n')
-		answer = strings.TrimSpace(strings.ToLower(answer))
-		if answer == "y" || answer == "yes" {
-			selectedServices = append(selectedServices, preset)
+	for _, name := range selected {
+		for _, p := range presets {
+			if p.Name == name {
+				selectedServices = append(selectedServices, p)
+				break
+			}
 		}
 	}
 
 	if len(selectedServices) == 0 {
 		selectedServices = []servicePreset{presets[0]}
-		fmt.Fprintln(cmd.OutOrStdout(), "\nNo services selected, defaulting to web.")
+		fmt.Fprintln(cmd.OutOrStdout(), "No services selected, defaulting to web.")
 	}
 
 	var sb strings.Builder
@@ -88,7 +100,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 	}
 
 	if err := os.WriteFile(configPath, []byte(sb.String()), 0644); err != nil {
-		return fmt.Errorf("writing config: %w", err)
+		return fmt.Errorf("Writing config: %w.", err)
 	}
 
 	fmt.Fprintf(cmd.OutOrStdout(), "\nCreated %s\n", config.FileName)

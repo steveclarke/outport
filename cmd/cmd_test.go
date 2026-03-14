@@ -292,13 +292,13 @@ func TestStatus_StaleProjectMarkedNotFound(t *testing.T) {
 	}
 }
 
-func TestStatus_StaleProjectPromptRemoval(t *testing.T) {
+func TestStatus_StaleProjectInJSON(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	t.Chdir(t.TempDir())
 	jsonFlag = false
 
-	// Create a registry with a stale entry
+	// Create a registry with a stale entry (directory gone)
 	regPath := filepath.Join(home, ".config", "outport", "registry.json")
 	reg, err := registry.Load(regPath)
 	if err != nil {
@@ -312,81 +312,20 @@ func TestStatus_StaleProjectPromptRemoval(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Simulate stdin: answer "y" to the removal prompt
-	r, w, err := os.Pipe()
-	if err != nil {
-		t.Fatal(err)
-	}
-	w.WriteString("y\n")
-	w.Close()
+	// JSON mode doesn't prompt — just verifies stale entries show up
+	output := executeCmd(t, "status", "--json")
 
-	oldStdin := os.Stdin
-	os.Stdin = r
-	t.Cleanup(func() { os.Stdin = oldStdin })
-
-	output := executeCmd(t, "status")
-
-	if !bytes.Contains([]byte(output), []byte("not found")) {
-		t.Errorf("expected '(not found)' marker, got:\n%s", output)
+	var entries []statusEntryJSON
+	if err := json.Unmarshal([]byte(output), &entries); err != nil {
+		t.Fatalf("invalid JSON: %v\nOutput: %s", err, output)
 	}
-	if !bytes.Contains([]byte(output), []byte("Remove stale project")) {
-		t.Errorf("expected removal prompt, got:\n%s", output)
+	if len(entries) != 1 {
+		t.Fatalf("entries = %d, want 1", len(entries))
 	}
-	if !bytes.Contains([]byte(output), []byte("Removed staleapp/main")) {
-		t.Errorf("expected removal confirmation, got:\n%s", output)
+	if entries[0].Key != "staleapp/main" {
+		t.Errorf("key = %q, want staleapp/main", entries[0].Key)
 	}
-
-	// Verify it's actually gone from the registry
-	reg2, err := registry.Load(regPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(reg2.Projects) != 0 {
-		t.Errorf("registry still has %d entries after removal", len(reg2.Projects))
-	}
-}
-
-func TestStatus_StaleProjectDeclineRemoval(t *testing.T) {
-	home := t.TempDir()
-	t.Setenv("HOME", home)
-	t.Chdir(t.TempDir())
-	jsonFlag = false
-
-	regPath := filepath.Join(home, ".config", "outport", "registry.json")
-	reg, err := registry.Load(regPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	reg.Set("staleapp", "main", registry.Allocation{
-		ProjectDir: "/tmp/nonexistent-outport-stale-test",
-		Ports:      map[string]int{"web": 12345},
-	})
-	if err := reg.Save(); err != nil {
-		t.Fatal(err)
-	}
-
-	// Simulate stdin: answer "n"
-	r, w, err := os.Pipe()
-	if err != nil {
-		t.Fatal(err)
-	}
-	w.WriteString("n\n")
-	w.Close()
-
-	oldStdin := os.Stdin
-	os.Stdin = r
-	t.Cleanup(func() { os.Stdin = oldStdin })
-
-	executeCmd(t, "status")
-
-	// Verify it's still in the registry
-	reg2, err := registry.Load(regPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(reg2.Projects) != 1 {
-		t.Errorf("registry has %d entries, want 1 (should not have been removed)", len(reg2.Projects))
-	}
+	// Stale removal is tested via gc command, which doesn't use interactive prompts
 }
 
 // --- gc ---
@@ -583,49 +522,9 @@ func TestStatus_MissingConfigMarkedStale(t *testing.T) {
 
 // --- init ---
 
-func TestInit_CreatesConfig(t *testing.T) {
-	home := t.TempDir()
-	t.Setenv("HOME", home)
-
-	dir := t.TempDir()
-	t.Chdir(dir)
-	jsonFlag = false
-
-	// Simulate stdin: enter project name + select web and postgres
-	r, w, err := os.Pipe()
-	if err != nil {
-		t.Fatal(err)
-	}
-	input := "myproject\ny\ny\nn\nn\nn\nn\n"
-	w.WriteString(input)
-	w.Close()
-
-	oldStdin := os.Stdin
-	os.Stdin = r
-	t.Cleanup(func() { os.Stdin = oldStdin })
-
-	output := executeCmd(t, "init")
-
-	if !bytes.Contains([]byte(output), []byte("Created .outport.yml")) {
-		t.Errorf("expected creation message, got:\n%s", output)
-	}
-
-	// Verify the file was created with correct content
-	data, err := os.ReadFile(filepath.Join(dir, ".outport.yml"))
-	if err != nil {
-		t.Fatalf("reading config: %v", err)
-	}
-	content := string(data)
-	if !bytes.Contains(data, []byte("name: myproject")) {
-		t.Errorf("config missing project name, got:\n%s", content)
-	}
-	if !bytes.Contains(data, []byte("web:")) {
-		t.Errorf("config missing web service, got:\n%s", content)
-	}
-	if !bytes.Contains(data, []byte("postgres:")) {
-		t.Errorf("config missing postgres service, got:\n%s", content)
-	}
-}
+// Note: TestInit_CreatesConfig and TestInit_DefaultProjectName were removed because
+// outport init now uses huh TUI prompts which require a real terminal.
+// The init command is tested manually. The error path is still tested below.
 
 func TestInit_ErrorWhenConfigExists(t *testing.T) {
 	home := t.TempDir()
@@ -643,40 +542,6 @@ func TestInit_ErrorWhenConfigExists(t *testing.T) {
 	err := rootCmd.Execute()
 	if err == nil {
 		t.Fatal("expected error when config already exists")
-	}
-}
-
-func TestInit_DefaultProjectName(t *testing.T) {
-	home := t.TempDir()
-	t.Setenv("HOME", home)
-
-	dir := t.TempDir()
-	t.Chdir(dir)
-	jsonFlag = false
-
-	// Simulate stdin: empty name (use default) + select web only
-	r, w, err := os.Pipe()
-	if err != nil {
-		t.Fatal(err)
-	}
-	input := "\ny\nn\nn\nn\nn\nn\n"
-	w.WriteString(input)
-	w.Close()
-
-	oldStdin := os.Stdin
-	os.Stdin = r
-	t.Cleanup(func() { os.Stdin = oldStdin })
-
-	executeCmd(t, "init")
-
-	data, err := os.ReadFile(filepath.Join(dir, ".outport.yml"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	// Should use the temp dir's basename as project name
-	dirName := filepath.Base(dir)
-	if !bytes.Contains(data, []byte("name: "+dirName)) {
-		t.Errorf("expected default name %q in config, got:\n%s", dirName, string(data))
 	}
 }
 

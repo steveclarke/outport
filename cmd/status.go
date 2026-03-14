@@ -1,13 +1,13 @@
 package cmd
 
 import (
-	"bufio"
 	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
 
 	"charm.land/lipgloss/v2"
+	"charm.land/huh/v2"
 	"github.com/outport-app/outport/internal/config"
 	"github.com/outport-app/outport/internal/portcheck"
 	"github.com/outport-app/outport/internal/registry"
@@ -207,20 +207,32 @@ func printStatusStyled(cmd *cobra.Command, reg *registry.Registry, portStatus ma
 	// Prompt to remove stale entries
 	if len(staleKeys) > 0 {
 		lipgloss.Fprintln(w)
-		reader := bufio.NewReader(os.Stdin)
+		removed := false
 		for _, key := range staleKeys {
-			fmt.Fprintf(w, "Remove stale project %s from registry? [y/N]: ", ui.ProjectStyle.Render(key))
-			answer, _ := reader.ReadString('\n')
-			if strings.TrimSpace(strings.ToLower(answer)) == "y" {
+			var confirm bool
+			err := huh.NewConfirm().
+				Title(fmt.Sprintf("Remove stale project %s from registry?", key)).
+				Affirmative("Yes").
+				Negative("No").
+				Value(&confirm).
+				Run()
+			if err != nil {
+				break
+			}
+
+			if confirm {
 				parts := strings.SplitN(key, "/", 2)
 				if len(parts) == 2 {
 					reg.Remove(parts[0], parts[1])
 				}
 				fmt.Fprintf(w, "  Removed %s.\n", key)
+				removed = true
 			}
 		}
-		if err := reg.Save(); err != nil {
-			return fmt.Errorf("Could not save registry: %w.", err)
+		if removed {
+			if err := reg.Save(); err != nil {
+				return fmt.Errorf("Could not save registry: %w.", err)
+			}
 		}
 	}
 
