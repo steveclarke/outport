@@ -28,11 +28,11 @@ Entry point: `main.go` → `cmd.Execute()` (Cobra CLI).
 
 ### Core packages (`internal/`)
 
-- **allocator** — Deterministic port allocation using FNV-32a hash on `"{project}/{instance}/{service}"`. Port range: 10000–39999. Collisions resolved by linear probing with wraparound.
+- **allocator** — Port allocation: tries preferred_port first, falls back to FNV-32a hash on `"{project}/{instance}/{service}"`. Port range: 10000–39999. Collisions resolved by linear probing with wraparound.
 - **registry** — Persistent JSON store at `~/.config/outport/registry.json`. Keys are `"{project}/{instance}"` (e.g., `"myapp/main"`, `"myapp/feature-xyz"`). Atomic writes via temp file + rename.
-- **config** — Loads/validates `.outport.yml` (project name + service definitions with default_port and env_var).
+- **config** — Loads/validates `.outport.yml`. Supports flat services, groups (with shared env_file), per-service env_file (string or array for multi-file writes), preferred_port, and explicit protocol. Normalization flattens groups into a unified services map. Validates env_var uniqueness per file.
 - **worktree** — Detects git worktree vs. main checkout. Parses `.git` file to extract worktree name. Defaults to `"main"`.
-- **dotenv** — Merges allocated ports into `.env`. Lines tagged with `" # managed by outport"` (note leading space before `#`) are Outport-managed; all other lines are preserved untouched.
+- **dotenv** — Merges allocated ports into `.env` files. Lines tagged with `" # managed by outport"` (note leading space before `#`) are Outport-managed; all other lines are preserved untouched.
 - **ui** — Lipgloss terminal styling constants.
 
 ### CLI commands (`cmd/`)

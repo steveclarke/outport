@@ -3,7 +3,6 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
-	"sort"
 
 	"charm.land/lipgloss/v2"
 	"github.com/outport-app/outport/internal/registry"
@@ -50,7 +49,7 @@ type statusEntry struct {
 
 func printStatusJSON(cmd *cobra.Command, reg *registry.Registry) error {
 	var entries []statusEntry
-	keys := sortedKeys(reg)
+	keys := sortedMapKeys(reg.Projects)
 	for _, key := range keys {
 		alloc := reg.Projects[key]
 		entries = append(entries, statusEntry{
@@ -70,7 +69,7 @@ func printStatusJSON(cmd *cobra.Command, reg *registry.Registry) error {
 func printStatusStyled(cmd *cobra.Command, reg *registry.Registry) error {
 	w := cmd.OutOrStdout()
 
-	keys := sortedKeys(reg)
+	keys := sortedMapKeys(reg.Projects)
 
 	for i, key := range keys {
 		alloc := reg.Projects[key]
@@ -78,11 +77,7 @@ func printStatusStyled(cmd *cobra.Command, reg *registry.Registry) error {
 		header := ui.ProjectStyle.Render(key) + " " + ui.DimStyle.Render(alloc.ProjectDir)
 		lipgloss.Fprintln(w, header)
 
-		svcNames := make([]string, 0, len(alloc.Ports))
-		for s := range alloc.Ports {
-			svcNames = append(svcNames, s)
-		}
-		sort.Strings(svcNames)
+		svcNames := sortedMapKeys(alloc.Ports)
 
 		for _, svcName := range svcNames {
 			line := fmt.Sprintf("  %s  %s %s",
@@ -99,13 +94,4 @@ func printStatusStyled(cmd *cobra.Command, reg *registry.Registry) error {
 	}
 
 	return nil
-}
-
-func sortedKeys(reg *registry.Registry) []string {
-	keys := make([]string, 0, len(reg.Projects))
-	for k := range reg.Projects {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	return keys
 }

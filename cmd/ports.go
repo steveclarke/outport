@@ -4,12 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"sort"
 
-	"charm.land/lipgloss/v2"
 	"github.com/outport-app/outport/internal/config"
 	"github.com/outport-app/outport/internal/registry"
-	"github.com/outport-app/outport/internal/ui"
 	"github.com/outport-app/outport/internal/worktree"
 	"github.com/spf13/cobra"
 )
@@ -62,25 +59,10 @@ func runPorts(cmd *cobra.Command, args []string) error {
 }
 
 func printPortsJSON(cmd *cobra.Command, cfg *config.Config, wt *worktree.Info, alloc registry.Allocation) error {
-	services := make(map[string]svcJSON)
-	for name, svc := range cfg.Services {
-		port := alloc.Ports[name]
-		s := svcJSON{
-			Port:     port,
-			EnvVar:   svc.EnvVar,
-			Protocol: svc.Protocol,
-			EnvFiles: svc.EnvFiles,
-			Group:    svc.Group,
-		}
-		if svc.Protocol == "http" || svc.Protocol == "https" {
-			s.URL = fmt.Sprintf("%s://localhost:%d", svc.Protocol, port)
-		}
-		services[name] = s
-	}
 	out := upJSON{
 		Project:  cfg.Name,
 		Instance: wt.Instance,
-		Services: services,
+		Services: buildServiceMap(cfg, alloc.Ports),
 	}
 	data, err := json.MarshalIndent(out, "", "  ")
 	if err != nil {
@@ -93,20 +75,9 @@ func printPortsJSON(cmd *cobra.Command, cfg *config.Config, wt *worktree.Info, a
 func printPortsStyled(cmd *cobra.Command, cfg *config.Config, wt *worktree.Info, alloc registry.Allocation) error {
 	w := cmd.OutOrStdout()
 
-	instance := wt.Instance
-	if wt.IsWorktree {
-		instance += " (worktree)"
-	}
+	printHeader(w, cfg.Name, wt)
 
-	header := ui.ProjectStyle.Render(cfg.Name) + " " + ui.InstanceStyle.Render("["+instance+"]")
-	lipgloss.Fprintln(w, header)
-	lipgloss.Fprintln(w)
-
-	serviceNames := make([]string, 0, len(alloc.Ports))
-	for s := range alloc.Ports {
-		serviceNames = append(serviceNames, s)
-	}
-	sort.Strings(serviceNames)
+	serviceNames := sortedMapKeys(alloc.Ports)
 
 	hasGroups := false
 	for _, svcName := range serviceNames {

@@ -66,7 +66,7 @@ func runUp(cmd *cobra.Command, args []string) error {
 	ports := make(map[string]int)
 	envFileVars := make(map[string]map[string]string)
 
-	serviceNames := sortedServiceNames(cfg)
+	serviceNames := sortedMapKeys(cfg.Services)
 
 	for _, svcName := range serviceNames {
 		svc := cfg.Services[svcName]
@@ -119,15 +119,6 @@ func runUp(cmd *cobra.Command, args []string) error {
 	return printUpStyled(cmd, cfg, wt, serviceNames, ports, envFiles)
 }
 
-func sortedServiceNames(cfg *config.Config) []string {
-	names := make([]string, 0, len(cfg.Services))
-	for name := range cfg.Services {
-		names = append(names, name)
-	}
-	sort.Strings(names)
-	return names
-}
-
 func sortedMapKeys[V any](m map[string]V) []string {
 	keys := make([]string, 0, len(m))
 	for k := range m {
@@ -156,26 +147,34 @@ type upJSON struct {
 	EnvFiles []string           `json:"env_files"`
 }
 
-func printUpJSON(cmd *cobra.Command, cfg *config.Config, wt *worktree.Info, ports map[string]int, envFiles []string) error {
+func serviceURL(protocol string, port int) string {
+	if protocol == "http" || protocol == "https" {
+		return fmt.Sprintf("%s://localhost:%d", protocol, port)
+	}
+	return ""
+}
+
+func buildServiceMap(cfg *config.Config, ports map[string]int) map[string]svcJSON {
 	services := make(map[string]svcJSON)
 	for name, svc := range cfg.Services {
-		s := svcJSON{
+		services[name] = svcJSON{
 			Port:          ports[name],
 			PreferredPort: svc.PreferredPort,
 			EnvVar:        svc.EnvVar,
 			Protocol:      svc.Protocol,
+			URL:           serviceURL(svc.Protocol, ports[name]),
 			EnvFiles:      svc.EnvFiles,
 			Group:         svc.Group,
 		}
-		if svc.Protocol == "http" || svc.Protocol == "https" {
-			s.URL = fmt.Sprintf("%s://localhost:%d", svc.Protocol, ports[name])
-		}
-		services[name] = s
 	}
+	return services
+}
+
+func printUpJSON(cmd *cobra.Command, cfg *config.Config, wt *worktree.Info, ports map[string]int, envFiles []string) error {
 	out := upJSON{
 		Project:  cfg.Name,
 		Instance: wt.Instance,
-		Services: services,
+		Services: buildServiceMap(cfg, ports),
 		EnvFiles: envFiles,
 	}
 	data, err := json.MarshalIndent(out, "", "  ")
@@ -186,17 +185,20 @@ func printUpJSON(cmd *cobra.Command, cfg *config.Config, wt *worktree.Info, port
 	return nil
 }
 
-func printUpStyled(cmd *cobra.Command, cfg *config.Config, wt *worktree.Info, serviceNames []string, ports map[string]int, envFiles []string) error {
-	w := cmd.OutOrStdout()
-
+func printHeader(w io.Writer, projectName string, wt *worktree.Info) {
 	instance := wt.Instance
 	if wt.IsWorktree {
 		instance += " (worktree)"
 	}
-
-	header := ui.ProjectStyle.Render(cfg.Name) + " " + ui.InstanceStyle.Render("["+instance+"]")
+	header := ui.ProjectStyle.Render(projectName) + " " + ui.InstanceStyle.Render("["+instance+"]")
 	lipgloss.Fprintln(w, header)
 	lipgloss.Fprintln(w)
+}
+
+func printUpStyled(cmd *cobra.Command, cfg *config.Config, wt *worktree.Info, serviceNames []string, ports map[string]int, envFiles []string) error {
+	w := cmd.OutOrStdout()
+
+	printHeader(w, cfg.Name, wt)
 
 	hasGroups := false
 	for _, svcName := range serviceNames {
@@ -269,8 +271,8 @@ func printFlatServices(w io.Writer, cfg *config.Config, serviceNames []string, p
 func printServiceLine(w io.Writer, cfg *config.Config, svcName string, port int) {
 	svc := cfg.Services[svcName]
 	portDisplay := ui.PortStyle.Render(fmt.Sprintf("%d", port))
-	if svc.Protocol == "http" || svc.Protocol == "https" {
-		portDisplay = ui.UrlStyle.Render(fmt.Sprintf("%s://localhost:%d", svc.Protocol, port))
+	if url := serviceURL(svc.Protocol, port); url != "" {
+		portDisplay = ui.UrlStyle.Render(url)
 	}
 	line := fmt.Sprintf("    %s  %s  %s %s",
 		ui.ServiceStyle.Render(fmt.Sprintf("%-16s", svcName)),

@@ -34,17 +34,17 @@ Drop a `.outport.yml` in your project:
 name: myapp
 services:
   web:
-    default_port: 3000
+    preferred_port: 3000
     env_var: PORT
   postgres:
-    default_port: 5432
+    preferred_port: 5432
     env_var: DATABASE_PORT
   redis:
-    default_port: 6379
+    preferred_port: 6379
     env_var: REDIS_PORT
 ```
 
-Run `outport up`. Outport hashes your project name + worktree + service name into a deterministic port (range 10000-39999), checks for collisions with other registered projects, and writes the result to `.env`.
+Run `outport up`. Outport tries your preferred port first — if it's available, you get it. If another project already claimed it, Outport falls back to a deterministic hash-based port (range 10000-39999). Either way, it writes the result to `.env`.
 
 Same project, same worktree, same ports. Every time.
 
@@ -89,7 +89,7 @@ outport gc        Remove stale entries from the registry
 
 ## How Ports Are Allocated
 
-Outport uses FNV-32 hashing on `{project}/{instance}/{service}` to produce deterministic ports. If two projects hash to the same port (rare), linear probing finds the next available one. Allocations are persisted in `~/.config/outport/registry.json`.
+Outport tries your `preferred_port` first. If it's available, you get it — so your main checkout typically keeps familiar ports like 3000 and 5432. If the preferred port is taken by another project, Outport falls back to FNV-32 hashing on `{project}/{instance}/{service}` to produce a deterministic port in the 10000-39999 range. Allocations are persisted in `~/.config/outport/registry.json`.
 
 Ports are stable: once allocated, running `outport up` again reuses the same ports. New services added to your config get fresh allocations without disturbing existing ones.
 

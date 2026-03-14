@@ -47,10 +47,10 @@ var (
 
 	// Group header in output
 	GroupStyle = lipgloss.NewStyle().
-		Foreground(Purple).
-		Bold(true)
+			Foreground(Purple).
+			Bold(true)
 
 	// URL for HTTP services
 	UrlStyle = lipgloss.NewStyle().
-		Foreground(Yellow)
+			Foreground(Yellow)
 )
