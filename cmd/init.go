@@ -30,7 +30,7 @@ const configTemplate = `# Outport configuration
 name: %s
 
 services:
-# Uncomment and edit the services your project uses:
+# Add your services here. Each needs at least an env_var.
 #
 #  web:
 #    env_var: PORT
@@ -39,24 +39,13 @@ services:
 #  postgres:
 #    env_var: DB_PORT
 #
-#  redis:
-#    env_var: REDIS_PORT
-#
-#  mailpit_web:
-#    env_var: MAILPIT_WEB_PORT
-#    protocol: http
-#
-#  mailpit_smtp:
-#    env_var: MAILPIT_SMTP_PORT
-#
 # Write to a different .env file (default is .env in project root):
 #
 #  rails:
 #    env_var: RAILS_PORT
-#    protocol: http
 #    env_file: backend/.env
 #
-# Write to multiple .env files:
+# Write the same var to multiple .env files:
 #
 #  postgres:
 #    env_var: DB_PORT
