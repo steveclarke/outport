@@ -23,18 +23,19 @@ func init() {
 }
 
 type servicePreset struct {
-	Name        string
-	DefaultPort int
-	EnvVar      string
+	Name          string
+	PreferredPort int
+	EnvVar        string
+	Protocol      string
 }
 
 var presets = []servicePreset{
-	{"web", 3000, "PORT"},
-	{"postgres", 5432, "DATABASE_PORT"},
-	{"redis", 6379, "REDIS_PORT"},
-	{"mailpit_web", 8025, "MAILPIT_WEB_PORT"},
-	{"mailpit_smtp", 1025, "MAILPIT_SMTP_PORT"},
-	{"vite", 5173, "VITE_PORT"},
+	{"web", 3000, "PORT", "http"},
+	{"postgres", 5432, "DATABASE_PORT", ""},
+	{"redis", 6379, "REDIS_PORT", ""},
+	{"mailpit_web", 8025, "MAILPIT_WEB_PORT", "http"},
+	{"mailpit_smtp", 1025, "MAILPIT_SMTP_PORT", ""},
+	{"vite", 5173, "VITE_PORT", "http"},
 }
 
 func runInit(cmd *cobra.Command, args []string) error {
@@ -61,7 +62,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 	fmt.Fprintln(cmd.OutOrStdout(), "\nSelect services (y/n):")
 	var selectedServices []servicePreset
 	for _, preset := range presets {
-		fmt.Fprintf(cmd.OutOrStdout(), "  %s (default port %d)? [y/N]: ", preset.Name, preset.DefaultPort)
+		fmt.Fprintf(cmd.OutOrStdout(), "  %s (preferred port %d)? [y/N]: ", preset.Name, preset.PreferredPort)
 		answer, _ := reader.ReadString('\n')
 		answer = strings.TrimSpace(strings.ToLower(answer))
 		if answer == "y" || answer == "yes" {
@@ -79,8 +80,11 @@ func runInit(cmd *cobra.Command, args []string) error {
 	sb.WriteString("services:\n")
 	for _, svc := range selectedServices {
 		sb.WriteString(fmt.Sprintf("  %s:\n", svc.Name))
-		sb.WriteString(fmt.Sprintf("    default_port: %d\n", svc.DefaultPort))
+		sb.WriteString(fmt.Sprintf("    preferred_port: %d\n", svc.PreferredPort))
 		sb.WriteString(fmt.Sprintf("    env_var: %s\n", svc.EnvVar))
+		if svc.Protocol != "" {
+			sb.WriteString(fmt.Sprintf("    protocol: %s\n", svc.Protocol))
+		}
 	}
 
 	if err := os.WriteFile(configPath, []byte(sb.String()), 0644); err != nil {
