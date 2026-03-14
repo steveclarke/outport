@@ -17,7 +17,10 @@ func HashPort(project, instance, service string) int {
 	return int(h.Sum32()%uint32(portRange)) + MinPort
 }
 
-func Allocate(project, instance, service string, usedPorts map[int]bool) (int, error) {
+func Allocate(project, instance, service string, preferred int, usedPorts map[int]bool) (int, error) {
+	if preferred > 0 && !usedPorts[preferred] {
+		return preferred, nil
+	}
 	start := HashPort(project, instance, service)
 	port := start
 	for usedPorts[port] {

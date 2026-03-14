@@ -81,7 +81,7 @@ func runUp(cmd *cobra.Command, args []string) error {
 				continue
 			}
 		}
-		port, err := allocator.Allocate(cfg.Name, wt.Instance, svcName, usedPorts)
+		port, err := allocator.Allocate(cfg.Name, wt.Instance, svcName, svc.DefaultPort, usedPorts)
 		if err != nil {
 			return fmt.Errorf("allocating port for %s: %w", svcName, err)
 		}

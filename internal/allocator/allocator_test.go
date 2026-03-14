@@ -43,7 +43,7 @@ func TestHashPort_DifferentInputsDifferentPorts(t *testing.T) {
 }
 
 func TestAllocate_NoCollisions(t *testing.T) {
-	port, err := Allocate("myapp", "main", "web", nil)
+	port, err := Allocate("myapp", "main", "web", 0, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -57,7 +57,7 @@ func TestAllocate_WithCollision(t *testing.T) {
 	idealPort := HashPort("myapp", "main", "web")
 	usedPorts := map[int]bool{idealPort: true}
 
-	port, err := Allocate("myapp", "main", "web", usedPorts)
+	port, err := Allocate("myapp", "main", "web", 0, usedPorts)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -80,7 +80,7 @@ func TestAllocate_WithMultipleCollisions(t *testing.T) {
 		usedPorts[p] = true
 	}
 
-	port, err := Allocate("myapp", "main", "web", usedPorts)
+	port, err := Allocate("myapp", "main", "web", 0, usedPorts)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -89,5 +89,40 @@ func TestAllocate_WithMultipleCollisions(t *testing.T) {
 	}
 	if port < MinPort || port > MaxPort {
 		t.Errorf("port %d outside range", port)
+	}
+}
+
+func TestAllocate_PreferredPortAvailable(t *testing.T) {
+	port, err := Allocate("myapp", "main", "web", 3000, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if port != 3000 {
+		t.Errorf("port = %d, want 3000 (preferred port was available)", port)
+	}
+}
+
+func TestAllocate_PreferredPortTaken(t *testing.T) {
+	usedPorts := map[int]bool{3000: true}
+	port, err := Allocate("myapp", "main", "web", 3000, usedPorts)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if port == 3000 {
+		t.Error("should not have used taken preferred port")
+	}
+	if port < MinPort || port > MaxPort {
+		t.Errorf("port %d outside range", port)
+	}
+}
+
+func TestAllocate_PreferredPortZero(t *testing.T) {
+	port, err := Allocate("myapp", "main", "web", 0, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	expected := HashPort("myapp", "main", "web")
+	if port != expected {
+		t.Errorf("port = %d, want %d (no preferred, should use hash)", port, expected)
 	}
 }
