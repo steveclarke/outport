@@ -236,7 +236,7 @@ func TestStatus_ShowsProjects(t *testing.T) {
 
 	output := executeCmd(t, "status", "--json")
 
-	var entries []statusEntry
+	var entries []statusEntryJSON
 	if err := json.Unmarshal([]byte(output), &entries); err != nil {
 		t.Fatalf("invalid JSON: %v\nOutput: %s", err, output)
 	}
@@ -247,8 +247,8 @@ func TestStatus_ShowsProjects(t *testing.T) {
 	if entries[0].Key != "testapp/main" {
 		t.Errorf("key = %q, want %q", entries[0].Key, "testapp/main")
 	}
-	if len(entries[0].Ports) != 2 {
-		t.Errorf("ports count = %d, want 2", len(entries[0].Ports))
+	if len(entries[0].Services) != 2 {
+		t.Errorf("services count = %d, want 2", len(entries[0].Services))
 	}
 }
 

@@ -3,10 +3,13 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 
 	"charm.land/lipgloss/v2"
+	"github.com/outport-app/outport/internal/config"
 	"github.com/outport-app/outport/internal/registry"
 	"github.com/outport-app/outport/internal/ui"
+	"github.com/outport-app/outport/internal/worktree"
 	"github.com/spf13/cobra"
 )
 
@@ -18,6 +21,33 @@ var statusCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(statusCmd)
+}
+
+// currentProjectKey returns the registry key for the current directory, or "" if not in a project.
+func currentProjectKey() string {
+	dir, err := os.Getwd()
+	if err != nil {
+		return ""
+	}
+	cfg, err := config.Load(dir)
+	if err != nil {
+		return ""
+	}
+	wt, err := worktree.Detect(dir)
+	if err != nil {
+		return ""
+	}
+	return cfg.Name + "/" + wt.Instance
+}
+
+// loadProjectConfig attempts to load a project's config from its directory.
+// Returns nil if the directory or config doesn't exist.
+func loadProjectConfig(projectDir string) *config.Config {
+	cfg, err := config.Load(projectDir)
+	if err != nil {
+		return nil
+	}
+	return cfg
 }
 
 func runStatus(cmd *cobra.Command, args []string) error {
@@ -41,23 +71,48 @@ func runStatus(cmd *cobra.Command, args []string) error {
 	return printStatusStyled(cmd, reg)
 }
 
-type statusEntry struct {
-	Key        string         `json:"key"`
-	ProjectDir string         `json:"project_dir"`
-	Ports      map[string]int `json:"ports"`
+type statusServiceJSON struct {
+	Port     int    `json:"port"`
+	Protocol string `json:"protocol,omitempty"`
+	URL      string `json:"url,omitempty"`
+}
+
+type statusEntryJSON struct {
+	Key        string                        `json:"key"`
+	ProjectDir string                        `json:"project_dir"`
+	Current    bool                          `json:"current"`
+	Services   map[string]statusServiceJSON  `json:"services"`
 }
 
 func printStatusJSON(cmd *cobra.Command, reg *registry.Registry) error {
-	var entries []statusEntry
+	currentKey := currentProjectKey()
+	var entries []statusEntryJSON
+
 	keys := sortedMapKeys(reg.Projects)
 	for _, key := range keys {
 		alloc := reg.Projects[key]
-		entries = append(entries, statusEntry{
+		cfg := loadProjectConfig(alloc.ProjectDir)
+
+		services := make(map[string]statusServiceJSON)
+		for svcName, port := range alloc.Ports {
+			s := statusServiceJSON{Port: port}
+			if cfg != nil {
+				if svc, ok := cfg.Services[svcName]; ok {
+					s.Protocol = svc.Protocol
+					s.URL = serviceURL(svc.Protocol, port)
+				}
+			}
+			services[svcName] = s
+		}
+
+		entries = append(entries, statusEntryJSON{
 			Key:        key,
 			ProjectDir: alloc.ProjectDir,
-			Ports:      alloc.Ports,
+			Current:    key == currentKey,
+			Services:   services,
 		})
 	}
+
 	data, err := json.MarshalIndent(entries, "", "  ")
 	if err != nil {
 		return err
@@ -66,24 +121,47 @@ func printStatusJSON(cmd *cobra.Command, reg *registry.Registry) error {
 	return nil
 }
 
+var (
+	currentMarker = lipgloss.NewStyle().Foreground(ui.Green).Bold(true)
+)
+
 func printStatusStyled(cmd *cobra.Command, reg *registry.Registry) error {
 	w := cmd.OutOrStdout()
+	currentKey := currentProjectKey()
 
 	keys := sortedMapKeys(reg.Projects)
 
 	for i, key := range keys {
 		alloc := reg.Projects[key]
+		cfg := loadProjectConfig(alloc.ProjectDir)
 
-		header := ui.ProjectStyle.Render(key) + " " + ui.DimStyle.Render(alloc.ProjectDir)
+		// Header with current project indicator
+		marker := ""
+		if key == currentKey {
+			marker = currentMarker.Render(" ●")
+		}
+		header := ui.ProjectStyle.Render(key) + " " + ui.DimStyle.Render(alloc.ProjectDir) + marker
 		lipgloss.Fprintln(w, header)
 
 		svcNames := sortedMapKeys(alloc.Ports)
 
 		for _, svcName := range svcNames {
+			port := alloc.Ports[svcName]
+			portDisplay := ui.PortStyle.Render(fmt.Sprintf("%d", port))
+
+			// Try to get protocol from config for URL display
+			if cfg != nil {
+				if svc, ok := cfg.Services[svcName]; ok {
+					if url := serviceURL(svc.Protocol, port); url != "" {
+						portDisplay = ui.UrlStyle.Render(url)
+					}
+				}
+			}
+
 			line := fmt.Sprintf("  %s  %s %s",
 				ui.ServiceStyle.Render(fmt.Sprintf("%-16s", svcName)),
 				ui.Arrow,
-				ui.PortStyle.Render(fmt.Sprintf("%d", alloc.Ports[svcName])),
+				portDisplay,
 			)
 			lipgloss.Fprintln(w, line)
 		}
