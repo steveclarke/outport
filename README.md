@@ -14,22 +14,22 @@ Outport allocates deterministic, non-conflicting ports for all your projects and
 
 You're running Rails on 3000, Nuxt on 5173, Postgres on 5432. You start a second project — port conflict. You spin up a git worktree — another conflict. With agentic coding tools and parallel development, you might run 3-5 instances of the same project simultaneously.
 
-Outport fixes this. Declare your services once, run `outport up`, and never think about ports again.
+Outport fixes this. Declare your services once, run `outport register`, and never think about ports again.
 
 ## Quick Start
 
 ```bash
 # In your project directory
 outport init          # Create .outport.yml (interactive)
-outport up            # Allocate ports, write .env
+outport register      # Allocate ports, write .env
 ```
 
 That's it. Your `.env` now has deterministic, non-conflicting ports:
 
 ```
-DATABASE_PORT=39972 # managed by outport
-PORT=39519 # managed by outport
-REDIS_PORT=30938 # managed by outport
+DATABASE_PORT=39972
+PORT=39519
+REDIS_PORT=30938
 ```
 
 ## How It Works
@@ -40,17 +40,28 @@ Drop a `.outport.yml` in your project:
 name: myapp
 services:
   web:
-    preferred_port: 3000
     env_var: PORT
   postgres:
-    preferred_port: 5432
     env_var: DATABASE_PORT
   redis:
-    preferred_port: 6379
     env_var: REDIS_PORT
 ```
 
-Run `outport up`. Outport tries your preferred port first — if it's available, you get it. If another project already claimed it, Outport falls back to a deterministic hash-based port (range 10000-39999). Either way, it writes the result to `.env`.
+Run `outport register`. Outport allocates a deterministic hash-based port (range 10000-39999) for each service and writes the result to `.env`.
+
+### Preferred Ports (optional)
+
+You can hint at a preferred port for any service. If it's available, you get it — otherwise Outport falls back to hash-based allocation:
+
+```yaml
+services:
+  web:
+    env_var: PORT
+    preferred_port: 3000
+  postgres:
+    env_var: DATABASE_PORT
+    preferred_port: 5432
+```
 
 Same project, same worktree, same ports. Every time.
 
@@ -60,13 +71,13 @@ Outport detects git worktrees automatically. Each worktree gets its own set of p
 
 ```bash
 # Main checkout
-$ outport up
-outport: myapp [main]
+$ outport register
+outport: myapp
   web (PORT) → 39519
   postgres (DATABASE_PORT) → 39972
 
 # Feature worktree — completely different ports, zero conflicts
-$ outport up
+$ outport register
 outport: myapp [feature-xyz (worktree)]
   web (PORT) → 28104
   postgres (DATABASE_PORT) → 13567
@@ -81,28 +92,30 @@ Outport writes to `.env` because everything already reads it:
 - **Rails** (dotenv-rails), **Nuxt**, **Phoenix**, **Django** — all have dotenv support
 - **Any framework** that reads environment variables works with zero configuration
 
-Outport preserves your existing `.env` variables. It only manages lines marked with `# managed by outport`.
+Outport preserves your existing `.env` variables. It only updates variables declared in your `.outport.yml` — everything else is preserved.
 
 ## Commands
 
 ```
-outport init          Create .outport.yml for this project (interactive)
-outport up            Allocate ports and write to .env files
-outport ports         Show ports for the current project
-outport open          Open HTTP services in the browser
-outport status        Show all registered projects and their ports
-outport status --check  Show with health checks (up/down per service)
-outport reset         Clear and re-allocate ports (tries preferred ports fresh)
-outport gc            Remove stale entries from the registry
+outport init              Create .outport.yml for this project
+outport register          Register project, allocate ports, write .env
+outport reg               Short alias for register
+outport register --force  Clear and re-allocate all ports
+outport unregister        Remove from registry, free ports
+outport ports             Show ports for the current project
+outport open              Open HTTP services in the browser
+outport status            Show all registered projects
+outport status --check    Show with health checks (up/down)
+outport gc                Remove stale registry entries
 ```
 
 All commands support `--json` for machine-readable output.
 
 ## How Ports Are Allocated
 
-Outport tries your `preferred_port` first. If it's available, you get it — so your main checkout typically keeps familiar ports like 3000 and 5432. If the preferred port is taken by another project, Outport falls back to FNV-32 hashing on `{project}/{instance}/{service}` to produce a deterministic port in the 10000-39999 range. Allocations are persisted in `~/.config/outport/registry.json`.
+Outport uses FNV-32 hashing on `{project}/{instance}/{service}` to produce a deterministic port in the 10000-39999 range. If you specify a `preferred_port` and it's available, you get it — so your main checkout can keep familiar ports like 3000 and 5432. Allocations are persisted in `~/.config/outport/registry.json`.
 
-Ports are stable: once allocated, running `outport up` again reuses the same ports. New services added to your config get fresh allocations without disturbing existing ones.
+Ports are stable: once allocated, running `outport register` again reuses the same ports. New services added to your config get fresh allocations without disturbing existing ones.
 
 ## Protocol
 
@@ -111,42 +124,34 @@ Add `protocol` to services to get URLs in output and enable `outport open`:
 ```yaml
 services:
   web:
-    preferred_port: 3000
     env_var: PORT
-    protocol: http       # shows http://localhost:3000 in output
+    protocol: http       # shows http://localhost:<port> in output
   postgres:
-    preferred_port: 5432
     env_var: DB_PORT     # no protocol — just shows port number
 ```
 
 Supported protocols: `http`, `https`, `smtp`, `postgres`, `redis`, and any custom string.
 
-## Monorepo Support
+## Multiple .env Files
 
-Use `groups` to organize services with different env files:
+Use per-service `env_file` to write ports to different locations — useful for monorepos:
 
 ```yaml
 name: my-monorepo
-groups:
-  backend:
+services:
+  rails:
+    env_var: RAILS_PORT
+    protocol: http
     env_file: backend/.env
-    services:
-      rails:
-        preferred_port: 3000
-        env_var: RAILS_PORT
-        protocol: http
-      postgres:
-        preferred_port: 5432
-        env_var: DB_PORT
-  frontend:
-    services:
-      web:
-        preferred_port: 9000
-        env_var: NUXT_PORT
-        protocol: http
+  postgres:
+    env_var: DB_PORT
+    env_file: backend/.env
+  web:
+    env_var: NUXT_PORT
+    protocol: http
 ```
 
-Services inherit the group's `env_file`. Per-service `env_file` overrides the group default. `env_file` can be a string or array to write to multiple files.
+Services without `env_file` write to `.env` in the project root. `env_file` can be a string or array to write to multiple files.
 
 ## AI Agent Skill
 
@@ -186,13 +191,13 @@ Requires [Go 1.24+](https://go.dev/dl/) and [just](https://github.com/casey/just
 just build        # Build the binary
 just test         # Run all tests
 just lint         # Run linter
-just run up       # Build and run with args
+just run register  # Build and run with args
 just clean        # Clean build artifacts
 ```
 
 ## Roadmap
 
-- **v1 (current):** Port allocation + `.env` writing
+- **v1 (current):** Port allocation + register/unregister + `.env` writing
 - **v2:** DNS server + reverse proxy for `.test` domains (`myapp.test` instead of `localhost:39519`)
 - **v3:** Local SSL with real certificates for `.test` domains
 
