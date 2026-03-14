@@ -10,13 +10,13 @@ But ports are just the beginning. The real friction is everything that comes aft
 - You want to show your colleague in Botwood what you've built. You tunnel your frontend — but it talks to an API backend. They can see your UI, but every API call fails. You'd need to tunnel the backend too, update the frontend's API URL, configure CORS... so you just share your screen on a call instead.
 - You spin up a worktree for a feature branch. Now you need a whole new set of ports, new `.env` values, and you're typing `localhost:28104` into your browser because who can remember that.
 
-These problems have existed for years. Every developer has hit them. Nobody has solved them end-to-end.
+These problems have existed for years. Every developer has hit them. Outport is designed to solve them end-to-end.
 
 ## The Vision
 
 **Outport makes your dev environment work the way it should — across every project, every device, every worktree.**
 
-Drop a config file in your project. Run `outport up`. You get:
+Drop a config file in your project. Run `outport register`. You get:
 
 - **Deterministic ports** that never conflict, across all your projects and worktrees
 - **A friendly hostname** like `myapp.test` instead of `localhost:28104`
@@ -63,7 +63,7 @@ Because it owns all three, it can do things that are impossible when these conce
 
 ## Design Principles
 
-1. **Zero thinking** — `outport up` and forget about it
+1. **Zero thinking** — `outport register` and forget about it
 2. **Convention over configuration** — sensible defaults, config only when needed
 3. **`.env` is the contract** — the universal integration point
 4. **Framework-agnostic** — Rails, Nuxt, Phoenix, Django, anything with env vars

@@ -30,11 +30,11 @@ Outport is designed to solve all of this — from port allocation to hostnames, 
 
 ```bash
 cd ~/src/myapp
-outport init              # Create .outport.yml (interactive)
-outport up                # Allocate ports, write .env, start DNS
+outport init              # Create .outport.yml
+outport register          # Allocate ports, write .env
 ```
 
-That's it. Your app is running at `https://myapp.test` with real SSL.
+That's it. Your services have deterministic ports. Once DNS and SSL are enabled, your app is at `https://myapp.test`.
 
 ## How It Works
 
@@ -44,25 +44,21 @@ Drop a `.outport.yml` in your project that declares your services:
 name: myapp
 services:
   web:
-    preferred_port: 3000
     env_var: PORT
     protocol: http
   postgres:
-    preferred_port: 5432
     env_var: DATABASE_PORT
   redis:
-    preferred_port: 6379
     env_var: REDIS_PORT
 ```
 
-When you run `outport up`, Outport:
+When you run `outport register`, Outport:
 
-1. **Allocates ports** — tries your preferred port first. If another project already has it, falls back to a deterministic hash-based port so the same project always gets the same ports.
+1. **Allocates ports** — assigns a deterministic hash-based port for each service so the same project always gets the same ports.
 2. **Writes `.env`** — every framework already reads `.env` (Docker Compose, Foreman, Rails, Nuxt), so your services pick up their ports automatically.
-3. **Starts DNS + proxy** — maps `myapp.test` to your allocated ports so you never type a port number again.
-4. **Registers everything** — a central registry at `~/.config/outport/` tracks all projects and worktrees so ports never collide across your entire machine.
+3. **Registers everything** — a central registry at `~/.config/outport/` tracks all projects and worktrees so ports never collide across your entire machine.
 
-Each worktree gets its own allocation. Your main checkout keeps familiar ports like 3000 and 5432. Worktrees get their own deterministic ports and hostnames. Run `outport up` again — same result every time.
+Each worktree gets its own allocation with its own deterministic ports. Run `outport register` again — same result every time.
 
 ## What You Get
 
@@ -71,20 +67,20 @@ Each worktree gets its own allocation. Your main checkout keeps familiar ports l
 Every project and worktree gets stable, non-conflicting ports written to `.env`:
 
 ```bash
-$ outport up
-myapp [main]
-    web         PORT                 → http://localhost:3000
-    postgres    DATABASE_PORT        → 5432
-    redis       REDIS_PORT           → 6379
+$ outport register
+myapp
+    web         PORT                 → 24920  http://localhost:24920
+    postgres    DATABASE_PORT        → 21536
+    redis       REDIS_PORT           → 29454
 
 Ports written to .env
 ```
 
-Your main checkout gets preferred ports (3000, 5432). Worktrees get deterministic hash-based ports. Run `outport up` again — same ports every time.
+Ports are deterministic — same project, same worktree, same ports every time. Run `outport register` again — same result.
 
 ### Friendly Hostnames
 
-Access your app at `myapp.test` instead of `localhost:3000`. Worktrees get their own hostnames automatically:
+Access your app at `myapp.test` instead of `localhost:24920`. Worktrees get their own hostnames automatically:
 
 ```
 myapp.test                    → main checkout
@@ -113,7 +109,7 @@ $ outport open --qr
   █ █▄▄▄█ █ █▄█ █▄▄▄█ █
   █████████████████████
 
-  http://192.168.1.50:3000
+  http://192.168.1.50:24920
 
   Scan with your phone (same WiFi)
 ```
@@ -125,7 +121,7 @@ Scan the QR code from your phone camera. You're in. No typing IP addresses.
 ```bash
 $ outport share
 
-  myapp — web (port 3000)
+  myapp — web (port 24920)
 
   Public URL:  https://verb-noun-thing.trycloudflare.com
 
@@ -136,70 +132,59 @@ Your colleague in Botwood scans the QR code or clicks the link. They see your ap
 
 ### Multi-Service Sharing
 
-Here's the feature nobody else has. When your app has a frontend and a backend:
+When your app has a frontend and a backend:
 
 ```yaml
-# .outport.yml
 name: myapp
 services:
   frontend:
-    preferred_port: 5173
     env_var: VITE_PORT
     protocol: http
   api:
-    preferred_port: 3000
     env_var: PORT
     protocol: http
 ```
 
 Running `outport share` tunnels **both** services and writes the tunnel URLs back into `.env`. Your Vue frontend picks up the API's tunnel URL. Your Rails backend picks up the frontend's URL for CORS. Everything just works.
 
-This has been an unsolved problem for the entire SPA + API era. You've never been able to say "here's a link to my app" when your frontend talks to a backend — unless you deployed it. Outport fixes that.
+This has been a persistent unsolved problem for the SPA + API era — you've never been able to just send someone a link to your app when your frontend talks to a backend. Outport is designed to fix that.
 
 ## Configuration
 
 ### Simple Project
 
 ```yaml
-# .outport.yml
 name: myapp
 services:
   web:
-    preferred_port: 3000
     env_var: PORT
     protocol: http
   postgres:
-    preferred_port: 5432
     env_var: DATABASE_PORT
   redis:
-    preferred_port: 6379
     env_var: REDIS_PORT
 ```
 
-### Monorepo with Groups
+### Multiple .env Files
+
+Use per-service `env_file` to write to different locations:
 
 ```yaml
 name: my-monorepo
-groups:
-  backend:
+services:
+  rails:
+    env_var: RAILS_PORT
+    protocol: http
     env_file: backend/.env
-    services:
-      rails:
-        preferred_port: 3000
-        env_var: RAILS_PORT
-        protocol: http
-      postgres:
-        preferred_port: 5432
-        env_var: DB_PORT
-  frontend:
-    services:
-      web:
-        preferred_port: 9000
-        env_var: NUXT_PORT
-        protocol: http
+  postgres:
+    env_var: DB_PORT
+    env_file: backend/.env
+  web:
+    env_var: NUXT_PORT
+    protocol: http
 ```
 
-Groups organize services that share an `env_file`. Services inherit the group's `env_file`, or override it per-service. `env_file` can be a string or array to write to multiple files.
+Services default to `.env` in the project root if `env_file` is omitted. `env_file` can be a string or array to write the same var to multiple files.
 
 ## Worktree Support
 
@@ -207,15 +192,15 @@ Outport detects git worktrees automatically. Each worktree gets its own ports an
 
 ```bash
 # Main checkout
-$ outport up
-myapp [main]
-    web         PORT                 → https://myapp.test
-    postgres    DATABASE_PORT        → 5432
+$ outport register
+myapp
+    web         PORT                 → 24920  https://myapp.test
+    postgres    DATABASE_PORT        → 21536
 
 # Feature worktree — different ports, different hostname, zero conflicts
-$ outport up
+$ outport register
 myapp [feature-login (worktree)]
-    web         PORT                 → https://myapp-feature-login.test
+    web         PORT                 → 18472  https://myapp-feature-login.test
     postgres    DATABASE_PORT        → 13567
 ```
 
@@ -230,14 +215,16 @@ Outport writes to `.env` because everything already reads it:
 - **Rails** (dotenv-rails), **Nuxt**, **Phoenix**, **Django** — all have dotenv support
 - **Any framework** that reads environment variables
 
-Outport preserves your existing `.env` variables. It only manages lines marked with `# managed by outport`.
+Outport only updates variables declared in your `.outport.yml` — everything else in your `.env` is preserved.
 
 ## Commands
 
 ```
-outport init              Create .outport.yml (interactive)
-outport up                Allocate ports, write .env, start services
-outport down              Release ports, stop DNS/proxy
+outport init              Create .outport.yml for this project
+outport register          Register project, allocate ports, write .env
+outport reg               Short alias for register
+outport register --force  Clear and re-allocate all ports
+outport unregister        Remove from registry, free ports
 outport ports             Show ports for the current project
 outport open              Open HTTP services in the browser
 outport open --qr         Show QR code for mobile access
@@ -245,7 +232,6 @@ outport share             Tunnel to a public URL via Cloudflare
 outport share --qr        Show QR code for the tunnel URL
 outport status            Show all registered projects
 outport status --check    Show with health checks (up/down)
-outport reset             Re-allocate ports fresh
 outport gc                Remove stale registry entries
 ```
 
@@ -253,9 +239,9 @@ All commands support `--json` for machine-readable output.
 
 ## How Ports Are Allocated
 
-Outport tries your `preferred_port` first. If it's available, you get it — so your main checkout typically keeps familiar ports like 3000 and 5432. If the preferred port is taken by another project, Outport falls back to FNV-32 hashing on `{project}/{instance}/{service}` to produce a deterministic port in the 10000-39999 range.
+Outport uses FNV-32 hashing on `{project}/{instance}/{service}` to produce a deterministic port in the 10000-39999 range. Same inputs always produce the same port — so your project gets the same ports every time, on every machine.
 
-Allocations are persisted in `~/.config/outport/registry.json`. Ports are stable: once allocated, `outport up` reuses the same ports. New services get fresh allocations without disturbing existing ones.
+Allocations are persisted in `~/.config/outport/registry.json`. Ports are stable: once allocated, `outport register` reuses the same ports. New services get fresh allocations without disturbing existing ones.
 
 ## AI Agent Skill
 
@@ -287,7 +273,7 @@ Requires [Go 1.24+](https://go.dev/dl/) and [just](https://github.com/casey/just
 just build        # Build the binary
 just test         # Run all tests
 just lint         # Run linter
-just run up       # Build and run with args
+just run register # Build and run with args
 ```
 
 ## Why "Outport"?
