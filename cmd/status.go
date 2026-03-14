@@ -29,7 +29,6 @@ func init() {
 	rootCmd.AddCommand(statusCmd)
 }
 
-// currentProjectKey returns the registry key for the current directory, or "" if not in a project.
 func currentProjectKey() string {
 	dir, err := os.Getwd()
 	if err != nil {
@@ -46,8 +45,6 @@ func currentProjectKey() string {
 	return cfg.Name + "/" + wt.Instance
 }
 
-// loadProjectConfig attempts to load a project's config from its directory.
-// Returns nil if the directory or config doesn't exist.
 func loadProjectConfig(projectDir string) *config.Config {
 	cfg, err := config.Load(projectDir)
 	if err != nil {
@@ -57,11 +54,7 @@ func loadProjectConfig(projectDir string) *config.Config {
 }
 
 func runStatus(cmd *cobra.Command, args []string) error {
-	regPath, err := registry.DefaultPath()
-	if err != nil {
-		return err
-	}
-	reg, err := registry.Load(regPath)
+	reg, err := loadRegistry()
 	if err != nil {
 		return err
 	}
@@ -71,27 +64,32 @@ func runStatus(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	if jsonFlag {
-		return printStatusJSON(cmd, reg)
+	// Precompute port status if --check
+	var portStatus map[int]bool
+	if statusCheckFlag {
+		var allPorts []int
+		for _, alloc := range reg.Projects {
+			for _, port := range alloc.Ports {
+				allPorts = append(allPorts, port)
+			}
+		}
+		portStatus = portcheck.CheckAll(allPorts)
 	}
-	return printStatusStyled(cmd, reg)
-}
 
-type statusServiceJSON struct {
-	Port     int    `json:"port"`
-	Protocol string `json:"protocol,omitempty"`
-	URL      string `json:"url,omitempty"`
-	Up       *bool  `json:"up,omitempty"`
+	if jsonFlag {
+		return printStatusJSON(cmd, reg, portStatus)
+	}
+	return printStatusStyled(cmd, reg, portStatus)
 }
 
 type statusEntryJSON struct {
-	Key        string                        `json:"key"`
-	ProjectDir string                        `json:"project_dir"`
-	Current    bool                          `json:"current"`
-	Services   map[string]statusServiceJSON  `json:"services"`
+	Key        string             `json:"key"`
+	ProjectDir string             `json:"project_dir"`
+	Current    bool               `json:"current"`
+	Services   map[string]svcJSON `json:"services"`
 }
 
-func printStatusJSON(cmd *cobra.Command, reg *registry.Registry) error {
+func printStatusJSON(cmd *cobra.Command, reg *registry.Registry, portStatus map[int]bool) error {
 	currentKey := currentProjectKey()
 	var entries []statusEntryJSON
 
@@ -100,17 +98,17 @@ func printStatusJSON(cmd *cobra.Command, reg *registry.Registry) error {
 		alloc := reg.Projects[key]
 		cfg := loadProjectConfig(alloc.ProjectDir)
 
-		services := make(map[string]statusServiceJSON)
+		services := make(map[string]svcJSON)
 		for svcName, port := range alloc.Ports {
-			s := statusServiceJSON{Port: port}
+			s := svcJSON{Port: port}
 			if cfg != nil {
 				if svc, ok := cfg.Services[svcName]; ok {
 					s.Protocol = svc.Protocol
 					s.URL = serviceURL(svc.Protocol, port)
 				}
 			}
-			if statusCheckFlag {
-				s.Up = boolPtr(portcheck.IsUp(port))
+			if portStatus != nil {
+				s.Up = boolPtr(portStatus[port])
 			}
 			services[svcName] = s
 		}
@@ -131,11 +129,9 @@ func printStatusJSON(cmd *cobra.Command, reg *registry.Registry) error {
 	return nil
 }
 
-var (
-	currentMarker = lipgloss.NewStyle().Foreground(ui.Green).Bold(true)
-)
+var currentMarker = lipgloss.NewStyle().Foreground(ui.Green).Bold(true)
 
-func printStatusStyled(cmd *cobra.Command, reg *registry.Registry) error {
+func printStatusStyled(cmd *cobra.Command, reg *registry.Registry, portStatus map[int]bool) error {
 	w := cmd.OutOrStdout()
 	currentKey := currentProjectKey()
 
@@ -152,7 +148,6 @@ func printStatusStyled(cmd *cobra.Command, reg *registry.Registry) error {
 
 		cfg := loadProjectConfig(alloc.ProjectDir)
 
-		// Header with current project indicator and stale warning
 		marker := ""
 		if key == currentKey {
 			marker = currentMarker.Render(" ●")
@@ -169,8 +164,8 @@ func printStatusStyled(cmd *cobra.Command, reg *registry.Registry) error {
 			port := alloc.Ports[svcName]
 
 			status := ""
-			if statusCheckFlag {
-				if portcheck.IsUp(port) {
+			if portStatus != nil {
+				if portStatus[port] {
 					status = "  " + ui.StatusUp
 				} else {
 					status = "  " + ui.StatusDown

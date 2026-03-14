@@ -3,7 +3,6 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 
 	"github.com/outport-app/outport/internal/config"
 	"github.com/outport-app/outport/internal/portcheck"
@@ -26,48 +25,30 @@ func init() {
 }
 
 func runPorts(cmd *cobra.Command, args []string) error {
-	dir, err := os.Getwd()
+	ctx, err := loadProjectContext()
 	if err != nil {
 		return err
 	}
 
-	cfg, err := config.Load(dir)
-	if err != nil {
-		return err
-	}
-
-	wt, err := worktree.Detect(dir)
-	if err != nil {
-		return err
-	}
-
-	regPath, err := registry.DefaultPath()
-	if err != nil {
-		return err
-	}
-	reg, err := registry.Load(regPath)
-	if err != nil {
-		return err
-	}
-
-	alloc, ok := reg.Get(cfg.Name, wt.Instance)
+	alloc, ok := ctx.Reg.Get(ctx.Cfg.Name, ctx.WT.Instance)
 	if !ok {
 		fmt.Fprintln(cmd.OutOrStdout(), "No ports allocated. Run 'outport up' first.")
 		return nil
 	}
 
 	if jsonFlag {
-		return printPortsJSON(cmd, cfg, wt, alloc)
+		return printPortsJSON(cmd, ctx.Cfg, ctx.WT, alloc)
 	}
-	return printPortsStyled(cmd, cfg, wt, alloc)
+	return printPortsStyled(cmd, ctx.Cfg, ctx.WT, alloc)
 }
 
 func printPortsJSON(cmd *cobra.Command, cfg *config.Config, wt *worktree.Info, alloc registry.Allocation) error {
 	services := buildServiceMap(cfg, alloc.Ports)
 
 	if portsCheckFlag {
+		portStatus := checkPorts(alloc.Ports)
 		for name, s := range services {
-			s.Up = boolPtr(portcheck.IsUp(s.Port))
+			s.Up = boolPtr(portStatus[s.Port])
 			services[name] = s
 		}
 	}
@@ -87,24 +68,29 @@ func printPortsJSON(cmd *cobra.Command, cfg *config.Config, wt *worktree.Info, a
 
 func printPortsStyled(cmd *cobra.Command, cfg *config.Config, wt *worktree.Info, alloc registry.Allocation) error {
 	w := cmd.OutOrStdout()
-
 	printHeader(w, cfg.Name, wt)
 
 	serviceNames := sortedMapKeys(alloc.Ports)
 
-	hasGroups := false
-	for _, svcName := range serviceNames {
-		if svc, ok := cfg.Services[svcName]; ok && svc.Group != "" {
-			hasGroups = true
-			break
-		}
+	var portStatus map[int]bool
+	if portsCheckFlag {
+		portStatus = checkPorts(alloc.Ports)
 	}
 
-	if hasGroups {
-		printGroupedServices(w, cfg, serviceNames, alloc.Ports, portsCheckFlag)
+	if hasGroups(cfg, serviceNames) {
+		printGroupedServices(w, cfg, serviceNames, alloc.Ports, portStatus)
 	} else {
-		printFlatServices(w, cfg, serviceNames, alloc.Ports, portsCheckFlag)
+		printFlatServices(w, cfg, serviceNames, alloc.Ports, portStatus)
 	}
 
 	return nil
+}
+
+// checkPorts collects all port values and checks them concurrently.
+func checkPorts(ports map[string]int) map[int]bool {
+	var allPorts []int
+	for _, port := range ports {
+		allPorts = append(allPorts, port)
+	}
+	return portcheck.CheckAll(allPorts)
 }

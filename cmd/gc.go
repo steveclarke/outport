@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/outport-app/outport/internal/registry"
 	"github.com/spf13/cobra"
 )
 
@@ -20,11 +19,7 @@ func init() {
 }
 
 func runGC(cmd *cobra.Command, args []string) error {
-	regPath, err := registry.DefaultPath()
-	if err != nil {
-		return err
-	}
-	reg, err := registry.Load(regPath)
+	reg, err := loadRegistry()
 	if err != nil {
 		return err
 	}

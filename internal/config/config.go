@@ -62,7 +62,6 @@ type rawConfig struct {
 type Config struct {
 	Name     string
 	Services map[string]Service
-	Groups   map[string]Group
 }
 
 func Load(dir string) (*Config, error) {
@@ -87,7 +86,6 @@ func Load(dir string) (*Config, error) {
 	cfg := &Config{
 		Name:     raw.Name,
 		Services: make(map[string]Service),
-		Groups:   raw.Groups,
 	}
 
 	if err := cfg.normalize(&raw); err != nil {

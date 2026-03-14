@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"os"
 	"path/filepath"
 	"sort"
 
@@ -12,7 +11,6 @@ import (
 	"github.com/outport-app/outport/internal/allocator"
 	"github.com/outport-app/outport/internal/config"
 	"github.com/outport-app/outport/internal/dotenv"
-	"github.com/outport-app/outport/internal/portcheck"
 	"github.com/outport-app/outport/internal/registry"
 	"github.com/outport-app/outport/internal/ui"
 	"github.com/outport-app/outport/internal/worktree"
@@ -31,29 +29,11 @@ func init() {
 }
 
 func runUp(cmd *cobra.Command, args []string) error {
-	dir, err := os.Getwd()
-	if err != nil {
-		return fmt.Errorf("getting working directory: %w", err)
-	}
-
-	cfg, err := config.Load(dir)
+	ctx, err := loadProjectContext()
 	if err != nil {
 		return err
 	}
-
-	wt, err := worktree.Detect(dir)
-	if err != nil {
-		return fmt.Errorf("detecting worktree: %w", err)
-	}
-
-	regPath, err := registry.DefaultPath()
-	if err != nil {
-		return err
-	}
-	reg, err := registry.Load(regPath)
-	if err != nil {
-		return err
-	}
+	dir, cfg, wt, reg := ctx.Dir, ctx.Cfg, ctx.WT, ctx.Reg
 
 	existing, hasExisting := reg.Get(cfg.Name, wt.Instance)
 
@@ -204,18 +184,10 @@ func printUpStyled(cmd *cobra.Command, cfg *config.Config, wt *worktree.Info, se
 
 	printHeader(w, cfg.Name, wt)
 
-	hasGroups := false
-	for _, svcName := range serviceNames {
-		if cfg.Services[svcName].Group != "" {
-			hasGroups = true
-			break
-		}
-	}
-
-	if hasGroups {
-		printGroupedServices(w, cfg, serviceNames, ports, false)
+	if hasGroups(cfg, serviceNames) {
+		printGroupedServices(w, cfg, serviceNames, ports, nil)
 	} else {
-		printFlatServices(w, cfg, serviceNames, ports, false)
+		printFlatServices(w, cfg, serviceNames, ports, nil)
 	}
 
 	lipgloss.Fprintln(w)
@@ -230,7 +202,8 @@ func printUpStyled(cmd *cobra.Command, cfg *config.Config, wt *worktree.Info, se
 	return nil
 }
 
-func printGroupedServices(w io.Writer, cfg *config.Config, serviceNames []string, ports map[string]int, check bool) {
+// portStatus is nil when --check is not used, or a precomputed map of port → up/down.
+func printGroupedServices(w io.Writer, cfg *config.Config, serviceNames []string, ports map[string]int, portStatus map[int]bool) {
 	var ungrouped []string
 	groupServices := make(map[string][]string)
 	var groupOrder []string
@@ -249,7 +222,7 @@ func printGroupedServices(w io.Writer, cfg *config.Config, serviceNames []string
 	sort.Strings(groupOrder)
 
 	for _, svcName := range ungrouped {
-		printServiceLine(w, cfg, svcName, ports[svcName], check)
+		printServiceLine(w, cfg, svcName, ports[svcName], portStatus)
 	}
 	if len(ungrouped) > 0 && len(groupOrder) > 0 {
 		lipgloss.Fprintln(w)
@@ -258,7 +231,7 @@ func printGroupedServices(w io.Writer, cfg *config.Config, serviceNames []string
 	for i, group := range groupOrder {
 		lipgloss.Fprintln(w, "  "+ui.GroupStyle.Render(group))
 		for _, svcName := range groupServices[group] {
-			printServiceLine(w, cfg, svcName, ports[svcName], check)
+			printServiceLine(w, cfg, svcName, ports[svcName], portStatus)
 		}
 		if i < len(groupOrder)-1 {
 			lipgloss.Fprintln(w)
@@ -266,18 +239,18 @@ func printGroupedServices(w io.Writer, cfg *config.Config, serviceNames []string
 	}
 }
 
-func printFlatServices(w io.Writer, cfg *config.Config, serviceNames []string, ports map[string]int, check bool) {
+func printFlatServices(w io.Writer, cfg *config.Config, serviceNames []string, ports map[string]int, portStatus map[int]bool) {
 	for _, svcName := range serviceNames {
-		printServiceLine(w, cfg, svcName, ports[svcName], check)
+		printServiceLine(w, cfg, svcName, ports[svcName], portStatus)
 	}
 }
 
-func printServiceLine(w io.Writer, cfg *config.Config, svcName string, port int, check bool) {
+func printServiceLine(w io.Writer, cfg *config.Config, svcName string, port int, portStatus map[int]bool) {
 	svc := cfg.Services[svcName]
 
 	status := ""
-	if check {
-		if portcheck.IsUp(port) {
+	if portStatus != nil {
+		if portStatus[port] {
 			status = "  " + ui.StatusUp
 		} else {
 			status = "  " + ui.StatusDown

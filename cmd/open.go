@@ -2,13 +2,11 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 	"os/exec"
 	"runtime"
 
 	"github.com/outport-app/outport/internal/config"
 	"github.com/outport-app/outport/internal/registry"
-	"github.com/outport-app/outport/internal/worktree"
 	"github.com/spf13/cobra"
 )
 
@@ -25,44 +23,23 @@ func init() {
 }
 
 func runOpen(cmd *cobra.Command, args []string) error {
-	dir, err := os.Getwd()
+	ctx, err := loadProjectContext()
 	if err != nil {
 		return err
 	}
 
-	cfg, err := config.Load(dir)
-	if err != nil {
-		return err
-	}
-
-	wt, err := worktree.Detect(dir)
-	if err != nil {
-		return err
-	}
-
-	regPath, err := registry.DefaultPath()
-	if err != nil {
-		return err
-	}
-	reg, err := registry.Load(regPath)
-	if err != nil {
-		return err
-	}
-
-	alloc, ok := reg.Get(cfg.Name, wt.Instance)
+	alloc, ok := ctx.Reg.Get(ctx.Cfg.Name, ctx.WT.Instance)
 	if !ok {
 		return fmt.Errorf("No ports allocated. Run 'outport up' first.")
 	}
 
-	// If a specific service was requested
 	if len(args) == 1 {
-		return openService(cmd, cfg, alloc, args[0])
+		return openService(cmd, ctx.Cfg, alloc, args[0])
 	}
 
-	// Open all HTTP services
 	opened := 0
-	for _, svcName := range sortedMapKeys(cfg.Services) {
-		svc := cfg.Services[svcName]
+	for _, svcName := range sortedMapKeys(ctx.Cfg.Services) {
+		svc := ctx.Cfg.Services[svcName]
 		url := serviceURL(svc.Protocol, alloc.Ports[svcName])
 		if url == "" {
 			continue
@@ -106,7 +83,6 @@ func openService(cmd *cobra.Command, cfg *config.Config, alloc registry.Allocati
 	return nil
 }
 
-// openBrowser opens a URL in the default browser, cross-platform.
 func openBrowser(url string) error {
 	switch runtime.GOOS {
 	case "darwin":
@@ -116,6 +92,6 @@ func openBrowser(url string) error {
 	case "windows":
 		return exec.Command("cmd", "/c", "start", url).Start()
 	default:
-		return fmt.Errorf("unsupported platform %s", runtime.GOOS)
+		return fmt.Errorf("Unsupported platform %s.", runtime.GOOS)
 	}
 }
