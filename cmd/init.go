@@ -4,9 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
-	"charm.land/huh/v2"
 	"github.com/outport-app/outport/internal/config"
 	"github.com/spf13/cobra"
 )
@@ -14,7 +12,7 @@ import (
 var initCmd = &cobra.Command{
 	Use:   "init",
 	Short: "Create .outport.yml for this project",
-	Long:  "Interactively creates an .outport.yml configuration file in the current directory.",
+	Long:  "Creates a commented .outport.yml template in the current directory.",
 	RunE:  runInit,
 }
 
@@ -22,20 +20,35 @@ func init() {
 	rootCmd.AddCommand(initCmd)
 }
 
-type servicePreset struct {
-	Name     string
-	EnvVar   string
-	Protocol string
-}
+const configTemplate = `# Outport configuration
+# Docs: https://outport.app
+#
+# Declare your services, then run 'outport register' to allocate ports.
+# Outport assigns deterministic ports and writes them to .env as environment variables.
+# Your app reads the env vars — Outport doesn't touch your app's config files.
 
-var presets = []servicePreset{
-	{"web", "PORT", "http"},
-	{"postgres", "DATABASE_PORT", ""},
-	{"redis", "REDIS_PORT", ""},
-	{"mailpit_web", "MAILPIT_WEB_PORT", "http"},
-	{"mailpit_smtp", "MAILPIT_SMTP_PORT", ""},
-	{"vite", "VITE_PORT", "http"},
-}
+name: %s
+
+services:
+  web:
+    env_var: PORT
+    protocol: http        # enables 'outport open' and shows URLs in output
+#  postgres:
+#    env_var: DB_PORT
+#  redis:
+#    env_var: REDIS_PORT
+#  mailpit_web:
+#    env_var: MAILPIT_WEB_PORT
+#    protocol: http
+#  mailpit_smtp:
+#    env_var: MAILPIT_SMTP_PORT
+
+# Per-service env_file (default: .env):
+#  rails:
+#    env_var: RAILS_PORT
+#    protocol: http
+#    env_file: backend/.env
+`
 
 func runInit(cmd *cobra.Command, args []string) error {
 	dir, err := os.Getwd()
@@ -48,60 +61,15 @@ func runInit(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("%s already exists.", config.FileName)
 	}
 
-	dirName := filepath.Base(dir)
-	name := dirName
+	name := filepath.Base(dir)
+	content := fmt.Sprintf(configTemplate, name)
 
-	huh.NewInput().
-		Title("Project name").
-		Value(&name).
-		Run()
-
-	// Build multi-select options from presets
-	var options []huh.Option[string]
-	for _, p := range presets {
-		options = append(options, huh.NewOption(p.Name, p.Name))
-	}
-
-	var selected []string
-	huh.NewMultiSelect[string]().
-		Title("Select services").
-		Options(options...).
-		Value(&selected).
-		Run()
-
-	// Map selected names back to presets
-	var selectedServices []servicePreset
-	for _, name := range selected {
-		for _, p := range presets {
-			if p.Name == name {
-				selectedServices = append(selectedServices, p)
-				break
-			}
-		}
-	}
-
-	if len(selectedServices) == 0 {
-		selectedServices = []servicePreset{presets[0]}
-		fmt.Fprintln(cmd.OutOrStdout(), "No services selected, defaulting to web.")
-	}
-
-	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("name: %s\n", name))
-	sb.WriteString("services:\n")
-	for _, svc := range selectedServices {
-		sb.WriteString(fmt.Sprintf("  %s:\n", svc.Name))
-		sb.WriteString(fmt.Sprintf("    env_var: %s\n", svc.EnvVar))
-		if svc.Protocol != "" {
-			sb.WriteString(fmt.Sprintf("    protocol: %s\n", svc.Protocol))
-		}
-	}
-
-	if err := os.WriteFile(configPath, []byte(sb.String()), 0644); err != nil {
+	if err := os.WriteFile(configPath, []byte(content), 0644); err != nil {
 		return fmt.Errorf("Writing config: %w.", err)
 	}
 
-	fmt.Fprintf(cmd.OutOrStdout(), "\nCreated %s\n", config.FileName)
-	fmt.Fprintln(cmd.OutOrStdout(), "Run 'outport register' to allocate ports.")
+	fmt.Fprintf(cmd.OutOrStdout(), "Created %s\n", config.FileName)
+	fmt.Fprintln(cmd.OutOrStdout(), "Edit it for your project, then run 'outport register' to allocate ports.")
 
 	return nil
 }
