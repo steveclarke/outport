@@ -274,10 +274,6 @@ func printFlatServices(w io.Writer, cfg *config.Config, serviceNames []string, p
 
 func printServiceLine(w io.Writer, cfg *config.Config, svcName string, port int, check bool) {
 	svc := cfg.Services[svcName]
-	portDisplay := ui.PortStyle.Render(fmt.Sprintf("%d", port))
-	if url := serviceURL(svc.Protocol, port); url != "" {
-		portDisplay = ui.UrlStyle.Render(url)
-	}
 
 	status := ""
 	if check {
@@ -288,12 +284,18 @@ func printServiceLine(w io.Writer, cfg *config.Config, svcName string, port int,
 		}
 	}
 
-	line := fmt.Sprintf("    %s  %s  %s %s%s",
+	url := ""
+	if u := serviceURL(svc.Protocol, port); u != "" {
+		url = "  " + ui.UrlStyle.Render(u)
+	}
+
+	line := fmt.Sprintf("    %s  %s  %s %-5s%s%s",
 		ui.ServiceStyle.Render(fmt.Sprintf("%-16s", svcName)),
 		ui.EnvVarStyle.Render(fmt.Sprintf("%-20s", svc.EnvVar)),
 		ui.Arrow,
-		portDisplay,
+		ui.PortStyle.Render(fmt.Sprintf("%d", port)),
 		status,
+		url,
 	)
 	lipgloss.Fprintln(w, line)
 }

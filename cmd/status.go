@@ -167,15 +167,6 @@ func printStatusStyled(cmd *cobra.Command, reg *registry.Registry) error {
 
 		for _, svcName := range svcNames {
 			port := alloc.Ports[svcName]
-			portDisplay := ui.PortStyle.Render(fmt.Sprintf("%d", port))
-
-			if cfg != nil {
-				if svc, ok := cfg.Services[svcName]; ok {
-					if url := serviceURL(svc.Protocol, port); url != "" {
-						portDisplay = ui.UrlStyle.Render(url)
-					}
-				}
-			}
 
 			status := ""
 			if statusCheckFlag {
@@ -186,11 +177,21 @@ func printStatusStyled(cmd *cobra.Command, reg *registry.Registry) error {
 				}
 			}
 
-			line := fmt.Sprintf("  %s  %s %s%s",
+			url := ""
+			if cfg != nil {
+				if svc, ok := cfg.Services[svcName]; ok {
+					if u := serviceURL(svc.Protocol, port); u != "" {
+						url = "  " + ui.UrlStyle.Render(u)
+					}
+				}
+			}
+
+			line := fmt.Sprintf("  %s  %s %-5s%s%s",
 				ui.ServiceStyle.Render(fmt.Sprintf("%-16s", svcName)),
 				ui.Arrow,
-				portDisplay,
+				ui.PortStyle.Render(fmt.Sprintf("%d", port)),
 				status,
+				url,
 			)
 			lipgloss.Fprintln(w, line)
 		}
