@@ -109,6 +109,18 @@ cd outport
 go build -o outport .
 ```
 
+## Development
+
+Requires [Go 1.24+](https://go.dev/dl/) and [just](https://github.com/casey/just).
+
+```bash
+just build        # Build the binary
+just test         # Run all tests
+just lint         # Run linter
+just run up       # Build and run with args
+just clean        # Clean build artifacts
+```
+
 ## Roadmap
 
 - **v1 (current):** Port allocation + `.env` writing
