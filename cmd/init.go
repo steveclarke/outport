@@ -23,19 +23,18 @@ func init() {
 }
 
 type servicePreset struct {
-	Name          string
-	PreferredPort int
-	EnvVar        string
-	Protocol      string
+	Name     string
+	EnvVar   string
+	Protocol string
 }
 
 var presets = []servicePreset{
-	{"web", 3000, "PORT", "http"},
-	{"postgres", 5432, "DATABASE_PORT", ""},
-	{"redis", 6379, "REDIS_PORT", ""},
-	{"mailpit_web", 8025, "MAILPIT_WEB_PORT", "http"},
-	{"mailpit_smtp", 1025, "MAILPIT_SMTP_PORT", ""},
-	{"vite", 5173, "VITE_PORT", "http"},
+	{"web", "PORT", "http"},
+	{"postgres", "DATABASE_PORT", ""},
+	{"redis", "REDIS_PORT", ""},
+	{"mailpit_web", "MAILPIT_WEB_PORT", "http"},
+	{"mailpit_smtp", "MAILPIT_SMTP_PORT", ""},
+	{"vite", "VITE_PORT", "http"},
 }
 
 func runInit(cmd *cobra.Command, args []string) error {
@@ -60,8 +59,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 	// Build multi-select options from presets
 	var options []huh.Option[string]
 	for _, p := range presets {
-		label := fmt.Sprintf("%s (port %d)", p.Name, p.PreferredPort)
-		options = append(options, huh.NewOption(label, p.Name))
+		options = append(options, huh.NewOption(p.Name, p.Name))
 	}
 
 	var selected []string
@@ -92,7 +90,6 @@ func runInit(cmd *cobra.Command, args []string) error {
 	sb.WriteString("services:\n")
 	for _, svc := range selectedServices {
 		sb.WriteString(fmt.Sprintf("  %s:\n", svc.Name))
-		sb.WriteString(fmt.Sprintf("    preferred_port: %d\n", svc.PreferredPort))
 		sb.WriteString(fmt.Sprintf("    env_var: %s\n", svc.EnvVar))
 		if svc.Protocol != "" {
 			sb.WriteString(fmt.Sprintf("    protocol: %s\n", svc.Protocol))
@@ -104,7 +101,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Fprintf(cmd.OutOrStdout(), "\nCreated %s\n", config.FileName)
-	fmt.Fprintln(cmd.OutOrStdout(), "Run 'outport up' to allocate ports.")
+	fmt.Fprintln(cmd.OutOrStdout(), "Run 'outport register' to allocate ports.")
 
 	return nil
 }

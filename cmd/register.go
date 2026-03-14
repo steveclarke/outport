@@ -19,19 +19,30 @@ import (
 
 var forceFlag bool
 
-var upCmd = &cobra.Command{
-	Use:   "up",
-	Short: "Allocate ports and write to .env files",
-	Long:  "Reads .outport.yml, allocates deterministic ports, and writes them to .env files.",
-	RunE:  runUp,
+var registerCmd = &cobra.Command{
+	Use:     "register",
+	Aliases: []string{"reg"},
+	Short:   "Register project and allocate ports",
+	Long:    "Reads .outport.yml, allocates deterministic ports, saves to the central registry, and writes them to .env files.",
+	RunE:    runRegister,
 }
 
 func init() {
-	upCmd.Flags().BoolVar(&forceFlag, "force", false, "ignore existing allocations and re-allocate all ports")
+	registerCmd.Flags().BoolVar(&forceFlag, "force", false, "ignore existing allocations and re-allocate all ports")
+	rootCmd.AddCommand(registerCmd)
+
+	// Hidden backward-compat alias
+	upCmd := &cobra.Command{
+		Use:    "up",
+		Hidden: true,
+		Short:  "Alias for 'register' (deprecated)",
+		RunE:   runRegister,
+	}
+	upCmd.Flags().BoolVar(&forceFlag, "force", false, "")
 	rootCmd.AddCommand(upCmd)
 }
 
-func runUp(cmd *cobra.Command, args []string) error {
+func runRegister(cmd *cobra.Command, args []string) error {
 	ctx, err := loadProjectContext()
 	if err != nil {
 		return err
@@ -108,9 +119,9 @@ func runUp(cmd *cobra.Command, args []string) error {
 	}
 
 	if jsonFlag {
-		return printUpJSON(cmd, cfg, wt, ports, envFiles)
+		return printRegisterJSON(cmd, cfg, wt, ports, envFiles)
 	}
-	return printUpStyled(cmd, cfg, wt, serviceNames, ports, envFiles)
+	return printRegisterStyled(cmd, cfg, wt, serviceNames, ports, envFiles)
 }
 
 func sortedMapKeys[V any](m map[string]V) []string {
@@ -137,7 +148,7 @@ type svcJSON struct {
 
 func boolPtr(b bool) *bool { return &b }
 
-type upJSON struct {
+type registerJSON struct {
 	Project  string             `json:"project"`
 	Instance string             `json:"instance"`
 	Services map[string]svcJSON `json:"services"`
@@ -167,8 +178,8 @@ func buildServiceMap(cfg *config.Config, ports map[string]int) map[string]svcJSO
 	return services
 }
 
-func printUpJSON(cmd *cobra.Command, cfg *config.Config, wt *worktree.Info, ports map[string]int, envFiles []string) error {
-	out := upJSON{
+func printRegisterJSON(cmd *cobra.Command, cfg *config.Config, wt *worktree.Info, ports map[string]int, envFiles []string) error {
+	out := registerJSON{
 		Project:  cfg.Name,
 		Instance: wt.Instance,
 		Services: buildServiceMap(cfg, ports),
@@ -192,7 +203,7 @@ func printHeader(w io.Writer, projectName string, wt *worktree.Info) {
 	lipgloss.Fprintln(w)
 }
 
-func printUpStyled(cmd *cobra.Command, cfg *config.Config, wt *worktree.Info, serviceNames []string, ports map[string]int, envFiles []string) error {
+func printRegisterStyled(cmd *cobra.Command, cfg *config.Config, wt *worktree.Info, serviceNames []string, ports map[string]int, envFiles []string) error {
 	w := cmd.OutOrStdout()
 
 	printHeader(w, cfg.Name, wt)
