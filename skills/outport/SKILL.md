@@ -10,16 +10,18 @@ Outport allocates deterministic, non-conflicting ports for dev services and writ
 ## Quick Reference
 
 ```bash
-outport init          # Create .outport.yml (interactive)
-outport up            # Allocate ports, write .env
-outport ports         # Show ports for current project
-outport ports --json  # Machine-readable output
-outport open          # Open HTTP services in browser
-outport open web      # Open a specific service
-outport status        # Show all registered projects
-outport status --check # Show with health checks (up/down)
-outport reset         # Clear and re-allocate (tries preferred ports)
-outport gc            # Remove stale registry entries
+outport init              # Create .outport.yml (interactive)
+outport register          # Register project, allocate ports, write .env
+outport reg               # Short alias for register
+outport ports             # Show ports for current project
+outport ports --json      # Machine-readable output
+outport open              # Open HTTP services in browser
+outport open web          # Open a specific service
+outport status            # Show all registered projects
+outport status --check    # Show with health checks (up/down)
+outport register --force  # Clear and re-allocate all ports
+outport unregister        # Remove from registry, free ports
+outport gc                # Remove stale registry entries
 ```
 
 ## Setting Up a New Project
@@ -32,27 +34,22 @@ Run `outport init` for interactive setup, or create manually:
 name: my-project
 services:
   web:
-    preferred_port: 3000
     env_var: PORT
     protocol: http
   postgres:
-    preferred_port: 5432
     env_var: DB_PORT
   redis:
-    preferred_port: 6379
     env_var: REDIS_PORT
   mailpit_web:
-    preferred_port: 8025
     env_var: MAILPIT_WEB_PORT
     protocol: http
   mailpit_smtp:
-    preferred_port: 1025
     env_var: MAILPIT_SMTP_PORT
 ```
 
-### 2. Run `outport up`
+### 2. Run `outport register`
 
-This allocates ports and writes them to `.env`. If preferred ports are available, you get them. Otherwise, outport hashes to a deterministic port in the 10000-39999 range.
+This allocates deterministic ports and writes them to `.env`. Ports are hashed from the project name, instance, and service name — same inputs always produce the same ports.
 
 ### 3. Wire up your project to read from `.env`
 
@@ -94,9 +91,9 @@ port: <%= ENV.fetch("DB_PORT", 5432) %>
 
 | Field | Required | Description |
 |-------|----------|-------------|
-| `preferred_port` | yes | Port to try first. Falls back to hash if taken. |
 | `env_var` | yes | Environment variable name written to `.env` |
 | `protocol` | no | `http`, `https`, `smtp`, `postgres`, `redis`, etc. HTTP services show URLs in output and work with `outport open`. |
+| `preferred_port` | no | Port to try first. Falls back to hash if taken. Omit to let Outport assign a deterministic port automatically. |
 
 ### Monorepo with Groups
 
@@ -109,11 +106,9 @@ groups:
     env_file: backend/.env
     services:
       rails:
-        preferred_port: 3000
         env_var: RAILS_PORT
         protocol: http
       postgres:
-        preferred_port: 5432
         env_var: DB_PORT
         env_file:            # override: write to multiple files
           - backend/.env
@@ -121,7 +116,6 @@ groups:
   frontend:
     services:
       web:
-        preferred_port: 9000
         env_var: NUXT_PORT
         protocol: http
 ```
@@ -135,23 +129,25 @@ groups:
 
 Outport detects git worktrees automatically. Each worktree gets unique ports:
 
-- Main checkout tries preferred ports first
-- Worktrees get hash-based ports (deterministic per worktree name)
-- Run `outport up` in each worktree — no manual port management
+- Main checkout and worktrees all get deterministic hash-based ports
+- Run `outport register` in each worktree — no manual port management
 
 ## Common Tasks
 
 ### Port conflict with another project
-Just run `outport up` in both projects. Outport's registry ensures no collisions across all registered projects.
+Just run `outport register` in both projects. Outport's registry ensures no collisions across all registered projects.
 
 ### Ports are stale from an old allocation
-Run `outport reset` to clear the current project's allocation and re-allocate fresh, trying preferred ports first.
+Run `outport register --force` to clear the current project's allocation and re-allocate fresh.
+
+### Freeing ports from a project you're done with
+Run `outport unregister` to remove the project from the registry and free all its ports.
 
 ### Services moved to different ports than expected
-Check `outport status` to see all allocations. If preferred ports were taken by another project, outport used hash-based fallback. Either reset the other project first, or accept the hashed ports.
+Check `outport status` to see all allocations. If another project has the ports you want, unregister that project first, then `outport register --force` in yours.
 
 ### Adding a new service to an existing project
-Add it to `.outport.yml` and run `outport up`. Existing port allocations are preserved — only the new service gets allocated.
+Add it to `.outport.yml` and run `outport register`. Existing port allocations are preserved — only the new service gets allocated.
 
 ### Agent needs to know the project's URLs
 Run `outport ports --json` for structured output with ports, protocols, and URLs.
