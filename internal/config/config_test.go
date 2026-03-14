@@ -261,7 +261,7 @@ groups:
 	if err == nil {
 		t.Fatal("expected error for duplicate service name, got nil")
 	}
-	if !strings.Contains(err.Error(), "duplicate") {
+	if !strings.Contains(strings.ToLower(err.Error()), "duplicate") {
 		t.Errorf("error = %q, want to contain 'duplicate'", err.Error())
 	}
 }

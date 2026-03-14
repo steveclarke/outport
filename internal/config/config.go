@@ -70,18 +70,18 @@ func Load(dir string) (*Config, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil, fmt.Errorf("no %s found in %s — run 'outport init' to create one", FileName, dir)
+			return nil, fmt.Errorf("No %s found in %s. Run 'outport init' to create one.", FileName, dir)
 		}
-		return nil, fmt.Errorf("could not read %s: %w", path, err)
+		return nil, fmt.Errorf("Could not read %s: %w.", path, err)
 	}
 
 	var raw rawConfig
 	if err := yaml.Unmarshal(data, &raw); err != nil {
-		return nil, fmt.Errorf("invalid YAML in %s: %w", FileName, err)
+		return nil, fmt.Errorf("Invalid YAML in %s: %w.", FileName, err)
 	}
 
 	if raw.Name == "" {
-		return nil, fmt.Errorf("%s is missing the 'name' field", FileName)
+		return nil, fmt.Errorf("The 'name' field is missing in %s.", FileName)
 	}
 
 	cfg := &Config{
@@ -95,7 +95,7 @@ func Load(dir string) (*Config, error) {
 	}
 
 	if len(cfg.Services) == 0 {
-		return nil, fmt.Errorf("%s has no services defined — add services or groups", FileName)
+		return nil, fmt.Errorf("No services defined in %s. Add services or groups.", FileName)
 	}
 
 	if err := cfg.validate(); err != nil {
@@ -131,11 +131,11 @@ func (c *Config) normalize(raw *rawConfig) error {
 	for _, groupName := range groupNames {
 		group := raw.Groups[groupName]
 		if len(group.RawServices) == 0 {
-			return fmt.Errorf("group %q in %s has no services", groupName, FileName)
+			return fmt.Errorf("Group %q in %s has no services.", groupName, FileName)
 		}
 		for svcName, rs := range group.RawServices {
 			if _, exists := c.Services[svcName]; exists {
-				return fmt.Errorf("duplicate service name %q in %s — service names must be unique across all groups", svcName, FileName)
+				return fmt.Errorf("Duplicate service name %q in %s. Service names must be unique across all groups.", svcName, FileName)
 			}
 			svc := toService(rs)
 			if len(svc.rawEnvFile) == 0 && group.EnvFile != "" {
@@ -165,14 +165,14 @@ func (c *Config) validate() error {
 
 	for name, svc := range c.Services {
 		if svc.EnvVar == "" {
-			return fmt.Errorf("service %q in %s is missing 'env_var'", name, FileName)
+			return fmt.Errorf("Service %q in %s is missing the 'env_var' field.", name, FileName)
 		}
 		for _, envFile := range svc.EnvFiles {
 			if fileVars[envFile] == nil {
 				fileVars[envFile] = make(map[string]string)
 			}
 			if other, exists := fileVars[envFile][svc.EnvVar]; exists {
-				return fmt.Errorf("services %q and %q both write %s to %s — each env var must be unique per file",
+				return fmt.Errorf("Services %q and %q both write %s to %s. Each env var must be unique per file.",
 					other, name, svc.EnvVar, envFile)
 			}
 			fileVars[envFile][svc.EnvVar] = name
