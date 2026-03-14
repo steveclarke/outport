@@ -13,7 +13,8 @@ builds:
       - -s -w -X github.com/outport-app/outport/cmd.version={{.Version}}
 
 archives:
-  - format: tar.gz
+  - formats:
+      - tar.gz
     name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
 
 checksum:
@@ -27,18 +28,12 @@ changelog:
       - "^chore:"
       - "^test:"
 
-brews:
+homebrew_casks:
   - repository:
       owner: steveclarke
       name: homebrew-tap
       token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
-    directory: Formula
     name: outport
     homepage: "https://outport.app"
     description: "Dev port manager for multi-project, multi-worktree development"
-    license: "MIT"
-    install: |
-      bin.install "outport"
-    test: |
-      system "#{bin}/outport --version"
-    commit_msg_template: "Brew formula update for {{ .ProjectName }} version {{ .Tag }}"
+    commit_msg_template: "Brew cask update for {{ .ProjectName }} version {{ .Tag }}"
