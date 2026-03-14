@@ -30,24 +30,39 @@ const configTemplate = `# Outport configuration
 name: %s
 
 services:
-  web:
-    env_var: PORT
-    protocol: http        # enables 'outport open' and shows URLs in output
+# Uncomment and edit the services your project uses:
+#
+#  web:
+#    env_var: PORT
+#    protocol: http          # enables 'outport open' and shows URLs in output
+#
 #  postgres:
 #    env_var: DB_PORT
+#
 #  redis:
 #    env_var: REDIS_PORT
+#
 #  mailpit_web:
 #    env_var: MAILPIT_WEB_PORT
 #    protocol: http
+#
 #  mailpit_smtp:
 #    env_var: MAILPIT_SMTP_PORT
-
-# Per-service env_file (default: .env):
+#
+# Write to a different .env file (default is .env in project root):
+#
 #  rails:
 #    env_var: RAILS_PORT
 #    protocol: http
 #    env_file: backend/.env
+#
+# Write to multiple .env files:
+#
+#  postgres:
+#    env_var: DB_PORT
+#    env_file:
+#      - backend/.env
+#      - .env
 `
 
 func runInit(cmd *cobra.Command, args []string) error {
