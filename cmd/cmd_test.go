@@ -669,6 +669,59 @@ func TestPorts_GroupedStyledOutput(t *testing.T) {
 	}
 }
 
+// --- unregister ---
+
+func TestUnregister_RemovesFromRegistry(t *testing.T) {
+	setupProject(t, testConfig)
+	executeCmd(t, "register")
+
+	output := executeCmd(t, "unregister")
+
+	if !bytes.Contains([]byte(output), []byte("Unregistered")) {
+		t.Errorf("expected 'Unregistered' message, got:\n%s", output)
+	}
+
+	portsOutput := executeCmd(t, "ports")
+	if !bytes.Contains([]byte(portsOutput), []byte("No ports allocated")) {
+		t.Errorf("expected no ports after unregister, got:\n%s", portsOutput)
+	}
+}
+
+func TestUnregister_NotRegistered(t *testing.T) {
+	setupProject(t, testConfig)
+
+	rootCmd.SetOut(new(bytes.Buffer))
+	rootCmd.SetErr(new(bytes.Buffer))
+	rootCmd.SetArgs([]string{"unregister"})
+
+	err := rootCmd.Execute()
+	if err == nil {
+		t.Fatal("expected error when not registered")
+	}
+}
+
+func TestUnregister_JSON(t *testing.T) {
+	setupProject(t, testConfig)
+	executeCmd(t, "register", "--json")
+
+	output := executeCmd(t, "unregister", "--json")
+
+	var result struct {
+		Project  string `json:"project"`
+		Instance string `json:"instance"`
+		Status   string `json:"status"`
+	}
+	if err := json.Unmarshal([]byte(output), &result); err != nil {
+		t.Fatalf("invalid JSON: %v\nOutput: %s", err, output)
+	}
+	if result.Project != "testapp" {
+		t.Errorf("project = %q, want %q", result.Project, "testapp")
+	}
+	if result.Status != "unregistered" {
+		t.Errorf("status = %q, want %q", result.Status, "unregistered")
+	}
+}
+
 // --- open ---
 
 func TestOpen_NoConfig(t *testing.T) {
