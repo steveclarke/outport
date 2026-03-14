@@ -1,6 +1,7 @@
 # Build the binary
 build:
-    go build -o outport .
+    @mkdir -p dist
+    go build -o dist/outport .
 
 # Run all tests
 test:
@@ -20,7 +21,7 @@ lint:
 
 # Clean build artifacts
 clean:
-    rm -f outport
+    rm -rf dist
 
 # Build and run with args (e.g., just run up)
 run *args:
