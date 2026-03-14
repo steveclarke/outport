@@ -48,11 +48,3 @@ func loadRegistry() (*registry.Registry, error) {
 	return registry.Load(regPath)
 }
 
-func hasGroups(cfg *config.Config, serviceNames []string) bool {
-	for _, name := range serviceNames {
-		if svc, ok := cfg.Services[name]; ok && svc.Group != "" {
-			return true
-		}
-	}
-	return false
-}

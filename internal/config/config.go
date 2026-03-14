@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sort"
 
 	"gopkg.in/yaml.v3"
 )
@@ -36,7 +35,6 @@ type Service struct {
 	Protocol      string       `yaml:"protocol"`
 	rawEnvFile    envFileField // populated during YAML unmarshal, resolved to EnvFiles in normalize
 	EnvFiles      []string     `yaml:"-"`
-	Group         string       `yaml:"-"`
 }
 
 // rawService is used for YAML unmarshaling to capture env_file before normalization.
@@ -47,16 +45,10 @@ type rawService struct {
 	EnvFile       envFileField `yaml:"env_file"`
 }
 
-type Group struct {
-	EnvFile     string                `yaml:"env_file"`
-	RawServices map[string]rawService `yaml:"services"`
-}
-
 // rawConfig is the YAML deserialization target.
 type rawConfig struct {
 	Name        string                `yaml:"name"`
 	RawServices map[string]rawService `yaml:"services"`
-	Groups      map[string]Group      `yaml:"groups"`
 }
 
 type Config struct {
@@ -93,7 +85,7 @@ func Load(dir string) (*Config, error) {
 	}
 
 	if len(cfg.Services) == 0 {
-		return nil, fmt.Errorf("No services defined in %s. Add services or groups.", FileName)
+		return nil, fmt.Errorf("No services defined in %s.", FileName)
 	}
 
 	if err := cfg.validate(); err != nil {
@@ -113,45 +105,14 @@ func toService(rs rawService) Service {
 }
 
 func (c *Config) normalize(raw *rawConfig) error {
-	// Add top-level services
 	for name, rs := range raw.RawServices {
-		c.Services[name] = toService(rs)
-	}
-
-	// Sort group names for deterministic error messages
-	groupNames := make([]string, 0, len(raw.Groups))
-	for name := range raw.Groups {
-		groupNames = append(groupNames, name)
-	}
-	sort.Strings(groupNames)
-
-	// Validate groups are not empty, then flatten
-	for _, groupName := range groupNames {
-		group := raw.Groups[groupName]
-		if len(group.RawServices) == 0 {
-			return fmt.Errorf("Group %q in %s has no services.", groupName, FileName)
-		}
-		for svcName, rs := range group.RawServices {
-			if _, exists := c.Services[svcName]; exists {
-				return fmt.Errorf("Duplicate service name %q in %s. Service names must be unique across all groups.", svcName, FileName)
-			}
-			svc := toService(rs)
-			if len(svc.rawEnvFile) == 0 && group.EnvFile != "" {
-				svc.rawEnvFile = envFileField{group.EnvFile}
-			}
-			svc.Group = groupName
-			c.Services[svcName] = svc
-		}
-	}
-
-	// Resolve env_file defaults for all services
-	for name, svc := range c.Services {
+		svc := toService(rs)
 		if len(svc.rawEnvFile) == 0 {
 			svc.EnvFiles = []string{".env"}
 		} else {
 			svc.EnvFiles = []string(svc.rawEnvFile)
 		}
-		svc.rawEnvFile = nil // clear intermediate state
+		svc.rawEnvFile = nil
 		c.Services[name] = svc
 	}
 

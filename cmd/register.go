@@ -142,7 +142,6 @@ type svcJSON struct {
 	Protocol      string   `json:"protocol,omitempty"`
 	URL           string   `json:"url,omitempty"`
 	EnvFiles      []string `json:"env_files"`
-	Group         string   `json:"group,omitempty"`
 	Up            *bool    `json:"up,omitempty"`
 }
 
@@ -172,7 +171,6 @@ func buildServiceMap(cfg *config.Config, ports map[string]int) map[string]svcJSO
 			Protocol:      svc.Protocol,
 			URL:           serviceURL(svc.Protocol, ports[name]),
 			EnvFiles:      svc.EnvFiles,
-			Group:         svc.Group,
 		}
 	}
 	return services
@@ -208,11 +206,7 @@ func printRegisterStyled(cmd *cobra.Command, cfg *config.Config, wt *worktree.In
 
 	printHeader(w, cfg.Name, wt)
 
-	if hasGroups(cfg, serviceNames) {
-		printGroupedServices(w, cfg, serviceNames, ports, nil)
-	} else {
-		printFlatServices(w, cfg, serviceNames, ports, nil)
-	}
+	printFlatServices(w, cfg, serviceNames, ports, nil)
 
 	lipgloss.Fprintln(w)
 	if len(envFiles) == 1 {
@@ -224,43 +218,6 @@ func printRegisterStyled(cmd *cobra.Command, cfg *config.Config, wt *worktree.In
 		}
 	}
 	return nil
-}
-
-// portStatus is nil when --check is not used, or a precomputed map of port → up/down.
-func printGroupedServices(w io.Writer, cfg *config.Config, serviceNames []string, ports map[string]int, portStatus map[int]bool) {
-	var ungrouped []string
-	groupServices := make(map[string][]string)
-	var groupOrder []string
-
-	for _, svcName := range serviceNames {
-		group := cfg.Services[svcName].Group
-		if group == "" {
-			ungrouped = append(ungrouped, svcName)
-		} else {
-			if _, seen := groupServices[group]; !seen {
-				groupOrder = append(groupOrder, group)
-			}
-			groupServices[group] = append(groupServices[group], svcName)
-		}
-	}
-	sort.Strings(groupOrder)
-
-	for _, svcName := range ungrouped {
-		printServiceLine(w, cfg, svcName, ports[svcName], portStatus)
-	}
-	if len(ungrouped) > 0 && len(groupOrder) > 0 {
-		lipgloss.Fprintln(w)
-	}
-
-	for i, group := range groupOrder {
-		lipgloss.Fprintln(w, "  "+ui.GroupStyle.Render(group))
-		for _, svcName := range groupServices[group] {
-			printServiceLine(w, cfg, svcName, ports[svcName], portStatus)
-		}
-		if i < len(groupOrder)-1 {
-			lipgloss.Fprintln(w)
-		}
-	}
 }
 
 func printFlatServices(w io.Writer, cfg *config.Config, serviceNames []string, ports map[string]int, portStatus map[int]bool) {

@@ -77,11 +77,7 @@ func printPortsStyled(cmd *cobra.Command, cfg *config.Config, wt *worktree.Info,
 		portStatus = checkPorts(alloc.Ports)
 	}
 
-	if hasGroups(cfg, serviceNames) {
-		printGroupedServices(w, cfg, serviceNames, alloc.Ports, portStatus)
-	} else {
-		printFlatServices(w, cfg, serviceNames, alloc.Ports, portStatus)
-	}
+	printFlatServices(w, cfg, serviceNames, alloc.Ports, portStatus)
 
 	return nil
 }

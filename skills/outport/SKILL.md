@@ -95,35 +95,27 @@ port: <%= ENV.fetch("DB_PORT", 5432) %>
 | `protocol` | no | `http`, `https`, `smtp`, `postgres`, `redis`, etc. HTTP services show URLs in output and work with `outport open`. |
 | `preferred_port` | no | Port to try first. Falls back to hash if taken. Omit to let Outport assign a deterministic port automatically. |
 
-### Monorepo with Groups
+### Per-Service `env_file`
 
-For projects with multiple env files (e.g., backend + frontend):
+For projects with multiple env files (e.g., backend + frontend), use per-service `env_file`:
 
 ```yaml
 name: my-monorepo
-groups:
-  backend:
+services:
+  rails:
+    env_var: RAILS_PORT
+    protocol: http
     env_file: backend/.env
-    services:
-      rails:
-        env_var: RAILS_PORT
-        protocol: http
-      postgres:
-        env_var: DB_PORT
-        env_file:            # override: write to multiple files
-          - backend/.env
-          - .env
-  frontend:
-    services:
-      web:
-        env_var: NUXT_PORT
-        protocol: http
+  postgres:
+    env_var: DB_PORT
+    env_file: backend/.env
+  web:
+    env_var: NUXT_PORT
+    protocol: http
 ```
 
-- Groups share an `env_file` — services in the group inherit it
-- Per-service `env_file` overrides the group default
+- Services without `env_file` write to `.env` by default
 - `env_file` can be a string or array (write same var to multiple files)
-- Services without a group write to `.env` by default
 
 ## Worktrees
 
