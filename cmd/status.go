@@ -53,6 +53,16 @@ func loadProjectConfig(projectDir string) *config.Config {
 	return cfg
 }
 
+// formatProjectKey returns just the project name for main instances,
+// or "project/instance (worktree)" for worktree instances.
+func formatProjectKey(key string) string {
+	parts := strings.SplitN(key, "/", 2)
+	if len(parts) != 2 || parts[1] == "main" {
+		return parts[0]
+	}
+	return parts[0] + "/" + parts[1] + " (worktree)"
+}
+
 func runStatus(cmd *cobra.Command, args []string) error {
 	reg, err := loadRegistry()
 	if err != nil {
@@ -60,7 +70,7 @@ func runStatus(cmd *cobra.Command, args []string) error {
 	}
 
 	if len(reg.Projects) == 0 {
-		fmt.Fprintln(cmd.OutOrStdout(), "No projects registered. Run 'outport up' in a project directory.")
+		fmt.Fprintln(cmd.OutOrStdout(), "No projects registered. Run 'outport register' in a project directory.")
 		return nil
 	}
 
@@ -163,7 +173,8 @@ func printStatusStyled(cmd *cobra.Command, reg *registry.Registry, portStatus ma
 		if stale {
 			marker += " " + ui.DimStyle.Render(staleReason)
 		}
-		header := ui.ProjectStyle.Render(key) + " " + ui.DimStyle.Render(alloc.ProjectDir) + marker
+		displayName := formatProjectKey(key)
+		header := ui.ProjectStyle.Render(displayName) + " " + ui.DimStyle.Render(alloc.ProjectDir) + marker
 		lipgloss.Fprintln(w, header)
 
 		svcNames := sortedMapKeys(alloc.Ports)
