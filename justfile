@@ -3,13 +3,13 @@ build:
     @mkdir -p dist
     go build -o dist/outport .
 
-# Run all tests
+# Run all tests (colored output)
 test:
-    go test ./... -v
+    gotestsum --format testdox ./...
 
 # Run tests (short output)
 test-short:
-    go test ./...
+    gotestsum --format dots ./...
 
 # Build and install to GOPATH/bin
 install:
