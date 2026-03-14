@@ -56,7 +56,9 @@ All commands support `--json` for machine-readable output. Each command has pair
 
 ## Testing
 
-Tests use table-driven patterns and `t.TempDir()` for filesystem isolation. No mocks — tests exercise real file I/O against temp directories.
+**IMPORTANT: Every new feature or bug fix MUST include tests. Do not commit code without corresponding test coverage.**
+
+Tests use table-driven patterns and `t.TempDir()` for filesystem isolation. No mocks — tests exercise real file I/O against temp directories. Run with `just test` (colored output via gotestsum).
 
 ## Release
 
