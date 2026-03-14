@@ -62,7 +62,11 @@ func runPorts(cmd *cobra.Command, args []string) error {
 }
 
 func printPortsJSON(cmd *cobra.Command, cfg *config.Config, wt *worktree.Info, alloc registry.Allocation) error {
-	out := upOutput{
+	out := struct {
+		Project  string         `json:"project"`
+		Instance string         `json:"instance"`
+		Services map[string]int `json:"services"`
+	}{
 		Project:  cfg.Name,
 		Instance: wt.Instance,
 		Services: alloc.Ports,

@@ -38,10 +38,10 @@ func setupProject(t *testing.T, configYAML string) string {
 const testConfig = `name: testapp
 services:
   web:
-    default_port: 3000
+    preferred_port: 3000
     env_var: PORT
   postgres:
-    default_port: 5432
+    preferred_port: 5432
     env_var: DATABASE_PORT
 `
 
@@ -68,7 +68,7 @@ func TestUp_AllocatesPortsAndWritesEnv(t *testing.T) {
 
 	output := executeCmd(t, "up", "--json")
 
-	var result upOutput
+	var result upJSON
 	if err := json.Unmarshal([]byte(output), &result); err != nil {
 		t.Fatalf("invalid JSON output: %v\nOutput: %s", err, output)
 	}
@@ -83,16 +83,23 @@ func TestUp_AllocatesPortsAndWritesEnv(t *testing.T) {
 		t.Fatalf("services count = %d, want 2", len(result.Services))
 	}
 
-	webPort := result.Services["web"]
-	pgPort := result.Services["postgres"]
-	if webPort < 10000 || webPort > 39999 {
-		t.Errorf("web port %d outside range [10000, 39999]", webPort)
+	webPort := result.Services["web"].Port
+	pgPort := result.Services["postgres"].Port
+	if webPort == 0 {
+		t.Error("web port should be non-zero")
 	}
-	if pgPort < 10000 || pgPort > 39999 {
-		t.Errorf("postgres port %d outside range [10000, 39999]", pgPort)
+	if pgPort == 0 {
+		t.Error("postgres port should be non-zero")
 	}
 	if webPort == pgPort {
 		t.Error("web and postgres ports should be different")
+	}
+	// With preferred_port set, web should get 3000 and postgres 5432
+	if webPort != 3000 {
+		t.Errorf("web port = %d, want preferred port 3000", webPort)
+	}
+	if pgPort != 5432 {
+		t.Errorf("postgres port = %d, want preferred port 5432", pgPort)
 	}
 
 	// Check .env was written
@@ -118,15 +125,15 @@ func TestUp_IsIdempotent(t *testing.T) {
 	out1 := executeCmd(t, "up", "--json")
 	out2 := executeCmd(t, "up", "--json")
 
-	var r1, r2 upOutput
+	var r1, r2 upJSON
 	json.Unmarshal([]byte(out1), &r1)
 	json.Unmarshal([]byte(out2), &r2)
 
-	if r1.Services["web"] != r2.Services["web"] {
-		t.Errorf("web port changed: %d → %d", r1.Services["web"], r2.Services["web"])
+	if r1.Services["web"].Port != r2.Services["web"].Port {
+		t.Errorf("web port changed: %d -> %d", r1.Services["web"].Port, r2.Services["web"].Port)
 	}
-	if r1.Services["postgres"] != r2.Services["postgres"] {
-		t.Errorf("postgres port changed: %d → %d", r1.Services["postgres"], r2.Services["postgres"])
+	if r1.Services["postgres"].Port != r2.Services["postgres"].Port {
+		t.Errorf("postgres port changed: %d -> %d", r1.Services["postgres"].Port, r2.Services["postgres"].Port)
 	}
 }
 
@@ -172,7 +179,11 @@ func TestPorts_ShowsAllocatedPorts(t *testing.T) {
 	// Then query them
 	output := executeCmd(t, "ports", "--json")
 
-	var result upOutput
+	var result struct {
+		Project  string         `json:"project"`
+		Instance string         `json:"instance"`
+		Services map[string]int `json:"services"`
+	}
 	if err := json.Unmarshal([]byte(output), &result); err != nil {
 		t.Fatalf("invalid JSON: %v\nOutput: %s", err, output)
 	}

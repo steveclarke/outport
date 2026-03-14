@@ -3,6 +3,7 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -19,8 +20,8 @@ import (
 
 var upCmd = &cobra.Command{
 	Use:   "up",
-	Short: "Allocate ports and write to .env",
-	Long:  "Reads .outport.yml, allocates deterministic ports, and writes them to the project's .env file.",
+	Short: "Allocate ports and write to .env files",
+	Long:  "Reads .outport.yml, allocates deterministic ports, and writes them to .env files.",
 	RunE:  runUp,
 }
 
@@ -63,31 +64,37 @@ func runUp(cmd *cobra.Command, args []string) error {
 	}
 
 	ports := make(map[string]int)
-	envVars := make(map[string]string)
+	envFileVars := make(map[string]map[string]string)
 
-	serviceNames := make([]string, 0, len(cfg.Services))
-	for name := range cfg.Services {
-		serviceNames = append(serviceNames, name)
-	}
-	sort.Strings(serviceNames)
+	serviceNames := sortedServiceNames(cfg)
 
 	for _, svcName := range serviceNames {
 		svc := cfg.Services[svcName]
+		var port int
+
 		if hasExisting {
 			if existingPort, ok := existing.Ports[svcName]; ok {
-				ports[svcName] = existingPort
+				port = existingPort
 				usedPorts[existingPort] = true
-				envVars[svc.EnvVar] = fmt.Sprintf("%d", existingPort)
-				continue
 			}
 		}
-		port, err := allocator.Allocate(cfg.Name, wt.Instance, svcName, svc.DefaultPort, usedPorts)
-		if err != nil {
-			return fmt.Errorf("allocating port for %s: %w", svcName, err)
+
+		if port == 0 {
+			var err error
+			port, err = allocator.Allocate(cfg.Name, wt.Instance, svcName, svc.PreferredPort, usedPorts)
+			if err != nil {
+				return fmt.Errorf("allocating port for %s: %w", svcName, err)
+			}
+			usedPorts[port] = true
 		}
 		ports[svcName] = port
-		usedPorts[port] = true
-		envVars[svc.EnvVar] = fmt.Sprintf("%d", port)
+
+		for _, envFile := range svc.EnvFiles {
+			if envFileVars[envFile] == nil {
+				envFileVars[envFile] = make(map[string]string)
+			}
+			envFileVars[envFile][svc.EnvVar] = fmt.Sprintf("%d", port)
+		}
 	}
 
 	reg.Set(cfg.Name, wt.Instance, registry.Allocation{
@@ -98,29 +105,78 @@ func runUp(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	envPath := filepath.Join(dir, ".env")
-	if err := dotenv.Merge(envPath, envVars); err != nil {
-		return err
+	envFiles := sortedMapKeys(envFileVars)
+	for _, envFile := range envFiles {
+		envPath := filepath.Join(dir, envFile)
+		if err := dotenv.Merge(envPath, envFileVars[envFile]); err != nil {
+			return fmt.Errorf("writing %s: %w", envFile, err)
+		}
 	}
 
-	// Output
 	if jsonFlag {
-		return printUpJSON(cmd, cfg, wt, ports)
+		return printUpJSON(cmd, cfg, wt, ports, envFiles)
 	}
-	return printUpStyled(cmd, cfg, wt, serviceNames, ports)
+	return printUpStyled(cmd, cfg, wt, serviceNames, ports, envFiles)
 }
 
-type upOutput struct {
-	Project  string         `json:"project"`
-	Instance string         `json:"instance"`
-	Services map[string]int `json:"services"`
+func sortedServiceNames(cfg *config.Config) []string {
+	names := make([]string, 0, len(cfg.Services))
+	for name := range cfg.Services {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
 }
 
-func printUpJSON(cmd *cobra.Command, cfg *config.Config, wt *worktree.Info, ports map[string]int) error {
-	out := upOutput{
+func sortedMapKeys[V any](m map[string]V) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
+}
+
+// JSON types
+
+type svcJSON struct {
+	Port          int      `json:"port"`
+	PreferredPort int      `json:"preferred_port,omitempty"`
+	EnvVar        string   `json:"env_var"`
+	Protocol      string   `json:"protocol,omitempty"`
+	URL           string   `json:"url,omitempty"`
+	EnvFiles      []string `json:"env_files"`
+	Group         string   `json:"group,omitempty"`
+}
+
+type upJSON struct {
+	Project  string             `json:"project"`
+	Instance string             `json:"instance"`
+	Services map[string]svcJSON `json:"services"`
+	EnvFiles []string           `json:"env_files"`
+}
+
+func printUpJSON(cmd *cobra.Command, cfg *config.Config, wt *worktree.Info, ports map[string]int, envFiles []string) error {
+	services := make(map[string]svcJSON)
+	for name, svc := range cfg.Services {
+		s := svcJSON{
+			Port:          ports[name],
+			PreferredPort: svc.PreferredPort,
+			EnvVar:        svc.EnvVar,
+			Protocol:      svc.Protocol,
+			EnvFiles:      svc.EnvFiles,
+			Group:         svc.Group,
+		}
+		if svc.Protocol == "http" || svc.Protocol == "https" {
+			s.URL = fmt.Sprintf("%s://localhost:%d", svc.Protocol, ports[name])
+		}
+		services[name] = s
+	}
+	out := upJSON{
 		Project:  cfg.Name,
 		Instance: wt.Instance,
-		Services: ports,
+		Services: services,
+		EnvFiles: envFiles,
 	}
 	data, err := json.MarshalIndent(out, "", "  ")
 	if err != nil {
@@ -130,7 +186,7 @@ func printUpJSON(cmd *cobra.Command, cfg *config.Config, wt *worktree.Info, port
 	return nil
 }
 
-func printUpStyled(cmd *cobra.Command, cfg *config.Config, wt *worktree.Info, serviceNames []string, ports map[string]int) error {
+func printUpStyled(cmd *cobra.Command, cfg *config.Config, wt *worktree.Info, serviceNames []string, ports map[string]int, envFiles []string) error {
 	w := cmd.OutOrStdout()
 
 	instance := wt.Instance
@@ -142,18 +198,85 @@ func printUpStyled(cmd *cobra.Command, cfg *config.Config, wt *worktree.Info, se
 	lipgloss.Fprintln(w, header)
 	lipgloss.Fprintln(w)
 
+	hasGroups := false
 	for _, svcName := range serviceNames {
-		svc := cfg.Services[svcName]
-		line := fmt.Sprintf("  %s  %s  %s %s",
-			ui.ServiceStyle.Render(fmt.Sprintf("%-16s", svcName)),
-			ui.EnvVarStyle.Render(fmt.Sprintf("%-20s", svc.EnvVar)),
-			ui.Arrow,
-			ui.PortStyle.Render(fmt.Sprintf("%d", ports[svcName])),
-		)
-		lipgloss.Fprintln(w, line)
+		if cfg.Services[svcName].Group != "" {
+			hasGroups = true
+			break
+		}
+	}
+
+	if hasGroups {
+		printGroupedServices(w, cfg, serviceNames, ports)
+	} else {
+		printFlatServices(w, cfg, serviceNames, ports)
 	}
 
 	lipgloss.Fprintln(w)
-	lipgloss.Fprintln(w, ui.SuccessStyle.Render("Ports written to .env"))
+	if len(envFiles) == 1 {
+		lipgloss.Fprintln(w, ui.SuccessStyle.Render("Ports written to "+envFiles[0]))
+	} else {
+		lipgloss.Fprintln(w, ui.SuccessStyle.Render("Ports written to:"))
+		for _, f := range envFiles {
+			lipgloss.Fprintln(w, ui.SuccessStyle.Render("  "+f))
+		}
+	}
 	return nil
+}
+
+func printGroupedServices(w io.Writer, cfg *config.Config, serviceNames []string, ports map[string]int) {
+	var ungrouped []string
+	groupServices := make(map[string][]string)
+	var groupOrder []string
+
+	for _, svcName := range serviceNames {
+		group := cfg.Services[svcName].Group
+		if group == "" {
+			ungrouped = append(ungrouped, svcName)
+		} else {
+			if _, seen := groupServices[group]; !seen {
+				groupOrder = append(groupOrder, group)
+			}
+			groupServices[group] = append(groupServices[group], svcName)
+		}
+	}
+	sort.Strings(groupOrder)
+
+	for _, svcName := range ungrouped {
+		printServiceLine(w, cfg, svcName, ports[svcName])
+	}
+	if len(ungrouped) > 0 && len(groupOrder) > 0 {
+		lipgloss.Fprintln(w)
+	}
+
+	for i, group := range groupOrder {
+		lipgloss.Fprintln(w, "  "+ui.GroupStyle.Render(group))
+		for _, svcName := range groupServices[group] {
+			printServiceLine(w, cfg, svcName, ports[svcName])
+		}
+		if i < len(groupOrder)-1 {
+			lipgloss.Fprintln(w)
+		}
+	}
+}
+
+func printFlatServices(w io.Writer, cfg *config.Config, serviceNames []string, ports map[string]int) {
+	for _, svcName := range serviceNames {
+		printServiceLine(w, cfg, svcName, ports[svcName])
+	}
+}
+
+func printServiceLine(w io.Writer, cfg *config.Config, svcName string, port int) {
+	svc := cfg.Services[svcName]
+	portDisplay := ui.PortStyle.Render(fmt.Sprintf("%d", port))
+	if svc.Protocol == "http" || svc.Protocol == "https" {
+		portDisplay = ui.UrlStyle.Render(fmt.Sprintf("%s://localhost:%d", svc.Protocol, port))
+	}
+	line := fmt.Sprintf("    %s  %s  %s %s",
+		ui.ServiceStyle.Render(fmt.Sprintf("%-16s", svcName)),
+		ui.EnvVarStyle.Render(fmt.Sprintf("%-20s", svc.EnvVar)),
+		ui.Arrow,
+		portDisplay,
+	)
+	lipgloss.Fprintln(w, line)
 }
