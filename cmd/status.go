@@ -140,20 +140,28 @@ func printStatusStyled(cmd *cobra.Command, reg *registry.Registry, portStatus ma
 
 	for i, key := range keys {
 		alloc := reg.Projects[key]
-		dirExists := true
+		cfg := loadProjectConfig(alloc.ProjectDir)
+
+		// Detect stale: directory missing or config missing
+		stale := false
+		staleReason := ""
 		if _, err := os.Stat(alloc.ProjectDir); os.IsNotExist(err) {
-			dirExists = false
+			stale = true
+			staleReason = "(not found)"
+		} else if cfg == nil {
+			stale = true
+			staleReason = "(config missing)"
+		}
+		if stale {
 			staleKeys = append(staleKeys, key)
 		}
-
-		cfg := loadProjectConfig(alloc.ProjectDir)
 
 		marker := ""
 		if key == currentKey {
 			marker = currentMarker.Render(" ●")
 		}
-		if !dirExists {
-			marker += " " + ui.DimStyle.Render("(not found)")
+		if stale {
+			marker += " " + ui.DimStyle.Render(staleReason)
 		}
 		header := ui.ProjectStyle.Render(key) + " " + ui.DimStyle.Render(alloc.ProjectDir) + marker
 		lipgloss.Fprintln(w, header)

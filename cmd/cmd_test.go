@@ -436,10 +436,11 @@ func TestGC_NoStaleEntries(t *testing.T) {
 	t.Setenv("HOME", home)
 
 	projectDir := t.TempDir()
+	// Add a config file so gc doesn't consider it stale
+	os.WriteFile(filepath.Join(projectDir, ".outport.yml"), []byte("name: validapp\nservices:\n  web:\n    env_var: PORT\n"), 0644)
 	t.Chdir(projectDir)
 	jsonFlag = false
 
-	// Create a registry with a valid entry
 	regPath := filepath.Join(home, ".config", "outport", "registry.json")
 	reg, err := registry.Load(regPath)
 	if err != nil {

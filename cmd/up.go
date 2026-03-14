@@ -17,6 +17,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var forceFlag bool
+
 var upCmd = &cobra.Command{
 	Use:   "up",
 	Short: "Allocate ports and write to .env files",
@@ -25,6 +27,7 @@ var upCmd = &cobra.Command{
 }
 
 func init() {
+	upCmd.Flags().BoolVar(&forceFlag, "force", false, "ignore existing allocations and re-allocate all ports")
 	rootCmd.AddCommand(upCmd)
 }
 
@@ -36,11 +39,21 @@ func runUp(cmd *cobra.Command, args []string) error {
 	dir, cfg, wt, reg := ctx.Dir, ctx.Cfg, ctx.WT, ctx.Reg
 
 	existing, hasExisting := reg.Get(cfg.Name, wt.Instance)
+	if forceFlag {
+		hasExisting = false
+	}
 
 	usedPorts := reg.UsedPorts()
 	if hasExisting {
 		for _, port := range existing.Ports {
 			delete(usedPorts, port)
+		}
+	} else {
+		// When forcing, remove our old ports from usedPorts so preferred ports can be reclaimed
+		if old, ok := reg.Get(cfg.Name, wt.Instance); ok {
+			for _, port := range old.Ports {
+				delete(usedPorts, port)
+			}
 		}
 	}
 

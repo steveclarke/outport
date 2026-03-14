@@ -10,7 +10,7 @@ import (
 var gcCmd = &cobra.Command{
 	Use:   "gc",
 	Short: "Remove stale entries from the registry",
-	Long:  "Scans the registry and removes entries whose project directories no longer exist.",
+	Long:  "Scans the registry and removes entries whose project directories or config files no longer exist.",
 	RunE:  runGC,
 }
 
@@ -26,7 +26,13 @@ func runGC(cmd *cobra.Command, args []string) error {
 
 	var removed []string
 	for key, alloc := range reg.Projects {
+		stale := false
 		if _, err := os.Stat(alloc.ProjectDir); os.IsNotExist(err) {
+			stale = true
+		} else if loadProjectConfig(alloc.ProjectDir) == nil {
+			stale = true
+		}
+		if stale {
 			removed = append(removed, key)
 			delete(reg.Projects, key)
 		}
