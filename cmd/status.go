@@ -1,9 +1,11 @@
 package cmd
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 
 	"charm.land/lipgloss/v2"
 	"github.com/outport-app/outport/internal/config"
@@ -130,15 +132,25 @@ func printStatusStyled(cmd *cobra.Command, reg *registry.Registry) error {
 	currentKey := currentProjectKey()
 
 	keys := sortedMapKeys(reg.Projects)
+	var staleKeys []string
 
 	for i, key := range keys {
 		alloc := reg.Projects[key]
+		dirExists := true
+		if _, err := os.Stat(alloc.ProjectDir); os.IsNotExist(err) {
+			dirExists = false
+			staleKeys = append(staleKeys, key)
+		}
+
 		cfg := loadProjectConfig(alloc.ProjectDir)
 
-		// Header with current project indicator
+		// Header with current project indicator and stale warning
 		marker := ""
 		if key == currentKey {
 			marker = currentMarker.Render(" ●")
+		}
+		if !dirExists {
+			marker += " " + ui.DimStyle.Render("(not found)")
 		}
 		header := ui.ProjectStyle.Render(key) + " " + ui.DimStyle.Render(alloc.ProjectDir) + marker
 		lipgloss.Fprintln(w, header)
@@ -149,7 +161,6 @@ func printStatusStyled(cmd *cobra.Command, reg *registry.Registry) error {
 			port := alloc.Ports[svcName]
 			portDisplay := ui.PortStyle.Render(fmt.Sprintf("%d", port))
 
-			// Try to get protocol from config for URL display
 			if cfg != nil {
 				if svc, ok := cfg.Services[svcName]; ok {
 					if url := serviceURL(svc.Protocol, port); url != "" {
@@ -168,6 +179,26 @@ func printStatusStyled(cmd *cobra.Command, reg *registry.Registry) error {
 
 		if i < len(keys)-1 {
 			lipgloss.Fprintln(w)
+		}
+	}
+
+	// Prompt to remove stale entries
+	if len(staleKeys) > 0 {
+		lipgloss.Fprintln(w)
+		reader := bufio.NewReader(os.Stdin)
+		for _, key := range staleKeys {
+			fmt.Fprintf(w, "Remove stale project %s from registry? [y/N]: ", ui.ProjectStyle.Render(key))
+			answer, _ := reader.ReadString('\n')
+			if strings.TrimSpace(strings.ToLower(answer)) == "y" {
+				parts := strings.SplitN(key, "/", 2)
+				if len(parts) == 2 {
+					reg.Remove(parts[0], parts[1])
+				}
+				fmt.Fprintf(w, "  Removed %s.\n", key)
+			}
+		}
+		if err := reg.Save(); err != nil {
+			return fmt.Errorf("Could not save registry: %w.", err)
 		}
 	}
 
