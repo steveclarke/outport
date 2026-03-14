@@ -4,10 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
-	"strings"
 
 	"charm.land/lipgloss/v2"
-	"charm.land/lipgloss/v2/table"
 	"github.com/outport-app/outport/internal/registry"
 	"github.com/outport-app/outport/internal/ui"
 	"github.com/spf13/cobra"
@@ -74,9 +72,11 @@ func printStatusStyled(cmd *cobra.Command, reg *registry.Registry) error {
 
 	keys := sortedKeys(reg)
 
-	var rows [][]string
-	for _, key := range keys {
+	for i, key := range keys {
 		alloc := reg.Projects[key]
+
+		header := ui.ProjectStyle.Render(key) + " " + ui.DimStyle.Render(alloc.ProjectDir)
+		lipgloss.Fprintln(w, header)
 
 		svcNames := make([]string, 0, len(alloc.Ports))
 		for s := range alloc.Ports {
@@ -84,34 +84,20 @@ func printStatusStyled(cmd *cobra.Command, reg *registry.Registry) error {
 		}
 		sort.Strings(svcNames)
 
-		var portParts []string
-		for _, s := range svcNames {
-			portParts = append(portParts, fmt.Sprintf("%s:%d", s, alloc.Ports[s]))
+		for _, svcName := range svcNames {
+			line := fmt.Sprintf("  %s  %s %s",
+				ui.ServiceStyle.Render(fmt.Sprintf("%-16s", svcName)),
+				ui.Arrow,
+				ui.PortStyle.Render(fmt.Sprintf("%d", alloc.Ports[svcName])),
+			)
+			lipgloss.Fprintln(w, line)
 		}
 
-		rows = append(rows, []string{key, alloc.ProjectDir, strings.Join(portParts, ", ")})
+		if i < len(keys)-1 {
+			lipgloss.Fprintln(w)
+		}
 	}
 
-	headerStyle := lipgloss.NewStyle().
-		Foreground(ui.Purple).
-		Bold(true).
-		Padding(0, 1)
-
-	cellStyle := lipgloss.NewStyle().Padding(0, 1)
-
-	t := table.New().
-		Border(lipgloss.RoundedBorder()).
-		BorderStyle(lipgloss.NewStyle().Foreground(ui.Purple)).
-		StyleFunc(func(row, col int) lipgloss.Style {
-			if row == table.HeaderRow {
-				return headerStyle
-			}
-			return cellStyle
-		}).
-		Headers("PROJECT", "DIRECTORY", "PORTS").
-		Rows(rows...)
-
-	lipgloss.Fprintln(w, t)
 	return nil
 }
 
