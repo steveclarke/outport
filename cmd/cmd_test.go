@@ -559,3 +559,224 @@ func TestInit_DefaultProjectName(t *testing.T) {
 		t.Errorf("expected default name %q in config, got:\n%s", dirName, string(data))
 	}
 }
+
+// --- grouped config tests ---
+
+const groupedConfig = `name: monorepo
+groups:
+  backend:
+    env_file: backend/.env
+    services:
+      rails:
+        preferred_port: 3000
+        env_var: RAILS_PORT
+        protocol: http
+      postgres:
+        preferred_port: 5432
+        env_var: DB_PORT
+  frontend:
+    services:
+      main:
+        preferred_port: 9000
+        env_var: MAIN_PORT
+        protocol: http
+`
+
+func setupGroupedProject(t *testing.T) string {
+	t.Helper()
+	dir := setupProject(t, groupedConfig)
+	// Create backend dir for env_file
+	if err := os.Mkdir(filepath.Join(dir, "backend"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	return dir
+}
+
+func TestUp_GroupedConfig(t *testing.T) {
+	dir := setupGroupedProject(t)
+
+	output := executeCmd(t, "up", "--json")
+
+	var result upJSON
+	if err := json.Unmarshal([]byte(output), &result); err != nil {
+		t.Fatalf("invalid JSON: %v\nOutput: %s", err, output)
+	}
+
+	if len(result.Services) != 3 {
+		t.Fatalf("services count = %d, want 3", len(result.Services))
+	}
+
+	// Check group assignment
+	if result.Services["rails"].Group != "backend" {
+		t.Errorf("rails.Group = %q, want %q", result.Services["rails"].Group, "backend")
+	}
+	if result.Services["main"].Group != "frontend" {
+		t.Errorf("main.Group = %q, want %q", result.Services["main"].Group, "frontend")
+	}
+
+	// Check env_files
+	railsFiles := result.Services["rails"].EnvFiles
+	if len(railsFiles) != 1 || railsFiles[0] != "backend/.env" {
+		t.Errorf("rails.EnvFiles = %v, want [backend/.env]", railsFiles)
+	}
+	mainFiles := result.Services["main"].EnvFiles
+	if len(mainFiles) != 1 || mainFiles[0] != ".env" {
+		t.Errorf("main.EnvFiles = %v, want [.env]", mainFiles)
+	}
+
+	// Check multiple env files were written
+	if len(result.EnvFiles) != 2 {
+		t.Errorf("EnvFiles count = %d, want 2", len(result.EnvFiles))
+	}
+
+	// Verify backend/.env exists with correct content
+	backendEnv, err := os.ReadFile(filepath.Join(dir, "backend", ".env"))
+	if err != nil {
+		t.Fatalf("reading backend/.env: %v", err)
+	}
+	if !bytes.Contains(backendEnv, []byte("RAILS_PORT=")) {
+		t.Error("backend/.env missing RAILS_PORT")
+	}
+	if !bytes.Contains(backendEnv, []byte("DB_PORT=")) {
+		t.Error("backend/.env missing DB_PORT")
+	}
+
+	// Verify root .env has frontend port
+	rootEnv, err := os.ReadFile(filepath.Join(dir, ".env"))
+	if err != nil {
+		t.Fatalf("reading .env: %v", err)
+	}
+	if !bytes.Contains(rootEnv, []byte("MAIN_PORT=")) {
+		t.Error(".env missing MAIN_PORT")
+	}
+}
+
+func TestUp_GroupedStyledOutput(t *testing.T) {
+	setupGroupedProject(t)
+
+	output := executeCmd(t, "up")
+
+	// Should show group headers
+	if !bytes.Contains([]byte(output), []byte("backend")) {
+		t.Errorf("styled output missing 'backend' group header, got:\n%s", output)
+	}
+	if !bytes.Contains([]byte(output), []byte("frontend")) {
+		t.Errorf("styled output missing 'frontend' group header, got:\n%s", output)
+	}
+	// Should show URLs for HTTP services
+	if !bytes.Contains([]byte(output), []byte("http://localhost:")) {
+		t.Errorf("styled output missing URL, got:\n%s", output)
+	}
+	// Should list multiple env files
+	if !bytes.Contains([]byte(output), []byte("backend/.env")) {
+		t.Errorf("styled output missing backend/.env in written files, got:\n%s", output)
+	}
+}
+
+func TestPorts_StyledOutput(t *testing.T) {
+	setupProject(t, testConfig)
+	executeCmd(t, "up")
+
+	output := executeCmd(t, "ports")
+
+	if !bytes.Contains([]byte(output), []byte("testapp")) {
+		t.Errorf("styled output missing project name, got:\n%s", output)
+	}
+	if !bytes.Contains([]byte(output), []byte("PORT")) {
+		t.Errorf("styled output missing PORT env var, got:\n%s", output)
+	}
+}
+
+func TestPorts_GroupedStyledOutput(t *testing.T) {
+	setupGroupedProject(t)
+	executeCmd(t, "up")
+
+	output := executeCmd(t, "ports")
+
+	if !bytes.Contains([]byte(output), []byte("backend")) {
+		t.Errorf("styled output missing 'backend' group, got:\n%s", output)
+	}
+	if !bytes.Contains([]byte(output), []byte("frontend")) {
+		t.Errorf("styled output missing 'frontend' group, got:\n%s", output)
+	}
+	if !bytes.Contains([]byte(output), []byte("http://localhost:")) {
+		t.Errorf("styled output missing URL for HTTP service, got:\n%s", output)
+	}
+}
+
+// --- open ---
+
+func TestOpen_NoConfig(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Chdir(t.TempDir())
+	jsonFlag = false
+
+	rootCmd.SetOut(new(bytes.Buffer))
+	rootCmd.SetErr(new(bytes.Buffer))
+	rootCmd.SetArgs([]string{"open"})
+
+	err := rootCmd.Execute()
+	if err == nil {
+		t.Fatal("expected error when no config exists")
+	}
+}
+
+func TestOpen_NoAllocation(t *testing.T) {
+	setupProject(t, testConfig)
+
+	rootCmd.SetOut(new(bytes.Buffer))
+	rootCmd.SetErr(new(bytes.Buffer))
+	rootCmd.SetArgs([]string{"open"})
+
+	err := rootCmd.Execute()
+	if err == nil {
+		t.Fatal("expected error when no ports allocated")
+	}
+}
+
+func TestOpen_UnknownService(t *testing.T) {
+	setupProject(t, testConfig)
+	executeCmd(t, "up")
+
+	rootCmd.SetOut(new(bytes.Buffer))
+	rootCmd.SetErr(new(bytes.Buffer))
+	rootCmd.SetArgs([]string{"open", "nonexistent"})
+
+	err := rootCmd.Execute()
+	if err == nil {
+		t.Fatal("expected error for unknown service")
+	}
+}
+
+func TestOpen_NoProtocol(t *testing.T) {
+	// postgres has no protocol, so open should error
+	setupProject(t, testConfig)
+	executeCmd(t, "up")
+
+	rootCmd.SetOut(new(bytes.Buffer))
+	rootCmd.SetErr(new(bytes.Buffer))
+	rootCmd.SetArgs([]string{"open", "postgres"})
+
+	err := rootCmd.Execute()
+	if err == nil {
+		t.Fatal("expected error for service without protocol")
+	}
+}
+
+// --- serviceURL ---
+
+func TestServiceURL(t *testing.T) {
+	if url := serviceURL("http", 3000); url != "http://localhost:3000" {
+		t.Errorf("serviceURL(http, 3000) = %q, want http://localhost:3000", url)
+	}
+	if url := serviceURL("https", 8443); url != "https://localhost:8443" {
+		t.Errorf("serviceURL(https, 8443) = %q, want https://localhost:8443", url)
+	}
+	if url := serviceURL("tcp", 5432); url != "" {
+		t.Errorf("serviceURL(tcp, 5432) = %q, want empty", url)
+	}
+	if url := serviceURL("", 6379); url != "" {
+		t.Errorf("serviceURL('', 6379) = %q, want empty", url)
+	}
+}
