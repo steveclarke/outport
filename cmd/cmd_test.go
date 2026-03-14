@@ -462,6 +462,125 @@ func TestGC_NoStaleEntries(t *testing.T) {
 	}
 }
 
+func TestGC_RemovesMissingConfig(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	// Directory exists but has no .outport.yml
+	projectDir := t.TempDir()
+	t.Chdir(projectDir)
+	jsonFlag = false
+
+	regPath := filepath.Join(home, ".config", "outport", "registry.json")
+	reg, err := registry.Load(regPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	reg.Set("noconfigapp", "main", registry.Allocation{
+		ProjectDir: projectDir,
+		Ports:      map[string]int{"web": 12345},
+	})
+	if err := reg.Save(); err != nil {
+		t.Fatal(err)
+	}
+
+	output := executeCmd(t, "gc")
+
+	if !bytes.Contains([]byte(output), []byte("Removed 1 stale")) {
+		t.Errorf("expected removal of config-missing entry, got:\n%s", output)
+	}
+
+	reg2, _ := registry.Load(regPath)
+	if len(reg2.Projects) != 0 {
+		t.Errorf("registry still has %d entries", len(reg2.Projects))
+	}
+}
+
+// --- reset ---
+
+func TestReset_ReallocatesWithPreferredPorts(t *testing.T) {
+	setupProject(t, testConfig)
+
+	// First allocation
+	out1 := executeCmd(t, "up", "--json")
+	var r1 upJSON
+	json.Unmarshal([]byte(out1), &r1)
+
+	// Ports should be preferred (3000, 5432) since nothing else is registered
+	if r1.Services["web"].Port != 3000 {
+		t.Errorf("first up: web port = %d, want 3000", r1.Services["web"].Port)
+	}
+
+	// Reset should produce the same preferred ports
+	out2 := executeCmd(t, "reset", "--json")
+	var r2 upJSON
+	json.Unmarshal([]byte(out2), &r2)
+
+	if r2.Services["web"].Port != 3000 {
+		t.Errorf("reset: web port = %d, want 3000", r2.Services["web"].Port)
+	}
+	if r2.Services["postgres"].Port != 5432 {
+		t.Errorf("reset: postgres port = %d, want 5432", r2.Services["postgres"].Port)
+	}
+}
+
+func TestUp_ForceFlag(t *testing.T) {
+	setupProject(t, testConfig)
+
+	// First allocation
+	executeCmd(t, "up", "--json")
+
+	// Force re-allocation
+	out := executeCmd(t, "up", "--force", "--json")
+	var result upJSON
+	json.Unmarshal([]byte(out), &result)
+
+	// Should still get preferred ports since they're available
+	if result.Services["web"].Port != 3000 {
+		t.Errorf("force: web port = %d, want 3000", result.Services["web"].Port)
+	}
+	if result.Services["postgres"].Port != 5432 {
+		t.Errorf("force: postgres port = %d, want 5432", result.Services["postgres"].Port)
+	}
+}
+
+func TestStatus_MissingConfigMarkedStale(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	// Directory exists but no .outport.yml
+	projectDir := t.TempDir()
+	t.Chdir(projectDir)
+	jsonFlag = false
+
+	regPath := filepath.Join(home, ".config", "outport", "registry.json")
+	reg, err := registry.Load(regPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	reg.Set("noconfigapp", "main", registry.Allocation{
+		ProjectDir: projectDir,
+		Ports:      map[string]int{"web": 12345},
+	})
+	if err := reg.Save(); err != nil {
+		t.Fatal(err)
+	}
+
+	// Simulate stdin: decline removal
+	r, w, _ := os.Pipe()
+	w.WriteString("n\n")
+	w.Close()
+	oldStdin := os.Stdin
+	os.Stdin = r
+	defer func() { os.Stdin = oldStdin }()
+
+	output := executeCmd(t, "status")
+
+	if !bytes.Contains([]byte(output), []byte("config missing")) {
+		t.Errorf("expected '(config missing)' marker, got:\n%s", output)
+	}
+}
+
 // --- init ---
 
 func TestInit_CreatesConfig(t *testing.T) {
