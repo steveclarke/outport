@@ -252,6 +252,143 @@ func TestStatus_ShowsProjects(t *testing.T) {
 	}
 }
 
+func TestStatus_StaleProjectMarkedNotFound(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Chdir(t.TempDir())
+	jsonFlag = false
+
+	// Create a registry with a stale entry (nonexistent dir)
+	regPath := filepath.Join(home, ".config", "outport", "registry.json")
+	reg, err := registry.Load(regPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	reg.Set("staleapp", "main", registry.Allocation{
+		ProjectDir: "/tmp/nonexistent-outport-stale-test",
+		Ports:      map[string]int{"web": 12345},
+	})
+	if err := reg.Save(); err != nil {
+		t.Fatal(err)
+	}
+
+	// Use JSON mode to avoid the interactive prompt
+	output := executeCmd(t, "status", "--json")
+
+	var entries []statusEntryJSON
+	if err := json.Unmarshal([]byte(output), &entries); err != nil {
+		t.Fatalf("invalid JSON: %v\nOutput: %s", err, output)
+	}
+
+	if len(entries) != 1 {
+		t.Fatalf("entries count = %d, want 1", len(entries))
+	}
+	if entries[0].Key != "staleapp/main" {
+		t.Errorf("key = %q, want %q", entries[0].Key, "staleapp/main")
+	}
+	// Stale project should still appear — status shows everything
+	if entries[0].Services["web"].Port != 12345 {
+		t.Errorf("web port = %d, want 12345", entries[0].Services["web"].Port)
+	}
+}
+
+func TestStatus_StaleProjectPromptRemoval(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Chdir(t.TempDir())
+	jsonFlag = false
+
+	// Create a registry with a stale entry
+	regPath := filepath.Join(home, ".config", "outport", "registry.json")
+	reg, err := registry.Load(regPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	reg.Set("staleapp", "main", registry.Allocation{
+		ProjectDir: "/tmp/nonexistent-outport-stale-test",
+		Ports:      map[string]int{"web": 12345},
+	})
+	if err := reg.Save(); err != nil {
+		t.Fatal(err)
+	}
+
+	// Simulate stdin: answer "y" to the removal prompt
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	w.WriteString("y\n")
+	w.Close()
+
+	oldStdin := os.Stdin
+	os.Stdin = r
+	t.Cleanup(func() { os.Stdin = oldStdin })
+
+	output := executeCmd(t, "status")
+
+	if !bytes.Contains([]byte(output), []byte("not found")) {
+		t.Errorf("expected '(not found)' marker, got:\n%s", output)
+	}
+	if !bytes.Contains([]byte(output), []byte("Remove stale project")) {
+		t.Errorf("expected removal prompt, got:\n%s", output)
+	}
+	if !bytes.Contains([]byte(output), []byte("Removed staleapp/main")) {
+		t.Errorf("expected removal confirmation, got:\n%s", output)
+	}
+
+	// Verify it's actually gone from the registry
+	reg2, err := registry.Load(regPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(reg2.Projects) != 0 {
+		t.Errorf("registry still has %d entries after removal", len(reg2.Projects))
+	}
+}
+
+func TestStatus_StaleProjectDeclineRemoval(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Chdir(t.TempDir())
+	jsonFlag = false
+
+	regPath := filepath.Join(home, ".config", "outport", "registry.json")
+	reg, err := registry.Load(regPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	reg.Set("staleapp", "main", registry.Allocation{
+		ProjectDir: "/tmp/nonexistent-outport-stale-test",
+		Ports:      map[string]int{"web": 12345},
+	})
+	if err := reg.Save(); err != nil {
+		t.Fatal(err)
+	}
+
+	// Simulate stdin: answer "n"
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	w.WriteString("n\n")
+	w.Close()
+
+	oldStdin := os.Stdin
+	os.Stdin = r
+	t.Cleanup(func() { os.Stdin = oldStdin })
+
+	executeCmd(t, "status")
+
+	// Verify it's still in the registry
+	reg2, err := registry.Load(regPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(reg2.Projects) != 1 {
+		t.Errorf("registry has %d entries, want 1 (should not have been removed)", len(reg2.Projects))
+	}
+}
+
 // --- gc ---
 
 func TestGC_RemovesStaleEntries(t *testing.T) {
