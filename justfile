@@ -30,3 +30,12 @@ run *args:
 # Show current version
 version:
     go run . --version
+
+# Dry-run release (test GoReleaser config locally)
+release-dry-run:
+    goreleaser release --snapshot --clean
+
+# Tag and push a release (e.g., just release v0.1.0)
+release tag:
+    git tag {{tag}}
+    git push origin {{tag}}

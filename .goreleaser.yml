@@ -1,0 +1,44 @@
+version: 2
+
+builds:
+  - env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w -X github.com/outport-app/outport/cmd.version={{.Version}}
+
+archives:
+  - format: tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+
+checksum:
+  name_template: "checksums.txt"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^chore:"
+      - "^test:"
+
+brews:
+  - repository:
+      owner: steveclarke
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+    directory: Formula
+    name: outport
+    homepage: "https://outport.app"
+    description: "Dev port manager for multi-project, multi-worktree development"
+    license: "MIT"
+    install: |
+      bin.install "outport"
+    test: |
+      system "#{bin}/outport --version"
+    commit_msg_template: "Brew formula update for {{ .ProjectName }} version {{ .Tag }}"
