@@ -12,6 +12,7 @@ import (
 	"github.com/outport-app/outport/internal/allocator"
 	"github.com/outport-app/outport/internal/config"
 	"github.com/outport-app/outport/internal/dotenv"
+	"github.com/outport-app/outport/internal/portcheck"
 	"github.com/outport-app/outport/internal/registry"
 	"github.com/outport-app/outport/internal/ui"
 	"github.com/outport-app/outport/internal/worktree"
@@ -138,7 +139,10 @@ type svcJSON struct {
 	URL           string   `json:"url,omitempty"`
 	EnvFiles      []string `json:"env_files"`
 	Group         string   `json:"group,omitempty"`
+	Up            *bool    `json:"up,omitempty"`
 }
+
+func boolPtr(b bool) *bool { return &b }
 
 type upJSON struct {
 	Project  string             `json:"project"`
@@ -209,9 +213,9 @@ func printUpStyled(cmd *cobra.Command, cfg *config.Config, wt *worktree.Info, se
 	}
 
 	if hasGroups {
-		printGroupedServices(w, cfg, serviceNames, ports)
+		printGroupedServices(w, cfg, serviceNames, ports, false)
 	} else {
-		printFlatServices(w, cfg, serviceNames, ports)
+		printFlatServices(w, cfg, serviceNames, ports, false)
 	}
 
 	lipgloss.Fprintln(w)
@@ -226,7 +230,7 @@ func printUpStyled(cmd *cobra.Command, cfg *config.Config, wt *worktree.Info, se
 	return nil
 }
 
-func printGroupedServices(w io.Writer, cfg *config.Config, serviceNames []string, ports map[string]int) {
+func printGroupedServices(w io.Writer, cfg *config.Config, serviceNames []string, ports map[string]int, check bool) {
 	var ungrouped []string
 	groupServices := make(map[string][]string)
 	var groupOrder []string
@@ -245,7 +249,7 @@ func printGroupedServices(w io.Writer, cfg *config.Config, serviceNames []string
 	sort.Strings(groupOrder)
 
 	for _, svcName := range ungrouped {
-		printServiceLine(w, cfg, svcName, ports[svcName])
+		printServiceLine(w, cfg, svcName, ports[svcName], check)
 	}
 	if len(ungrouped) > 0 && len(groupOrder) > 0 {
 		lipgloss.Fprintln(w)
@@ -254,7 +258,7 @@ func printGroupedServices(w io.Writer, cfg *config.Config, serviceNames []string
 	for i, group := range groupOrder {
 		lipgloss.Fprintln(w, "  "+ui.GroupStyle.Render(group))
 		for _, svcName := range groupServices[group] {
-			printServiceLine(w, cfg, svcName, ports[svcName])
+			printServiceLine(w, cfg, svcName, ports[svcName], check)
 		}
 		if i < len(groupOrder)-1 {
 			lipgloss.Fprintln(w)
@@ -262,23 +266,34 @@ func printGroupedServices(w io.Writer, cfg *config.Config, serviceNames []string
 	}
 }
 
-func printFlatServices(w io.Writer, cfg *config.Config, serviceNames []string, ports map[string]int) {
+func printFlatServices(w io.Writer, cfg *config.Config, serviceNames []string, ports map[string]int, check bool) {
 	for _, svcName := range serviceNames {
-		printServiceLine(w, cfg, svcName, ports[svcName])
+		printServiceLine(w, cfg, svcName, ports[svcName], check)
 	}
 }
 
-func printServiceLine(w io.Writer, cfg *config.Config, svcName string, port int) {
+func printServiceLine(w io.Writer, cfg *config.Config, svcName string, port int, check bool) {
 	svc := cfg.Services[svcName]
 	portDisplay := ui.PortStyle.Render(fmt.Sprintf("%d", port))
 	if url := serviceURL(svc.Protocol, port); url != "" {
 		portDisplay = ui.UrlStyle.Render(url)
 	}
-	line := fmt.Sprintf("    %s  %s  %s %s",
+
+	status := ""
+	if check {
+		if portcheck.IsUp(port) {
+			status = "  " + ui.StatusUp
+		} else {
+			status = "  " + ui.StatusDown
+		}
+	}
+
+	line := fmt.Sprintf("    %s  %s  %s %s%s",
 		ui.ServiceStyle.Render(fmt.Sprintf("%-16s", svcName)),
 		ui.EnvVarStyle.Render(fmt.Sprintf("%-20s", svc.EnvVar)),
 		ui.Arrow,
 		portDisplay,
+		status,
 	)
 	lipgloss.Fprintln(w, line)
 }

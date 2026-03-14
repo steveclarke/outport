@@ -53,4 +53,10 @@ var (
 	// URL for HTTP services
 	UrlStyle = lipgloss.NewStyle().
 			Foreground(Yellow)
+
+	Red = lipgloss.Color("196")
+
+	// Port status indicators
+	StatusUp   = lipgloss.NewStyle().Foreground(Green).Render("✓ up")
+	StatusDown = lipgloss.NewStyle().Foreground(Red).Render("✗ down")
 )

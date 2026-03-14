@@ -9,11 +9,14 @@ import (
 
 	"charm.land/lipgloss/v2"
 	"github.com/outport-app/outport/internal/config"
+	"github.com/outport-app/outport/internal/portcheck"
 	"github.com/outport-app/outport/internal/registry"
 	"github.com/outport-app/outport/internal/ui"
 	"github.com/outport-app/outport/internal/worktree"
 	"github.com/spf13/cobra"
 )
+
+var statusCheckFlag bool
 
 var statusCmd = &cobra.Command{
 	Use:   "status",
@@ -22,6 +25,7 @@ var statusCmd = &cobra.Command{
 }
 
 func init() {
+	statusCmd.Flags().BoolVar(&statusCheckFlag, "check", false, "check if ports are accepting connections")
 	rootCmd.AddCommand(statusCmd)
 }
 
@@ -77,6 +81,7 @@ type statusServiceJSON struct {
 	Port     int    `json:"port"`
 	Protocol string `json:"protocol,omitempty"`
 	URL      string `json:"url,omitempty"`
+	Up       *bool  `json:"up,omitempty"`
 }
 
 type statusEntryJSON struct {
@@ -103,6 +108,9 @@ func printStatusJSON(cmd *cobra.Command, reg *registry.Registry) error {
 					s.Protocol = svc.Protocol
 					s.URL = serviceURL(svc.Protocol, port)
 				}
+			}
+			if statusCheckFlag {
+				s.Up = boolPtr(portcheck.IsUp(port))
 			}
 			services[svcName] = s
 		}
@@ -169,10 +177,20 @@ func printStatusStyled(cmd *cobra.Command, reg *registry.Registry) error {
 				}
 			}
 
-			line := fmt.Sprintf("  %s  %s %s",
+			status := ""
+			if statusCheckFlag {
+				if portcheck.IsUp(port) {
+					status = "  " + ui.StatusUp
+				} else {
+					status = "  " + ui.StatusDown
+				}
+			}
+
+			line := fmt.Sprintf("  %s  %s %s%s",
 				ui.ServiceStyle.Render(fmt.Sprintf("%-16s", svcName)),
 				ui.Arrow,
 				portDisplay,
+				status,
 			)
 			lipgloss.Fprintln(w, line)
 		}

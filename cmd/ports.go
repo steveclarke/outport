@@ -6,10 +6,13 @@ import (
 	"os"
 
 	"github.com/outport-app/outport/internal/config"
+	"github.com/outport-app/outport/internal/portcheck"
 	"github.com/outport-app/outport/internal/registry"
 	"github.com/outport-app/outport/internal/worktree"
 	"github.com/spf13/cobra"
 )
+
+var portsCheckFlag bool
 
 var portsCmd = &cobra.Command{
 	Use:   "ports",
@@ -18,6 +21,7 @@ var portsCmd = &cobra.Command{
 }
 
 func init() {
+	portsCmd.Flags().BoolVar(&portsCheckFlag, "check", false, "check if ports are accepting connections")
 	rootCmd.AddCommand(portsCmd)
 }
 
@@ -59,10 +63,19 @@ func runPorts(cmd *cobra.Command, args []string) error {
 }
 
 func printPortsJSON(cmd *cobra.Command, cfg *config.Config, wt *worktree.Info, alloc registry.Allocation) error {
+	services := buildServiceMap(cfg, alloc.Ports)
+
+	if portsCheckFlag {
+		for name, s := range services {
+			s.Up = boolPtr(portcheck.IsUp(s.Port))
+			services[name] = s
+		}
+	}
+
 	out := upJSON{
 		Project:  cfg.Name,
 		Instance: wt.Instance,
-		Services: buildServiceMap(cfg, alloc.Ports),
+		Services: services,
 	}
 	data, err := json.MarshalIndent(out, "", "  ")
 	if err != nil {
@@ -88,9 +101,9 @@ func printPortsStyled(cmd *cobra.Command, cfg *config.Config, wt *worktree.Info,
 	}
 
 	if hasGroups {
-		printGroupedServices(w, cfg, serviceNames, alloc.Ports)
+		printGroupedServices(w, cfg, serviceNames, alloc.Ports, portsCheckFlag)
 	} else {
-		printFlatServices(w, cfg, serviceNames, alloc.Ports)
+		printFlatServices(w, cfg, serviceNames, alloc.Ports, portsCheckFlag)
 	}
 
 	return nil
