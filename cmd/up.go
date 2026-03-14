@@ -1,16 +1,18 @@
-// cmd/up.go
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
 
+	"charm.land/lipgloss/v2"
 	"github.com/outport-app/outport/internal/allocator"
 	"github.com/outport-app/outport/internal/config"
 	"github.com/outport-app/outport/internal/dotenv"
 	"github.com/outport-app/outport/internal/registry"
+	"github.com/outport-app/outport/internal/ui"
 	"github.com/outport-app/outport/internal/worktree"
 	"github.com/spf13/cobra"
 )
@@ -32,19 +34,16 @@ func runUp(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("getting working directory: %w", err)
 	}
 
-	// 1. Load config
 	cfg, err := config.Load(dir)
 	if err != nil {
 		return err
 	}
 
-	// 2. Detect worktree
 	wt, err := worktree.Detect(dir)
 	if err != nil {
 		return fmt.Errorf("detecting worktree: %w", err)
 	}
 
-	// 3. Load registry
 	regPath, err := registry.DefaultPath()
 	if err != nil {
 		return err
@@ -54,10 +53,8 @@ func runUp(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// 4. Check for existing allocation
 	existing, hasExisting := reg.Get(cfg.Name, wt.Instance)
 
-	// 5. Build used ports set (excluding our own existing allocation)
 	usedPorts := reg.UsedPorts()
 	if hasExisting {
 		for _, port := range existing.Ports {
@@ -65,11 +62,9 @@ func runUp(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// 6. Build port allocations — reuse existing where possible, allocate new ones
 	ports := make(map[string]int)
 	envVars := make(map[string]string)
 
-	// Sort service names for deterministic allocation order
 	serviceNames := make([]string, 0, len(cfg.Services))
 	for name := range cfg.Services {
 		serviceNames = append(serviceNames, name)
@@ -78,7 +73,6 @@ func runUp(cmd *cobra.Command, args []string) error {
 
 	for _, svcName := range serviceNames {
 		svc := cfg.Services[svcName]
-		// Reuse existing port if this service was already allocated
 		if hasExisting {
 			if existingPort, ok := existing.Ports[svcName]; ok {
 				ports[svcName] = existingPort
@@ -87,7 +81,6 @@ func runUp(cmd *cobra.Command, args []string) error {
 				continue
 			}
 		}
-		// New service — allocate a port
 		port, err := allocator.Allocate(cfg.Name, wt.Instance, svcName, usedPorts)
 		if err != nil {
 			return fmt.Errorf("allocating port for %s: %w", svcName, err)
@@ -97,7 +90,6 @@ func runUp(cmd *cobra.Command, args []string) error {
 		envVars[svc.EnvVar] = fmt.Sprintf("%d", port)
 	}
 
-	// 7. Save to registry
 	reg.Set(cfg.Name, wt.Instance, registry.Allocation{
 		ProjectDir: dir,
 		Ports:      ports,
@@ -106,23 +98,62 @@ func runUp(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// 8. Merge into .env
 	envPath := filepath.Join(dir, ".env")
 	if err := dotenv.Merge(envPath, envVars); err != nil {
 		return err
 	}
 
-	// 9. Print summary
+	// Output
+	if jsonFlag {
+		return printUpJSON(cmd, cfg, wt, ports)
+	}
+	return printUpStyled(cmd, cfg, wt, serviceNames, ports)
+}
+
+type upOutput struct {
+	Project  string         `json:"project"`
+	Instance string         `json:"instance"`
+	Services map[string]int `json:"services"`
+}
+
+func printUpJSON(cmd *cobra.Command, cfg *config.Config, wt *worktree.Info, ports map[string]int) error {
+	out := upOutput{
+		Project:  cfg.Name,
+		Instance: wt.Instance,
+		Services: ports,
+	}
+	data, err := json.MarshalIndent(out, "", "  ")
+	if err != nil {
+		return err
+	}
+	fmt.Fprintln(cmd.OutOrStdout(), string(data))
+	return nil
+}
+
+func printUpStyled(cmd *cobra.Command, cfg *config.Config, wt *worktree.Info, serviceNames []string, ports map[string]int) error {
+	w := cmd.OutOrStdout()
+
 	instance := wt.Instance
 	if wt.IsWorktree {
 		instance += " (worktree)"
 	}
-	fmt.Fprintf(cmd.OutOrStdout(), "outport: %s [%s]\n", cfg.Name, instance)
+
+	header := ui.ProjectStyle.Render(cfg.Name) + " " + ui.InstanceStyle.Render("["+instance+"]")
+	lipgloss.Fprintln(w, header)
+	lipgloss.Fprintln(w)
+
 	for _, svcName := range serviceNames {
 		svc := cfg.Services[svcName]
-		fmt.Fprintf(cmd.OutOrStdout(), "  %s (%s) → %d\n", svcName, svc.EnvVar, ports[svcName])
+		line := fmt.Sprintf("  %s  %s  %s %s",
+			ui.ServiceStyle.Render(fmt.Sprintf("%-16s", svcName)),
+			ui.EnvVarStyle.Render(fmt.Sprintf("%-20s", svc.EnvVar)),
+			ui.Arrow,
+			ui.PortStyle.Render(fmt.Sprintf("%d", ports[svcName])),
+		)
+		lipgloss.Fprintln(w, line)
 	}
-	fmt.Fprintf(cmd.OutOrStdout(), "\nPorts written to .env\n")
 
+	lipgloss.Fprintln(w)
+	lipgloss.Fprintln(w, ui.SuccessStyle.Render("Ports written to .env"))
 	return nil
 }

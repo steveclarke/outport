@@ -1,11 +1,13 @@
-// cmd/root.go
 package cmd
 
 import (
 	"github.com/spf13/cobra"
 )
 
-var version = "dev"
+var (
+	version  = "dev"
+	jsonFlag bool
+)
 
 var rootCmd = &cobra.Command{
 	Use:   "outport",
@@ -19,4 +21,5 @@ func Execute() error {
 
 func init() {
 	rootCmd.Version = version
+	rootCmd.PersistentFlags().BoolVar(&jsonFlag, "json", false, "output in JSON format")
 }

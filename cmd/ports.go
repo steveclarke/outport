@@ -1,12 +1,15 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"sort"
 
+	"charm.land/lipgloss/v2"
 	"github.com/outport-app/outport/internal/config"
 	"github.com/outport-app/outport/internal/registry"
+	"github.com/outport-app/outport/internal/ui"
 	"github.com/outport-app/outport/internal/worktree"
 	"github.com/spf13/cobra"
 )
@@ -52,11 +55,37 @@ func runPorts(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
+	if jsonFlag {
+		return printPortsJSON(cmd, cfg, wt, alloc)
+	}
+	return printPortsStyled(cmd, cfg, wt, alloc)
+}
+
+func printPortsJSON(cmd *cobra.Command, cfg *config.Config, wt *worktree.Info, alloc registry.Allocation) error {
+	out := upOutput{
+		Project:  cfg.Name,
+		Instance: wt.Instance,
+		Services: alloc.Ports,
+	}
+	data, err := json.MarshalIndent(out, "", "  ")
+	if err != nil {
+		return err
+	}
+	fmt.Fprintln(cmd.OutOrStdout(), string(data))
+	return nil
+}
+
+func printPortsStyled(cmd *cobra.Command, cfg *config.Config, wt *worktree.Info, alloc registry.Allocation) error {
+	w := cmd.OutOrStdout()
+
 	instance := wt.Instance
 	if wt.IsWorktree {
 		instance += " (worktree)"
 	}
-	fmt.Fprintf(cmd.OutOrStdout(), "%s [%s]\n", cfg.Name, instance)
+
+	header := ui.ProjectStyle.Render(cfg.Name) + " " + ui.InstanceStyle.Render("["+instance+"]")
+	lipgloss.Fprintln(w, header)
+	lipgloss.Fprintln(w)
 
 	svcNames := make([]string, 0, len(alloc.Ports))
 	for s := range alloc.Ports {
@@ -70,7 +99,13 @@ func runPorts(cmd *cobra.Command, args []string) error {
 		if svc, ok := cfg.Services[svcName]; ok {
 			envVar = svc.EnvVar
 		}
-		fmt.Fprintf(cmd.OutOrStdout(), "  %s (%s) → %d\n", svcName, envVar, port)
+		line := fmt.Sprintf("  %s  %s  %s %s",
+			ui.ServiceStyle.Render(fmt.Sprintf("%-16s", svcName)),
+			ui.EnvVarStyle.Render(fmt.Sprintf("%-20s", envVar)),
+			ui.Arrow,
+			ui.PortStyle.Render(fmt.Sprintf("%d", port)),
+		)
+		lipgloss.Fprintln(w, line)
 	}
 
 	return nil
