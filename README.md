@@ -1,3 +1,9 @@
+<p align="center">
+  <a href="https://outport.app">
+    <img src="brand/svg/logo-horizontal-color.svg" width="280" alt="Outport">
+  </a>
+</p>
+
 # Outport
 
 Dev port manager for multi-project, multi-worktree development.
@@ -80,13 +86,17 @@ Outport preserves your existing `.env` variables. It only manages lines marked w
 ## Commands
 
 ```
-outport init      Create .outport.yml for this project (interactive)
-outport up        Allocate ports and write to .env files
-outport ports     Show ports for the current project
-outport open      Open HTTP services in the browser
-outport status    Show all registered projects and their ports
-outport gc        Remove stale entries from the registry
+outport init          Create .outport.yml for this project (interactive)
+outport up            Allocate ports and write to .env files
+outport ports         Show ports for the current project
+outport open          Open HTTP services in the browser
+outport status        Show all registered projects and their ports
+outport status --check  Show with health checks (up/down per service)
+outport reset         Clear and re-allocate ports (tries preferred ports fresh)
+outport gc            Remove stale entries from the registry
 ```
+
+All commands support `--json` for machine-readable output.
 
 ## How Ports Are Allocated
 
@@ -94,18 +104,76 @@ Outport tries your `preferred_port` first. If it's available, you get it — so 
 
 Ports are stable: once allocated, running `outport up` again reuses the same ports. New services added to your config get fresh allocations without disturbing existing ones.
 
+## Protocol
+
+Add `protocol` to services to get URLs in output and enable `outport open`:
+
+```yaml
+services:
+  web:
+    preferred_port: 3000
+    env_var: PORT
+    protocol: http       # shows http://localhost:3000 in output
+  postgres:
+    preferred_port: 5432
+    env_var: DB_PORT     # no protocol — just shows port number
+```
+
+Supported protocols: `http`, `https`, `smtp`, `postgres`, `redis`, and any custom string.
+
+## Monorepo Support
+
+Use `groups` to organize services with different env files:
+
+```yaml
+name: my-monorepo
+groups:
+  backend:
+    env_file: backend/.env
+    services:
+      rails:
+        preferred_port: 3000
+        env_var: RAILS_PORT
+        protocol: http
+      postgres:
+        preferred_port: 5432
+        env_var: DB_PORT
+  frontend:
+    services:
+      web:
+        preferred_port: 9000
+        env_var: NUXT_PORT
+        protocol: http
+```
+
+Services inherit the group's `env_file`. Per-service `env_file` overrides the group default. `env_file` can be a string or array to write to multiple files.
+
+## AI Agent Skill
+
+Install the outport skill so your AI coding agent knows how to configure ports:
+
+```bash
+npx skills add steveclarke/outport/skills
+```
+
 ## Install
+
+### Homebrew
+
+```bash
+brew install steveclarke/tap/outport
+```
 
 ### From Source
 
 ```bash
-go install github.com/outport-app/outport@latest
+go install github.com/steveclarke/outport@latest
 ```
 
 ### Build Locally
 
 ```bash
-git clone https://github.com/outport-app/outport.git
+git clone https://github.com/steveclarke/outport.git
 cd outport
 go build -o outport .
 ```
