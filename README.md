@@ -81,8 +81,9 @@ Outport preserves your existing `.env` variables. It only manages lines marked w
 
 ```
 outport init      Create .outport.yml for this project (interactive)
-outport up        Allocate ports and write to .env
+outport up        Allocate ports and write to .env files
 outport ports     Show ports for the current project
+outport open      Open HTTP services in the browser
 outport status    Show all registered projects and their ports
 outport gc        Remove stale entries from the registry
 ```

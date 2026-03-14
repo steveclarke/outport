@@ -40,7 +40,8 @@ Entry point: `main.go` → `cmd.Execute()` (Cobra CLI).
 - **up** — Main workflow: load config → detect worktree → load registry → allocate ports → merge `.env` → display results.
 - **init** — Interactive setup, creates `.outport.yml` with selected services.
 - **ports** — Show current project's allocated ports.
-- **status** — Show all registered projects across the system.
+- **open** — Open HTTP/HTTPS services in the default browser. Requires `protocol: http` on services.
+- **status** — Show all registered projects across the system. Prompts to remove stale entries interactively.
 - **gc** — Remove stale registry entries where the project directory no longer exists.
 
 All commands support `--json` for machine-readable output. Each command has paired `print*Styled()` and `print*JSON()` output functions.
@@ -59,4 +60,22 @@ Tests use table-driven patterns and `t.TempDir()` for filesystem isolation. No m
 
 ## Release
 
-GoReleaser builds for macOS + Linux (amd64 + arm64). Version injected via ldflags: `-X github.com/outport-app/outport/cmd.version={{.Version}}`. Releases triggered by pushing `v*` tags. Publishes to Homebrew tap `steveclarke/homebrew-tap`.
+GoReleaser builds for macOS + Linux (amd64 + arm64). Version injected via ldflags: `-X github.com/outport-app/outport/cmd.version={{.Version}}`. Releases triggered by pushing `v*` tags. Publishes to Homebrew tap `steveclarke/homebrew-tap`. See `project/releasing.md` for the full process.
+
+## Git Conventions
+
+- **Conventional commits** — Use prefixes: `feat:`, `fix:`, `chore:`, `test:`, `docs:`. GoReleaser's changelog excludes `docs:`, `chore:`, and `test:` commits.
+- **Squash merge PRs** — One commit per feature/fix on master.
+- **Link PRs to issues** — Use `Closes #N` in PR body.
+- **Don't commit without explicit permission** from the user.
+
+## Finalize Checklist
+
+Run before committing or merging:
+
+- [ ] `just lint` passes
+- [ ] `just test` passes
+- [ ] README.md commands list matches actual commands in `cmd/`
+- [ ] `init` presets in `cmd/init.go` include any new service types
+- [ ] `--json` output works for any changed commands
+- [ ] CLAUDE.md reflects any architectural changes (new packages, commands, design decisions)
