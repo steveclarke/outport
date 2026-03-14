@@ -33,7 +33,13 @@ brews:
       owner: steveclarke
       name: homebrew-tap
       token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+    directory: Formula
     name: outport
     homepage: "https://outport.app"
     description: "Dev port manager for multi-project, multi-worktree development"
+    license: "MIT"
+    install: |
+      bin.install "outport"
+    test: |
+      system "#{bin}/outport --version"
     commit_msg_template: "Brew formula update for {{ .ProjectName }} version {{ .Tag }}"
