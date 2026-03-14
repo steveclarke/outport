@@ -4,16 +4,17 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 
 	"gopkg.in/yaml.v3"
 )
 
 const FileName = ".outport.yml"
 
-// EnvFileField handles YAML that can be a string or []string.
-type EnvFileField []string
+// envFileField handles YAML that can be a string or []string.
+type envFileField []string
 
-func (e *EnvFileField) UnmarshalYAML(value *yaml.Node) error {
+func (e *envFileField) UnmarshalYAML(value *yaml.Node) error {
 	if value.Kind == yaml.ScalarNode {
 		*e = []string{value.Value}
 		return nil
@@ -33,20 +34,35 @@ type Service struct {
 	PreferredPort int          `yaml:"preferred_port"`
 	EnvVar        string       `yaml:"env_var"`
 	Protocol      string       `yaml:"protocol"`
-	RawEnvFile    EnvFileField `yaml:"env_file"`
+	rawEnvFile    envFileField // populated during YAML unmarshal, resolved to EnvFiles in normalize
 	EnvFiles      []string     `yaml:"-"`
 	Group         string       `yaml:"-"`
 }
 
+// rawService is used for YAML unmarshaling to capture env_file before normalization.
+type rawService struct {
+	PreferredPort int          `yaml:"preferred_port"`
+	EnvVar        string       `yaml:"env_var"`
+	Protocol      string       `yaml:"protocol"`
+	EnvFile       envFileField `yaml:"env_file"`
+}
+
 type Group struct {
-	EnvFile  string             `yaml:"env_file"`
-	Services map[string]Service `yaml:"services"`
+	EnvFile     string                `yaml:"env_file"`
+	RawServices map[string]rawService `yaml:"services"`
+}
+
+// rawConfig is the YAML deserialization target.
+type rawConfig struct {
+	Name        string                `yaml:"name"`
+	RawServices map[string]rawService `yaml:"services"`
+	Groups      map[string]Group      `yaml:"groups"`
 }
 
 type Config struct {
-	Name     string             `yaml:"name"`
-	Services map[string]Service `yaml:"services"`
-	Groups   map[string]Group   `yaml:"groups"`
+	Name     string
+	Services map[string]Service
+	Groups   map[string]Group
 }
 
 func Load(dir string) (*Config, error) {
@@ -56,16 +72,22 @@ func Load(dir string) (*Config, error) {
 		return nil, fmt.Errorf("reading config: %w", err)
 	}
 
-	var cfg Config
-	if err := yaml.Unmarshal(data, &cfg); err != nil {
+	var raw rawConfig
+	if err := yaml.Unmarshal(data, &raw); err != nil {
 		return nil, fmt.Errorf("parsing config: %w", err)
 	}
 
-	if cfg.Name == "" {
+	if raw.Name == "" {
 		return nil, fmt.Errorf("config: 'name' is required")
 	}
 
-	if err := cfg.normalize(); err != nil {
+	cfg := &Config{
+		Name:     raw.Name,
+		Services: make(map[string]Service),
+		Groups:   raw.Groups,
+	}
+
+	if err := cfg.normalize(&raw); err != nil {
 		return nil, err
 	}
 
@@ -77,42 +99,58 @@ func Load(dir string) (*Config, error) {
 		return nil, err
 	}
 
-	return &cfg, nil
+	return cfg, nil
 }
 
-func (c *Config) normalize() error {
-	if c.Services == nil {
-		c.Services = make(map[string]Service)
+func toService(rs rawService) Service {
+	return Service{
+		PreferredPort: rs.PreferredPort,
+		EnvVar:        rs.EnvVar,
+		Protocol:      rs.Protocol,
+		rawEnvFile:    rs.EnvFile,
+	}
+}
+
+func (c *Config) normalize(raw *rawConfig) error {
+	// Add top-level services
+	for name, rs := range raw.RawServices {
+		c.Services[name] = toService(rs)
 	}
 
-	// Validate groups are not empty
-	for groupName, group := range c.Groups {
-		if len(group.Services) == 0 {
+	// Sort group names for deterministic error messages
+	groupNames := make([]string, 0, len(raw.Groups))
+	for name := range raw.Groups {
+		groupNames = append(groupNames, name)
+	}
+	sort.Strings(groupNames)
+
+	// Validate groups are not empty, then flatten
+	for _, groupName := range groupNames {
+		group := raw.Groups[groupName]
+		if len(group.RawServices) == 0 {
 			return fmt.Errorf("config: group %q has no services", groupName)
 		}
-	}
-
-	// Flatten group services into top-level Services
-	for groupName, group := range c.Groups {
-		for svcName, svc := range group.Services {
+		for svcName, rs := range group.RawServices {
 			if _, exists := c.Services[svcName]; exists {
 				return fmt.Errorf("config: duplicate service name %q", svcName)
 			}
-			if len(svc.RawEnvFile) == 0 && group.EnvFile != "" {
-				svc.RawEnvFile = EnvFileField{group.EnvFile}
+			svc := toService(rs)
+			if len(svc.rawEnvFile) == 0 && group.EnvFile != "" {
+				svc.rawEnvFile = envFileField{group.EnvFile}
 			}
 			svc.Group = groupName
 			c.Services[svcName] = svc
 		}
 	}
 
-	// Resolve defaults for all services
+	// Resolve env_file defaults for all services
 	for name, svc := range c.Services {
-		if len(svc.RawEnvFile) == 0 {
+		if len(svc.rawEnvFile) == 0 {
 			svc.EnvFiles = []string{".env"}
 		} else {
-			svc.EnvFiles = []string(svc.RawEnvFile)
+			svc.EnvFiles = []string(svc.rawEnvFile)
 		}
+		svc.rawEnvFile = nil // clear intermediate state
 		c.Services[name] = svc
 	}
 
