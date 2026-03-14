@@ -317,6 +317,33 @@ services:
 	}
 }
 
+func TestLoad_NoPreferredPort(t *testing.T) {
+	dir := writeConfig(t, `name: myapp
+services:
+  web:
+    env_var: PORT
+    protocol: http
+  postgres:
+    env_var: DATABASE_PORT
+`)
+	cfg, err := Load(dir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(cfg.Services) != 2 {
+		t.Fatalf("services count = %d, want 2", len(cfg.Services))
+	}
+	if cfg.Services["web"].PreferredPort != 0 {
+		t.Errorf("web.PreferredPort = %d, want 0", cfg.Services["web"].PreferredPort)
+	}
+	if cfg.Services["web"].EnvVar != "PORT" {
+		t.Errorf("web.EnvVar = %q, want %q", cfg.Services["web"].EnvVar, "PORT")
+	}
+	if cfg.Services["web"].Protocol != "http" {
+		t.Errorf("web.Protocol = %q, want %q", cfg.Services["web"].Protocol, "http")
+	}
+}
+
 func TestLoad_EmptyGroup(t *testing.T) {
 	dir := writeConfig(t, `name: myapp
 groups:
