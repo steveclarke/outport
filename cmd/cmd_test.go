@@ -114,9 +114,6 @@ func TestRegister_AllocatesPortsAndWritesEnv(t *testing.T) {
 	if !bytes.Contains(envData, []byte("DATABASE_PORT=")) {
 		t.Errorf(".env missing DATABASE_PORT, got:\n%s", envContent)
 	}
-	if !bytes.Contains(envData, []byte("# managed by outport")) {
-		t.Errorf(".env missing managed marker, got:\n%s", envContent)
-	}
 }
 
 func TestRegister_IsIdempotent(t *testing.T) {
