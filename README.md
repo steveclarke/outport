@@ -256,10 +256,6 @@ Use [derived values](#derived-values). Outport computes URLs from allocated port
 
 Browsers share cookies across ports on the same hostname. If both worktrees serve on `localhost`, they share a cookie jar. Workaround: use an incognito window or a separate browser profile for the second worktree. Long-term: `.test` domain support ([#13](https://github.com/steveclarke/outport/issues/13)) will give each worktree its own hostname.
 
-### "Docker Compose fails with 'invalid hostPort'"
-
-If you're upgrading from a version that used inline `# managed by outport` comments, run `outport apply` to migrate to the fenced block format (v0.7.2+). The fenced format writes clean values without inline comments.
-
 ### "I have a monorepo where two apps use the same env var name but need different values"
 
 Use [per-file value overrides](#derived-values) in derived values:
