@@ -30,7 +30,7 @@ Entry point: `main.go` → `cmd.Execute()` (Cobra CLI).
 
 - **allocator** — Port allocation via FNV-32a hash on `"{project}/{instance}/{service}"`. An optional preferred_port can be specified per service; when omitted, the hash is the primary allocation method. Port range: 10000–39999. Collisions resolved by linear probing with wraparound.
 - **registry** — Persistent JSON store at `~/.config/outport/registry.json`. Keys are `"{project}/{instance}"` (e.g., `"myapp/main"`, `"myapp/feature-xyz"`). Atomic writes via temp file + rename.
-- **config** — Loads/validates `.outport.yml`. Supports per-service env_file (string or array), preferred_port, protocol, hostname, and derived values (`${VAR_NAME}` templates with optional per-file overrides). Validates env_var uniqueness per file and derived value reference validity.
+- **config** — Loads/validates `.outport.yml`. Supports per-service env_file (string or array), preferred_port, protocol, hostname, and derived values (`${service.field}` templates with optional per-file overrides). `FindDir()` walks up from the current directory to locate the config. Validates env_var uniqueness per file and derived value reference validity (service name + field).
 - **worktree** — Detects git worktree vs. main checkout. Parses `.git` file to extract worktree name. Defaults to `"main"`.
 - **dotenv** — Writes allocated ports and derived values into a fenced block (`# --- begin outport.dev ---` / `# --- end outport.dev ---`) at the bottom of `.env` files. User content outside the block is preserved. Managed vars in the user section are removed and relocated into the block. Also provides `RemoveBlock()` for cleanup.
 - **ui** — Lipgloss terminal styling constants.
