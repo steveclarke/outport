@@ -126,3 +126,13 @@ func TestAllocate_PreferredPortZero(t *testing.T) {
 		t.Errorf("port = %d, want %d (no preferred, should use hash)", port, expected)
 	}
 }
+
+func TestReservedPortPreferredFallsBack(t *testing.T) {
+	port, err := Allocate("proj", "inst", "svc", ReservedDNSPort, map[int]bool{})
+	if err != nil {
+		t.Fatalf("Allocate: %v", err)
+	}
+	if port == ReservedDNSPort {
+		t.Fatalf("should not allocate reserved port even when preferred")
+	}
+}
