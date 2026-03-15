@@ -292,6 +292,40 @@ npx skills add steveclarke/outport/skills
 
 The agent can run `outport apply` in worktrees, read `outport ports --json` for structured output, and configure `.outport.yml` for new services.
 
+## How Outport Compares
+
+Most local dev tools solve one piece of the puzzle — naming ports, or providing SSL, or tunneling. Outport takes a different approach: it owns the full service map and writes finished, computed environment variables to `.env`. This matters most when your project has multiple services that need to discover each other, or when you're running parallel worktrees with AI agents.
+
+This isn't about competition — these are all good tools. This grid helps you see if Outport fits your workflow.
+
+| | Outport | [Portless](https://github.com/vercel-labs/portless) | [portree](https://github.com/fairy-pitta/portree) | [dot-test](https://github.com/zarpay/dot-test) | [puma-dev](https://github.com/puma/puma-dev) | [Laravel Valet](https://laravel.com/docs/valet) |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|
+| **Deterministic ports** | Yes (hash) | Ephemeral | Yes (hash) | Sequential | No | No |
+| **Worktree-aware** | Yes | Yes | Yes | No | No | No |
+| **Multi-service wiring** | Yes | No | Partial | No | No | No |
+| **Writes to .env** | Yes | No¹ | No | Yes² | No | No |
+| **Friendly hostnames** | Planned | Yes | Yes | Yes | Yes | Yes |
+| **SSL certificates** | Planned | Yes | Yes | No | Yes | Yes |
+| **Framework-agnostic** | Yes | Yes | Yes | Rails only | Ruby/Rack | PHP/Laravel |
+| **No runtime wrapper** | Yes³ | No | No | Yes³ | No | No |
+| **Single binary** | Yes (Go) | No (Node.js) | Yes (Rust) | Yes (Go) | Yes (Go) | No (PHP) |
+| **Per-project config** | Yes | No | Yes | No | No | No |
+
+¹ Portless injects env vars into child processes but doesn't write to disk — values don't survive restarts or work with Docker Compose.
+² dot-test writes `PORT` only — no derived values or multi-service wiring.
+³ Outport writes `.env` and gets out of the way. Your existing dev tools (Foreman, Docker Compose, bin/dev) read it. No wrapper command needed.
+
+### Why this matters for agentic development
+
+If you're a single developer running one Rails app, most of these tools work fine. The differences show up when things get real:
+
+- **Multiple projects at once** — three Rails apps all defaulting to port 3000, each with their own Postgres and Redis. You need them all running simultaneously, completely segregated.
+- **Worktrees for parallel AI agents** — you tell three agents to work on three features, each in its own worktree. Every worktree needs a complete, non-conflicting set of ports for all services — web, database, cache, everything.
+- **Multi-service apps** — your Nuxt frontend needs your Rails backend's URL. Your backend needs the frontend's URL for CORS. Outport's [derived values](#derived-values) wire this up declaratively — one config file, and every `.env` gets finished URLs.
+- **Declare once, apply anywhere** — check `.outport.yml` into your repo. Every developer, every machine, every worktree gets deterministic ports with `outport apply`. No manual port bookkeeping, no "which port was that again?"
+
+Outport handles the simple case (one app, one port) and scales to the complex case (monorepo, multiple services, parallel worktrees, agentic workflows) without changing your existing tools.
+
 ## Roadmap
 
 - **v1 (current):** Port allocation + apply/unapply + `.env` writing
