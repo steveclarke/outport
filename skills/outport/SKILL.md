@@ -133,6 +133,7 @@ derived:
 ```
 
 - `${service_name.field}` references service fields (`port`, `hostname`)
+- `${service.hostname}` resolves to `localhost` when no hostname is set on the service
 - `env_file` is required (no default — you must be explicit)
 - Derived names must not collide with service `env_var` names
 
