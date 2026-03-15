@@ -70,7 +70,7 @@ func runStatus(cmd *cobra.Command, args []string) error {
 	}
 
 	if len(reg.Projects) == 0 {
-		fmt.Fprintln(cmd.OutOrStdout(), "No projects registered. Run 'outport register' in a project directory.")
+		fmt.Fprintln(cmd.OutOrStdout(), "No projects registered. Run 'outport apply' in a project directory.")
 		return nil
 	}
 

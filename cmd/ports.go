@@ -32,7 +32,7 @@ func runPorts(cmd *cobra.Command, args []string) error {
 
 	alloc, ok := ctx.Reg.Get(ctx.Cfg.Name, ctx.WT.Instance)
 	if !ok {
-		fmt.Fprintln(cmd.OutOrStdout(), "No ports allocated. Run 'outport up' first.")
+		fmt.Fprintln(cmd.OutOrStdout(), "No ports allocated. Run 'outport apply' first.")
 		return nil
 	}
 
@@ -53,7 +53,7 @@ func printPortsJSON(cmd *cobra.Command, cfg *config.Config, wt *worktree.Info, a
 		}
 	}
 
-	out := registerJSON{
+	out := applyJSON{
 		Project:  cfg.Name,
 		Instance: wt.Instance,
 		Services: services,

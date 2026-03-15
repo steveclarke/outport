@@ -11,15 +11,15 @@ Outport allocates deterministic, non-conflicting ports for dev services and writ
 
 ```bash
 outport init              # Create .outport.yml (interactive)
-outport register          # Register project, allocate ports, write .env
-outport reg               # Short alias for register
+outport apply             # Apply port config, allocate ports, write .env
+outport a                 # Short alias for apply
 outport ports             # Show ports for current project
 outport ports --json      # Machine-readable output
 outport open              # Open HTTP services in browser
 outport open web          # Open a specific service
 outport status            # Show all registered projects
 outport status --check    # Show with health checks (up/down)
-outport register --force  # Clear and re-allocate all ports
+outport apply --force     # Clear and re-allocate all ports
 outport unregister        # Remove from registry, free ports
 outport gc                # Remove stale registry entries
 ```
@@ -47,7 +47,7 @@ services:
     env_var: MAILPIT_SMTP_PORT
 ```
 
-### 2. Run `outport register`
+### 2. Run `outport apply`
 
 This allocates deterministic ports and writes them to `.env`. Ports are hashed from the project name, instance, and service name — same inputs always produce the same ports.
 
@@ -122,24 +122,24 @@ services:
 Outport detects git worktrees automatically. Each worktree gets unique ports:
 
 - Main checkout and worktrees all get deterministic hash-based ports
-- Run `outport register` in each worktree — no manual port management
+- Run `outport apply` in each worktree — no manual port management
 
 ## Common Tasks
 
 ### Port conflict with another project
-Just run `outport register` in both projects. Outport's registry ensures no collisions across all registered projects.
+Just run `outport apply` in both projects. Outport's registry ensures no collisions across all registered projects.
 
 ### Ports are stale from an old allocation
-Run `outport register --force` to clear the current project's allocation and re-allocate fresh.
+Run `outport apply --force` to clear the current project's allocation and re-allocate fresh.
 
 ### Freeing ports from a project you're done with
 Run `outport unregister` to remove the project from the registry and free all its ports.
 
 ### Services moved to different ports than expected
-Check `outport status` to see all allocations. If another project has the ports you want, unregister that project first, then `outport register --force` in yours.
+Check `outport status` to see all allocations. If another project has the ports you want, unregister that project first, then `outport apply --force` in yours.
 
 ### Adding a new service to an existing project
-Add it to `.outport.yml` and run `outport register`. Existing port allocations are preserved — only the new service gets allocated.
+Add it to `.outport.yml` and run `outport apply`. Existing port allocations are preserved — only the new service gets allocated.
 
 ### Agent needs to know the project's URLs
 Run `outport ports --json` for structured output with ports, protocols, and URLs.

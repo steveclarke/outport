@@ -26,7 +26,7 @@ func Merge(path string, ports map[string]string) error {
 			continue
 		}
 		if value, ok := ports[name]; ok {
-			lines[i] = fmt.Sprintf("%s=%s", name, value)
+			lines[i] = fmt.Sprintf("%s=%s # managed by outport", name, value)
 			written[name] = true
 		}
 	}
@@ -45,7 +45,7 @@ func Merge(path string, ports map[string]string) error {
 			lines = append(lines, "")
 		}
 		for _, name := range newVars {
-			lines = append(lines, fmt.Sprintf("%s=%s", name, ports[name]))
+			lines = append(lines, fmt.Sprintf("%s=%s # managed by outport", name, ports[name]))
 		}
 	}
 

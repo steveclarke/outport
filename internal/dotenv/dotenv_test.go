@@ -22,11 +22,11 @@ func TestMerge_NewFile(t *testing.T) {
 	data, _ := os.ReadFile(envPath)
 	content := string(data)
 
-	if !strings.Contains(content, "PORT=31653") {
-		t.Error("missing PORT=31653")
+	if !strings.Contains(content, "PORT=31653 # managed by outport") {
+		t.Error("missing PORT=31653 # managed by outport")
 	}
-	if !strings.Contains(content, "DATABASE_PORT=17842") {
-		t.Error("missing DATABASE_PORT=17842")
+	if !strings.Contains(content, "DATABASE_PORT=17842 # managed by outport") {
+		t.Error("missing DATABASE_PORT=17842 # managed by outport")
 	}
 }
 
@@ -51,8 +51,8 @@ func TestMerge_PreservesUnrelatedVars(t *testing.T) {
 	if !strings.Contains(content, "RAILS_ENV=development") {
 		t.Error("lost existing RAILS_ENV")
 	}
-	if !strings.Contains(content, "PORT=31653") {
-		t.Error("missing PORT=31653")
+	if !strings.Contains(content, "PORT=31653 # managed by outport") {
+		t.Error("missing PORT=31653 # managed by outport")
 	}
 }
 
@@ -74,8 +74,8 @@ func TestMerge_OverwritesExistingVar(t *testing.T) {
 	if strings.Contains(content, "PORT=4000") {
 		t.Error("old PORT value should be overwritten")
 	}
-	if !strings.Contains(content, "PORT=31653") {
-		t.Error("missing updated PORT=31653")
+	if !strings.Contains(content, "PORT=31653 # managed by outport") {
+		t.Error("missing updated PORT=31653 # managed by outport")
 	}
 	if !strings.Contains(content, "SECRET_KEY=abc123") {
 		t.Error("lost existing SECRET_KEY")
@@ -100,8 +100,8 @@ func TestMerge_UpdatesValueInPlace(t *testing.T) {
 	if len(lines) != 3 {
 		t.Fatalf("expected 3 lines, got %d: %v", len(lines), lines)
 	}
-	if lines[1] != "PORT=31653" {
-		t.Errorf("line 2 = %q, want PORT=31653", lines[1])
+	if lines[1] != "PORT=31653 # managed by outport" {
+		t.Errorf("line 2 = %q, want PORT=31653 # managed by outport", lines[1])
 	}
 }
 
@@ -123,7 +123,7 @@ func TestMerge_PreservesComments(t *testing.T) {
 	if !strings.Contains(content, "# Database config") {
 		t.Error("lost comment")
 	}
-	if !strings.Contains(content, "DB_PORT=21536") {
+	if !strings.Contains(content, "DB_PORT=21536 # managed by outport") {
 		t.Error("missing updated DB_PORT")
 	}
 	if !strings.Contains(content, "REDIS_PORT=6379") {
@@ -169,7 +169,7 @@ func TestMerge_HandlesExportPrefix(t *testing.T) {
 	if strings.Contains(content, "4000") {
 		t.Error("old value should be overwritten")
 	}
-	if !strings.Contains(content, "PORT=31653") {
+	if !strings.Contains(content, "PORT=31653 # managed by outport") {
 		t.Error("missing updated PORT")
 	}
 }
@@ -192,7 +192,7 @@ func TestMerge_HandlesQuotedValues(t *testing.T) {
 	if !strings.Contains(content, "SECRET=\"my secret\"") {
 		t.Error("lost quoted SECRET value")
 	}
-	if !strings.Contains(content, "PORT=31653") {
+	if !strings.Contains(content, "PORT=31653 # managed by outport") {
 		t.Error("missing updated PORT")
 	}
 }
@@ -232,7 +232,7 @@ func TestMerge_CommentedOutVarIsNotOverwritten(t *testing.T) {
 	if !strings.Contains(content, "# PORT=4000") {
 		t.Error("commented line should be preserved")
 	}
-	if !strings.Contains(content, "PORT=31653") {
+	if !strings.Contains(content, "PORT=31653 # managed by outport") {
 		t.Error("missing appended PORT")
 	}
 }

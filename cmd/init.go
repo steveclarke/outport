@@ -23,7 +23,7 @@ func init() {
 const configTemplate = `# Outport configuration
 # Docs: https://outport.app
 #
-# Declare your services, then run 'outport register' to allocate ports.
+# Declare your services, then run 'outport apply' to allocate ports.
 # Outport assigns deterministic ports and writes them to .env as environment variables.
 # Your app reads the env vars — Outport doesn't touch your app's config files.
 
@@ -73,7 +73,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Fprintf(cmd.OutOrStdout(), "Created %s\n", config.FileName)
-	fmt.Fprintln(cmd.OutOrStdout(), "Edit it for your project, then run 'outport register' to allocate ports.")
+	fmt.Fprintln(cmd.OutOrStdout(), "Edit it for your project, then run 'outport apply' to allocate ports.")
 
 	return nil
 }

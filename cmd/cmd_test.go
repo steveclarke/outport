@@ -61,14 +61,14 @@ func executeCmd(t *testing.T, args ...string) string {
 	return buf.String()
 }
 
-// --- register ---
+// --- apply ---
 
-func TestRegister_AllocatesPortsAndWritesEnv(t *testing.T) {
+func TestApply_AllocatesPortsAndWritesEnv(t *testing.T) {
 	dir := setupProject(t, testConfig)
 
-	output := executeCmd(t, "register", "--json")
+	output := executeCmd(t, "apply", "--json")
 
-	var result registerJSON
+	var result applyJSON
 	if err := json.Unmarshal([]byte(output), &result); err != nil {
 		t.Fatalf("invalid JSON output: %v\nOutput: %s", err, output)
 	}
@@ -116,13 +116,13 @@ func TestRegister_AllocatesPortsAndWritesEnv(t *testing.T) {
 	}
 }
 
-func TestRegister_IsIdempotent(t *testing.T) {
+func TestApply_IsIdempotent(t *testing.T) {
 	setupProject(t, testConfig)
 
-	out1 := executeCmd(t, "register", "--json")
-	out2 := executeCmd(t, "register", "--json")
+	out1 := executeCmd(t, "apply", "--json")
+	out2 := executeCmd(t, "apply", "--json")
 
-	var r1, r2 registerJSON
+	var r1, r2 applyJSON
 	json.Unmarshal([]byte(out1), &r1)
 	json.Unmarshal([]byte(out2), &r2)
 
@@ -134,10 +134,10 @@ func TestRegister_IsIdempotent(t *testing.T) {
 	}
 }
 
-func TestRegister_StyledOutput(t *testing.T) {
+func TestApply_StyledOutput(t *testing.T) {
 	setupProject(t, testConfig)
 
-	output := executeCmd(t, "register")
+	output := executeCmd(t, "apply")
 
 	if !bytes.Contains([]byte(output), []byte("testapp")) {
 		t.Errorf("styled output missing project name, got:\n%s", output)
@@ -147,7 +147,7 @@ func TestRegister_StyledOutput(t *testing.T) {
 	}
 }
 
-func TestRegister_NoConfig(t *testing.T) {
+func TestApply_NoConfig(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 
@@ -157,7 +157,7 @@ func TestRegister_NoConfig(t *testing.T) {
 
 	rootCmd.SetOut(new(bytes.Buffer))
 	rootCmd.SetErr(new(bytes.Buffer))
-	rootCmd.SetArgs([]string{"register"})
+	rootCmd.SetArgs([]string{"apply"})
 
 	err := rootCmd.Execute()
 	if err == nil {
@@ -171,7 +171,7 @@ func TestPorts_ShowsAllocatedPorts(t *testing.T) {
 	setupProject(t, testConfig)
 
 	// First allocate ports
-	executeCmd(t, "register", "--json")
+	executeCmd(t, "apply", "--json")
 
 	// Then query them
 	output := executeCmd(t, "ports", "--json")
@@ -228,8 +228,8 @@ func TestStatus_EmptyRegistry(t *testing.T) {
 func TestStatus_ShowsProjects(t *testing.T) {
 	setupProject(t, testConfig)
 
-	// Populate registry via up
-	executeCmd(t, "register", "--json")
+	// Populate registry via apply
+	executeCmd(t, "apply", "--json")
 
 	output := executeCmd(t, "status", "--json")
 
@@ -432,31 +432,31 @@ func TestGC_RemovesMissingConfig(t *testing.T) {
 	}
 }
 
-// --- register --force ---
+// --- apply --force ---
 
-func TestRegister_ForceReallocatesWithPreferredPorts(t *testing.T) {
+func TestApply_ForceReallocatesWithPreferredPorts(t *testing.T) {
 	setupProject(t, testConfig)
 
 	// First allocation
-	out1 := executeCmd(t, "register", "--json")
-	var r1 registerJSON
+	out1 := executeCmd(t, "apply", "--json")
+	var r1 applyJSON
 	json.Unmarshal([]byte(out1), &r1)
 
 	// Ports should be preferred (3000, 5432) since nothing else is registered
 	if r1.Services["web"].Port != 3000 {
-		t.Errorf("first register: web port = %d, want 3000", r1.Services["web"].Port)
+		t.Errorf("first apply: web port = %d, want 3000", r1.Services["web"].Port)
 	}
 
 	// Force re-allocation should produce the same preferred ports
-	out2 := executeCmd(t, "register", "--force", "--json")
-	var r2 registerJSON
+	out2 := executeCmd(t, "apply", "--force", "--json")
+	var r2 applyJSON
 	json.Unmarshal([]byte(out2), &r2)
 
 	if r2.Services["web"].Port != 3000 {
-		t.Errorf("register --force: web port = %d, want 3000", r2.Services["web"].Port)
+		t.Errorf("apply --force: web port = %d, want 3000", r2.Services["web"].Port)
 	}
 	if r2.Services["postgres"].Port != 5432 {
-		t.Errorf("register --force: postgres port = %d, want 5432", r2.Services["postgres"].Port)
+		t.Errorf("apply --force: postgres port = %d, want 5432", r2.Services["postgres"].Port)
 	}
 }
 
@@ -524,7 +524,7 @@ func TestInit_ErrorWhenConfigExists(t *testing.T) {
 
 func TestPorts_StyledOutput(t *testing.T) {
 	setupProject(t, testConfig)
-	executeCmd(t, "register")
+	executeCmd(t, "apply")
 
 	output := executeCmd(t, "ports")
 
@@ -540,7 +540,7 @@ func TestPorts_StyledOutput(t *testing.T) {
 
 func TestUnregister_RemovesFromRegistry(t *testing.T) {
 	setupProject(t, testConfig)
-	executeCmd(t, "register")
+	executeCmd(t, "apply")
 
 	output := executeCmd(t, "unregister")
 
@@ -569,7 +569,7 @@ func TestUnregister_NotRegistered(t *testing.T) {
 
 func TestUnregister_JSON(t *testing.T) {
 	setupProject(t, testConfig)
-	executeCmd(t, "register", "--json")
+	executeCmd(t, "apply", "--json")
 
 	output := executeCmd(t, "unregister", "--json")
 
@@ -622,7 +622,7 @@ func TestOpen_NoAllocation(t *testing.T) {
 
 func TestOpen_UnknownService(t *testing.T) {
 	setupProject(t, testConfig)
-	executeCmd(t, "register")
+	executeCmd(t, "apply")
 
 	rootCmd.SetOut(new(bytes.Buffer))
 	rootCmd.SetErr(new(bytes.Buffer))
@@ -637,7 +637,7 @@ func TestOpen_UnknownService(t *testing.T) {
 func TestOpen_NoProtocol(t *testing.T) {
 	// postgres has no protocol, so open should error
 	setupProject(t, testConfig)
-	executeCmd(t, "register")
+	executeCmd(t, "apply")
 
 	rootCmd.SetOut(new(bytes.Buffer))
 	rootCmd.SetErr(new(bytes.Buffer))
