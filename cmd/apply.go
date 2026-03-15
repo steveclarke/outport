@@ -103,6 +103,17 @@ func runApply(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	// Resolve derived values and add to envFileVars
+	resolvedDerived := resolveDerivedFromAlloc(cfg, ports)
+	for name, dv := range cfg.Derived {
+		for _, envFile := range dv.EnvFiles {
+			if envFileVars[envFile] == nil {
+				envFileVars[envFile] = make(map[string]string)
+			}
+			envFileVars[envFile][name] = resolvedDerived[name]
+		}
+	}
+
 	reg.Set(cfg.Name, wt.Instance, registry.Allocation{
 		ProjectDir: dir,
 		Ports:      ports,
@@ -120,9 +131,29 @@ func runApply(cmd *cobra.Command, args []string) error {
 	}
 
 	if jsonFlag {
-		return printApplyJSON(cmd, cfg, wt, ports, envFiles)
+		return printApplyJSON(cmd, cfg, wt, ports, resolvedDerived, envFiles)
 	}
-	return printApplyStyled(cmd, cfg, wt, serviceNames, ports, envFiles)
+	return printApplyStyled(cmd, cfg, wt, serviceNames, ports, resolvedDerived, envFiles)
+}
+
+// buildEnvVarPorts maps env_var names to allocated port numbers.
+func buildEnvVarPorts(cfg *config.Config, ports map[string]int) map[string]int {
+	envVarPorts := make(map[string]int)
+	for svcName, svc := range cfg.Services {
+		if port, ok := ports[svcName]; ok {
+			envVarPorts[svc.EnvVar] = port
+		}
+	}
+	return envVarPorts
+}
+
+// resolveDerivedFromAlloc resolves derived value templates using allocated ports.
+func resolveDerivedFromAlloc(cfg *config.Config, ports map[string]int) map[string]string {
+	if len(cfg.Derived) == 0 {
+		return nil
+	}
+	envVarPorts := buildEnvVarPorts(cfg, ports)
+	return config.ResolveDerived(cfg.Derived, envVarPorts)
 }
 
 func sortedMapKeys[V any](m map[string]V) []string {
@@ -148,11 +179,17 @@ type svcJSON struct {
 
 func boolPtr(b bool) *bool { return &b }
 
+type derivedJSON struct {
+	Value    string   `json:"value"`
+	EnvFiles []string `json:"env_files"`
+}
+
 type applyJSON struct {
-	Project  string             `json:"project"`
-	Instance string             `json:"instance"`
-	Services map[string]svcJSON `json:"services"`
-	EnvFiles []string           `json:"env_files"`
+	Project  string                 `json:"project"`
+	Instance string                 `json:"instance"`
+	Services map[string]svcJSON     `json:"services"`
+	Derived  map[string]derivedJSON `json:"derived,omitempty"`
+	EnvFiles []string               `json:"env_files"`
 }
 
 func serviceURL(protocol string, port int) string {
@@ -177,11 +214,26 @@ func buildServiceMap(cfg *config.Config, ports map[string]int) map[string]svcJSO
 	return services
 }
 
-func printApplyJSON(cmd *cobra.Command, cfg *config.Config, wt *worktree.Info, ports map[string]int, envFiles []string) error {
+func buildDerivedMap(derived map[string]config.DerivedValue, resolved map[string]string) map[string]derivedJSON {
+	if len(resolved) == 0 {
+		return nil
+	}
+	m := make(map[string]derivedJSON)
+	for name, value := range resolved {
+		m[name] = derivedJSON{
+			Value:    value,
+			EnvFiles: derived[name].EnvFiles,
+		}
+	}
+	return m
+}
+
+func printApplyJSON(cmd *cobra.Command, cfg *config.Config, wt *worktree.Info, ports map[string]int, resolvedDerived map[string]string, envFiles []string) error {
 	out := applyJSON{
 		Project:  cfg.Name,
 		Instance: wt.Instance,
 		Services: buildServiceMap(cfg, ports),
+		Derived:  buildDerivedMap(cfg.Derived, resolvedDerived),
 		EnvFiles: envFiles,
 	}
 	data, err := json.MarshalIndent(out, "", "  ")
@@ -202,12 +254,16 @@ func printHeader(w io.Writer, projectName string, wt *worktree.Info) {
 	lipgloss.Fprintln(w)
 }
 
-func printApplyStyled(cmd *cobra.Command, cfg *config.Config, wt *worktree.Info, serviceNames []string, ports map[string]int, envFiles []string) error {
+func printApplyStyled(cmd *cobra.Command, cfg *config.Config, wt *worktree.Info, serviceNames []string, ports map[string]int, resolvedDerived map[string]string, envFiles []string) error {
 	w := cmd.OutOrStdout()
 
 	printHeader(w, cfg.Name, wt)
 
 	printFlatServices(w, cfg, serviceNames, ports, nil)
+
+	if len(resolvedDerived) > 0 {
+		printDerivedValues(w, resolvedDerived)
+	}
 
 	lipgloss.Fprintln(w)
 	if len(envFiles) == 1 {
@@ -219,6 +275,26 @@ func printApplyStyled(cmd *cobra.Command, cfg *config.Config, wt *worktree.Info,
 		}
 	}
 	return nil
+}
+
+func printDerivedValues(w io.Writer, resolved map[string]string) {
+	lipgloss.Fprintln(w)
+	lipgloss.Fprintln(w, ui.DimStyle.Render("    derived:"))
+	names := sortedMapKeys(resolved)
+	for _, name := range names {
+		value := resolved[name]
+		// Truncate long values for display
+		display := value
+		if len(display) > 50 {
+			display = display[:47] + "..."
+		}
+		line := fmt.Sprintf("    %s  %s %s",
+			ui.EnvVarStyle.Render(fmt.Sprintf("%-36s", name)),
+			ui.Arrow,
+			ui.DimStyle.Render(display),
+		)
+		lipgloss.Fprintln(w, line)
+	}
 }
 
 func printFlatServices(w io.Writer, cfg *config.Config, serviceNames []string, ports map[string]int, portStatus map[int]bool) {

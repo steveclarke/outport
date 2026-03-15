@@ -153,6 +153,40 @@ services:
 
 Services without `env_file` write to `.env` in the project root. `env_file` can be a string or array to write to multiple files.
 
+## Derived Values
+
+Applications don't just need port numbers — they need URLs. Derived values let you define computed environment variables that reference allocated ports:
+
+```yaml
+name: my-monorepo
+services:
+  rails:
+    env_var: RAILS_PORT
+    protocol: http
+    env_file: backend/.env
+  web:
+    env_var: WEB_PORT
+    protocol: http
+    env_file: frontend/.env
+
+derived:
+  API_URL:
+    value: "http://localhost:${RAILS_PORT}/api/v1"
+    env_file: frontend/.env
+  CORS_ORIGINS:
+    value: "http://localhost:${WEB_PORT}"
+    env_file: backend/.env
+```
+
+After `outport apply`, `frontend/.env` contains:
+
+```
+WEB_PORT=14139
+API_URL=http://localhost:24920/api/v1
+```
+
+Templates use `${VAR_NAME}` syntax, referencing any service `env_var`. Resolved at apply time — your app reads finished values from `.env`.
+
 ## AI Agent Skill
 
 Install the outport skill so your AI coding agent knows how to configure ports:

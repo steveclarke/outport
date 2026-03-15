@@ -52,6 +52,13 @@ services:
 #    env_file:
 #      - backend/.env
 #      - .env
+
+# Derived values — computed env vars that reference allocated ports:
+#
+# derived:
+#  API_URL:
+#    value: "http://localhost:${RAILS_PORT}/api/v1"
+#    env_file: frontend/.env
 `
 
 func runInit(cmd *cobra.Command, args []string) error {

@@ -4,9 +4,28 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strconv"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
+
+var templateVarRe = regexp.MustCompile(`\$\{(\w+)\}`)
+
+// ResolveDerived substitutes ${VAR_NAME} references in derived values
+// with the corresponding port numbers from envVarPorts.
+func ResolveDerived(derived map[string]DerivedValue, envVarPorts map[string]int) map[string]string {
+	resolved := make(map[string]string)
+	for name, dv := range derived {
+		value := dv.Value
+		for varName, port := range envVarPorts {
+			value = strings.ReplaceAll(value, "${"+varName+"}", strconv.Itoa(port))
+		}
+		resolved[name] = value
+	}
+	return resolved
+}
 
 const FileName = ".outport.yml"
 
@@ -45,15 +64,27 @@ type rawService struct {
 	EnvFile       envFileField `yaml:"env_file"`
 }
 
+type DerivedValue struct {
+	Value    string   `yaml:"value"`
+	EnvFiles []string `yaml:"-"`
+}
+
+type rawDerivedValue struct {
+	Value   string       `yaml:"value"`
+	EnvFile envFileField `yaml:"env_file"`
+}
+
 // rawConfig is the YAML deserialization target.
 type rawConfig struct {
-	Name        string                `yaml:"name"`
-	RawServices map[string]rawService `yaml:"services"`
+	Name        string                     `yaml:"name"`
+	RawServices map[string]rawService      `yaml:"services"`
+	RawDerived  map[string]rawDerivedValue `yaml:"derived"`
 }
 
 type Config struct {
 	Name     string
 	Services map[string]Service
+	Derived  map[string]DerivedValue
 }
 
 func Load(dir string) (*Config, error) {
@@ -78,6 +109,7 @@ func Load(dir string) (*Config, error) {
 	cfg := &Config{
 		Name:     raw.Name,
 		Services: make(map[string]Service),
+		Derived:  make(map[string]DerivedValue),
 	}
 
 	if err := cfg.normalize(&raw); err != nil {
@@ -116,6 +148,14 @@ func (c *Config) normalize(raw *rawConfig) error {
 		c.Services[name] = svc
 	}
 
+	for name, rd := range raw.RawDerived {
+		dv := DerivedValue{
+			Value:    rd.Value,
+			EnvFiles: []string(rd.EnvFile),
+		}
+		c.Derived[name] = dv
+	}
+
 	return nil
 }
 
@@ -135,6 +175,36 @@ func (c *Config) validate() error {
 					other, name, svc.EnvVar, envFile)
 			}
 			fileVars[envFile][svc.EnvVar] = name
+		}
+	}
+
+	// Build set of valid env_var names from services
+	serviceEnvVars := make(map[string]bool)
+	for _, svc := range c.Services {
+		serviceEnvVars[svc.EnvVar] = true
+	}
+
+	for name, dv := range c.Derived {
+		if dv.Value == "" {
+			return fmt.Errorf("Derived value %q in %s is missing the 'value' field.", name, FileName)
+		}
+		if len(dv.EnvFiles) == 0 {
+			return fmt.Errorf("Derived value %q in %s is missing the 'env_file' field.", name, FileName)
+		}
+
+		// Name must not collide with any service env_var
+		if serviceEnvVars[name] {
+			return fmt.Errorf("Derived value %q in %s conflicts with a service env_var of the same name.", name, FileName)
+		}
+
+		// All ${VAR} references must match a service env_var
+		matches := templateVarRe.FindAllStringSubmatch(dv.Value, -1)
+		for _, match := range matches {
+			ref := match[1]
+			if !serviceEnvVars[ref] {
+				return fmt.Errorf("Derived value %q in %s references \"${%s}\" but no service has env_var %q.",
+					name, FileName, ref, ref)
+			}
 		}
 	}
 

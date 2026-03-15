@@ -30,7 +30,7 @@ Entry point: `main.go` → `cmd.Execute()` (Cobra CLI).
 
 - **allocator** — Port allocation via FNV-32a hash on `"{project}/{instance}/{service}"`. An optional preferred_port can be specified per service; when omitted, the hash is the primary allocation method. Port range: 10000–39999. Collisions resolved by linear probing with wraparound.
 - **registry** — Persistent JSON store at `~/.config/outport/registry.json`. Keys are `"{project}/{instance}"` (e.g., `"myapp/main"`, `"myapp/feature-xyz"`). Atomic writes via temp file + rename.
-- **config** — Loads/validates `.outport.yml`. Supports per-service env_file for writing to different `.env` files (string or array for multi-file writes), preferred_port, and explicit protocol. Validates env_var uniqueness per file.
+- **config** — Loads/validates `.outport.yml`. Supports per-service env_file for writing to different `.env` files (string or array for multi-file writes), preferred_port, explicit protocol, and derived values (`${VAR_NAME}` templates resolved at apply time). Validates env_var uniqueness per file and derived value reference validity.
 - **worktree** — Detects git worktree vs. main checkout. Parses `.git` file to extract worktree name. Defaults to `"main"`.
 - **dotenv** — Merges allocated ports into `.env` files. Variables declared in `.outport.yml` are always overwritten; all other lines are preserved untouched.
 - **ui** — Lipgloss terminal styling constants.

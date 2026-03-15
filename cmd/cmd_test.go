@@ -165,6 +165,102 @@ func TestApply_NoConfig(t *testing.T) {
 	}
 }
 
+// --- apply with derived values ---
+
+const testConfigWithDerived = `name: testapp
+services:
+  rails:
+    preferred_port: 3000
+    env_var: RAILS_PORT
+    protocol: http
+    env_file: backend/.env
+  web:
+    preferred_port: 5173
+    env_var: WEB_PORT
+    protocol: http
+    env_file: frontend/.env
+
+derived:
+  API_URL:
+    value: "http://localhost:${RAILS_PORT}/api/v1"
+    env_file: frontend/.env
+  CORS_ORIGINS:
+    value: "http://localhost:${WEB_PORT}"
+    env_file: backend/.env
+`
+
+func TestApply_WithDerivedValues(t *testing.T) {
+	dir := setupProject(t, testConfigWithDerived)
+	os.MkdirAll(filepath.Join(dir, "backend"), 0755)
+	os.MkdirAll(filepath.Join(dir, "frontend"), 0755)
+
+	output := executeCmd(t, "apply", "--json")
+
+	var result applyJSON
+	if err := json.Unmarshal([]byte(output), &result); err != nil {
+		t.Fatalf("invalid JSON: %v\nOutput: %s", err, output)
+	}
+
+	if len(result.Derived) != 2 {
+		t.Fatalf("derived count = %d, want 2", len(result.Derived))
+	}
+
+	apiURL := result.Derived["API_URL"]
+	if apiURL.Value != "http://localhost:3000/api/v1" {
+		t.Errorf("API_URL = %q, want http://localhost:3000/api/v1", apiURL.Value)
+	}
+	if len(apiURL.EnvFiles) != 1 || apiURL.EnvFiles[0] != "frontend/.env" {
+		t.Errorf("API_URL.EnvFiles = %v, want [frontend/.env]", apiURL.EnvFiles)
+	}
+
+	cors := result.Derived["CORS_ORIGINS"]
+	if cors.Value != "http://localhost:5173" {
+		t.Errorf("CORS_ORIGINS = %q, want http://localhost:5173", cors.Value)
+	}
+
+	// Check .env files contain derived values
+	frontendEnv, err := os.ReadFile(filepath.Join(dir, "frontend", ".env"))
+	if err != nil {
+		t.Fatalf("reading frontend/.env: %v", err)
+	}
+	if !bytes.Contains(frontendEnv, []byte("API_URL=http://localhost:3000/api/v1")) {
+		t.Errorf("frontend/.env missing API_URL, got:\n%s", frontendEnv)
+	}
+
+	backendEnv, err := os.ReadFile(filepath.Join(dir, "backend", ".env"))
+	if err != nil {
+		t.Fatalf("reading backend/.env: %v", err)
+	}
+	if !bytes.Contains(backendEnv, []byte("CORS_ORIGINS=http://localhost:5173")) {
+		t.Errorf("backend/.env missing CORS_ORIGINS, got:\n%s", backendEnv)
+	}
+}
+
+func TestApply_DerivedStyledOutput(t *testing.T) {
+	dir := setupProject(t, testConfigWithDerived)
+	os.MkdirAll(filepath.Join(dir, "backend"), 0755)
+	os.MkdirAll(filepath.Join(dir, "frontend"), 0755)
+
+	output := executeCmd(t, "apply")
+
+	if !bytes.Contains([]byte(output), []byte("derived:")) {
+		t.Errorf("styled output missing 'derived:' section, got:\n%s", output)
+	}
+	if !bytes.Contains([]byte(output), []byte("API_URL")) {
+		t.Errorf("styled output missing API_URL, got:\n%s", output)
+	}
+}
+
+func TestApply_NoDerived_OmitsFromJSON(t *testing.T) {
+	setupProject(t, testConfig)
+
+	output := executeCmd(t, "apply", "--json")
+
+	if bytes.Contains([]byte(output), []byte("derived")) {
+		t.Errorf("JSON output should omit derived when empty, got:\n%s", output)
+	}
+}
+
 // --- ports ---
 
 func TestPorts_ShowsAllocatedPorts(t *testing.T) {

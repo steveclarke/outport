@@ -117,6 +117,25 @@ services:
 - Services without `env_file` write to `.env` by default
 - `env_file` can be a string or array (write same var to multiple files)
 
+### Derived Values
+
+For computed env vars that reference allocated ports (e.g., URLs, CORS origins):
+
+```yaml
+derived:
+  API_URL:
+    value: "http://localhost:${RAILS_PORT}/api/v1"
+    env_file: frontend/.env
+  CORS_ORIGINS:
+    value: "http://localhost:${WEB_PORT}"
+    env_file: backend/.env
+```
+
+- `${VAR_NAME}` references any service `env_var`
+- Resolved at `outport apply` time — finished values written to `.env`
+- `env_file` is required (no default)
+- Derived names must not collide with service `env_var` names
+
 ## Worktrees
 
 Outport detects git worktrees automatically. Each worktree gets unique ports:

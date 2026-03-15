@@ -2,7 +2,7 @@
 
 > Computed environment variables that reference allocated ports.
 
-## Status: Proposal
+## Status: Implemented
 
 Based on real-world findings from integrating Outport with Unio — a monorepo with a Rails backend, two Nuxt frontends, Docker services, and worktree-based development.
 

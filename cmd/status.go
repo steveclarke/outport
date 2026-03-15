@@ -93,10 +93,11 @@ func runStatus(cmd *cobra.Command, args []string) error {
 }
 
 type statusEntryJSON struct {
-	Key        string             `json:"key"`
-	ProjectDir string             `json:"project_dir"`
-	Current    bool               `json:"current"`
-	Services   map[string]svcJSON `json:"services"`
+	Key        string                 `json:"key"`
+	ProjectDir string                 `json:"project_dir"`
+	Current    bool                   `json:"current"`
+	Services   map[string]svcJSON     `json:"services"`
+	Derived    map[string]derivedJSON `json:"derived,omitempty"`
 }
 
 func printStatusJSON(cmd *cobra.Command, reg *registry.Registry, portStatus map[int]bool) error {
@@ -123,11 +124,17 @@ func printStatusJSON(cmd *cobra.Command, reg *registry.Registry, portStatus map[
 			services[svcName] = s
 		}
 
+		var derived map[string]derivedJSON
+		if cfg != nil {
+			derived = buildDerivedMap(cfg.Derived, resolveDerivedFromAlloc(cfg, alloc.Ports))
+		}
+
 		entries = append(entries, statusEntryJSON{
 			Key:        key,
 			ProjectDir: alloc.ProjectDir,
 			Current:    key == currentKey,
 			Services:   services,
+			Derived:    derived,
 		})
 	}
 
@@ -208,6 +215,12 @@ func printStatusStyled(cmd *cobra.Command, reg *registry.Registry, portStatus ma
 				url,
 			)
 			lipgloss.Fprintln(w, line)
+		}
+
+		if cfg != nil {
+			if resolved := resolveDerivedFromAlloc(cfg, alloc.Ports); len(resolved) > 0 {
+				printDerivedValues(w, resolved)
+			}
 		}
 
 		if i < len(keys)-1 {
