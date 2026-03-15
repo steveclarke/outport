@@ -35,7 +35,7 @@ services:
 #  web:
 #    env_var: PORT
 #    protocol: http          # enables 'outport open' and shows URLs in output
-#    hostname: myapp.localhost  # optional — defaults to localhost
+#    hostname: myapp         # .test hostname (requires protocol: http/https)
 #
 #  postgres:
 #    env_var: DB_PORT
@@ -58,8 +58,11 @@ services:
 #
 # derived:
 #  API_URL:
-#    value: "http://${rails.hostname}:${rails.port}/api/v1"
+#    value: "${rails.url}/api/v1"
 #    env_file: frontend/.env
+#
+#  # Use :direct modifier for localhost URL (bypasses .test proxy):
+#  # API_DIRECT: "${rails.url:direct}/api/v1"
 `
 
 func runInit(cmd *cobra.Command, args []string) error {
