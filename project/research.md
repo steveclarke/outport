@@ -83,21 +83,112 @@
 - One-time setup, persists across reboots
 - Tells macOS to route all `*.test` queries to local DNS server
 
-## SSL / ACME DNS-01
+## SSL — Local CA, not Let's Encrypt (2026-03-15)
 
-- Let's Encrypt is adding support for DNS-01 challenges via TXT records (2026)
-- This would allow real certificates for `.test` domains
-- Flow: tool creates DNS TXT record → ACME verifies → issues cert → tool serves HTTPS
-- Since we control the DNS server, we can respond to TXT queries automatically
-- This would make `https://myapp.test` work with real browser-trusted certificates
+### DNS-PERSIST-01 is a dead end for `.test`
 
-## Key Design Decisions to Make
+Let's Encrypt won't issue certificates for IANA-reserved TLDs like `.test`. DNS-PERSIST-01 is only useful for real domains (potentially `myapp.outport.app` for tunneling later). Not viable for local dev.
 
-1. **Config file format** — YAML (`.outport.yml`)? TOML? Keep it simple.
-2. **Port range** — what range to hash into? 3000-9999? Higher?
-3. **Hash input** — project name? Full path? Path + worktree name?
-4. **Registry format** — JSON? SQLite? Plain text?
-5. **Daemon vs on-demand** — always running (like dot-test) or start/stop per session?
-6. **Scope** — v1 just does port allocation + .env writing? DNS/proxy in v2?
-7. **Worktree detection** — how to distinguish main checkout from worktrees?
-8. **Cleanup** — how/when to release ports from dead worktrees?
+### Local CA is the right approach
+
+Validated by Portless's working implementation (see below). The path:
+
+1. **Generate local CA** — Go `crypto/x509` + `crypto/ecdsa` (stdlib, no dependencies). Portless shells out to `openssl` but Go stdlib is cleaner.
+2. **Per-hostname certs via SNI callback** — generate on demand as worktrees create new hostnames. Memory + disk cache.
+3. **`outport trust`** — one-time command to add CA to system trust store:
+   - macOS: `security add-trusted-cert -r trustRoot -k ~/Library/Keychains/login.keychain-db ca.pem`
+   - Linux: distro-specific (`update-ca-certificates` / `update-ca-trust`)
+4. **Cert storage** — `~/.config/outport/certs/`
+5. **Renewal** — regenerate 7 days before expiry (Portless uses this approach)
+
+### Portless SSL reference implementation
+
+Source: `github.com/vercel-labs/portless`, `packages/portless/src/certs.ts`
+
+- EC P-256 keys, CA validity 10 years, server certs 1 year
+- SNI callback with memory + disk cache + pending-promise dedup
+- Byte-peeking to serve TLS and HTTP on same port (first byte 0x16 = TLS handshake)
+- HTTP/2 with HTTP/1.1 fallback for WebSocket support
+- Rejects SHA-1 signatures, auto-regenerates weak certs
+
+See issue #14 for full details.
+
+## Mobile / Cross-Device Access (2026-03-15)
+
+### `.test` domains cannot work on phones
+
+Investigated all options:
+
+- **Phone DNS config** — technically works but unacceptable UX. Non-starter.
+- **mDNS / Bonjour** — only `.local` machine names, not arbitrary app hostnames. Android support inconsistent.
+- **iOS `.mobileconfig`** — could set DNS but iOS-only, still a setup step.
+- **Conclusion:** No zero-config way to resolve `.test` on a phone. IANA-reserved TLD, no internet DNS resolves it.
+
+### Tunneling is the universal access mechanism
+
+| Scenario | Mechanism |
+|----------|-----------|
+| Desktop browser | `.test` domains (#13) |
+| Phone (simple app, same WiFi) | QR with LAN IP:port (fallback) |
+| Phone (complex app) | `outport share` (#16) + QR (#15) |
+| Remote colleague | `outport share` (#16) |
+
+- **Simple apps:** QR with `http://<LAN-IP>:<port>` works if the app doesn't reference `localhost` in derived values
+- **Multi-service apps:** Derived values contain `localhost` URLs → phone resolves `localhost` to itself → API calls fail. Only tunneling (#16) + env var rewriting (#17) solves this.
+- **Security:** Cloudflare Tunnel URLs are high-entropy, temporary, HTTPS, not indexed. Acceptable for dev environments with test data.
+
+### QR code (#15) primary role
+
+Display tunnel URLs from `outport share`, not LAN IPs. LAN IP mode is a fallback for simple apps / no-internet scenarios.
+
+## Competitive Landscape (2026-03-15)
+
+### Layer 6 (multi-service tunnel orchestration) is unserved
+
+No generic, framework-agnostic, local-dev-first tool does automatic env var rewriting when tunneling multiple services. Only:
+
+- **.NET Aspire Dev Tunnels** — `WithReference` injects tunnel URLs between services, but locked to Visual Studio/.NET
+- **Preevy** — `PREEVY_BASE_URI_{SERVICE}_{PORT}` in Docker Compose, but deploys to cloud VMs, not local dev
+
+This is Outport's unique value prop. Validated 2026-03-15.
+
+### Closest competitors
+
+| Tool | Layers covered | Key difference from Outport |
+|------|---------------|----------------------------|
+| **portree** (Rust) | 1,2,3 + partial 6 | Worktree-aware, local `$PT_BACKEND_URL` injection. No tunneling. **Watch this one.** |
+| **Portless** (Vercel Labs, TS) | 1,2,3 | Runtime wrapper (injects env into child process, not `.env`). No multi-service wiring. |
+| **LocalCan** (macOS GUI) | 2,3,5 | Built-in tunneling + SSL. No port allocation, no worktrees, no orchestration. Commercial. |
+| **dot-test** (Go) | 2 + partial 1 | Rails-only, sequential ports, `.test` domains. No worktrees, no derived values. |
+| **puma-dev** (Go) | 2,3 | Ruby/Rack only. `.test` domains + SSL. No ports, no worktrees. |
+| **Laravel Valet** (PHP) | 2,3,5 | `.test` + SSL + `valet share` (ngrok). PHP-only. |
+
+### Outport's position
+
+Outport is the only tool that:
+1. Owns the service map (config file declares all services)
+2. Owns the environment files (writes finished `.env` values)
+3. Will own the network layer (DNS, proxy, tunnels)
+
+Because it owns all three, it can do multi-service tunnel orchestration (#17) — impossible when these concerns are handled by separate tools.
+
+### Portless detailed analysis
+
+Source cloned to `/Users/steve/src/portless-research`. Full bookmark with discussion notes in Hugo.
+
+**Architecture difference:** Portless is a runtime wrapper (`portless myapp pnpm dev`). Outport is an environment generator (`outport apply`, then use your existing tools). Outport's approach is more durable (`.env` survives restarts, works with Docker Compose) and doesn't require wrapping every command.
+
+**No multi-service wiring** in Portless — each app only gets its own `PORTLESS_URL`. Inter-app communication requires manual framework-specific proxy config. The 508 loop detection is a diagnostic for misconfigured proxies, not orchestration.
+
+**SSL implementation** is a useful reference for #14 (see SSL section above).
+
+## Key Design Decisions (Resolved)
+
+1. **Config file format** — `.outport.yml` (YAML) ✅
+2. **Port range** — 10000-39999 ✅
+3. **Hash input** — `{project}/{instance}/{service}` via FNV-32 ✅
+4. **Registry format** — JSON (`~/.config/outport/registry.json`) ✅
+5. **Daemon vs on-demand** — on-demand for v1, daemon for v2 (DNS/proxy) ✅
+6. **Scope** — v1 ports + .env, v2 DNS/proxy, v3 SSL ✅
+7. **Worktree detection** — parse `.git` file for worktree path ✅
+8. **Cleanup** — `outport gc` + stale detection in `outport status` ✅
