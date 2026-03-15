@@ -146,6 +146,45 @@ func TestAllocationWithHostnames(t *testing.T) {
 	}
 }
 
+func TestFindByDir(t *testing.T) {
+	reg := &Registry{Projects: make(map[string]Allocation)}
+	reg.Set("myapp", "main", Allocation{ProjectDir: "/src/myapp"})
+	reg.Set("myapp", "bkrm", Allocation{ProjectDir: "/tmp/myapp-clone"})
+
+	key, alloc, ok := reg.FindByDir("/src/myapp")
+	if !ok {
+		t.Fatal("expected to find by dir")
+	}
+	if key != "myapp/main" {
+		t.Errorf("key: got %q, want %q", key, "myapp/main")
+	}
+	if alloc.ProjectDir != "/src/myapp" {
+		t.Errorf("dir: got %q", alloc.ProjectDir)
+	}
+
+	_, _, ok = reg.FindByDir("/nonexistent")
+	if ok {
+		t.Error("expected not found for nonexistent dir")
+	}
+}
+
+func TestFindByProject(t *testing.T) {
+	reg := &Registry{Projects: make(map[string]Allocation)}
+	reg.Set("myapp", "main", Allocation{ProjectDir: "/src/myapp"})
+	reg.Set("myapp", "bkrm", Allocation{ProjectDir: "/tmp/myapp-clone"})
+	reg.Set("other", "main", Allocation{ProjectDir: "/src/other"})
+
+	instances := reg.FindByProject("myapp")
+	if len(instances) != 2 {
+		t.Fatalf("expected 2 instances, got %d", len(instances))
+	}
+
+	instances = reg.FindByProject("nonexistent")
+	if len(instances) != 0 {
+		t.Fatalf("expected 0 instances, got %d", len(instances))
+	}
+}
+
 func TestDefaultPath(t *testing.T) {
 	path, err := DefaultPath()
 	if err != nil {

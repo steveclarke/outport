@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 type Allocation struct {
@@ -81,6 +82,28 @@ func (r *Registry) Get(project, instance string) (Allocation, bool) {
 
 func (r *Registry) Remove(project, instance string) {
 	delete(r.Projects, registryKey(project, instance))
+}
+
+// FindByDir searches for an allocation whose ProjectDir matches the given directory.
+func (r *Registry) FindByDir(dir string) (string, Allocation, bool) {
+	for key, alloc := range r.Projects {
+		if alloc.ProjectDir == dir {
+			return key, alloc, true
+		}
+	}
+	return "", Allocation{}, false
+}
+
+// FindByProject returns all registry keys that belong to the given project name.
+func (r *Registry) FindByProject(project string) map[string]Allocation {
+	prefix := project + "/"
+	result := make(map[string]Allocation)
+	for key, alloc := range r.Projects {
+		if strings.HasPrefix(key, prefix) {
+			result[key] = alloc
+		}
+	}
+	return result
 }
 
 func (r *Registry) UsedPorts() map[int]bool {
