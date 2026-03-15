@@ -230,11 +230,13 @@ func printStatusStyled(cmd *cobra.Command, reg *registry.Registry, portStatus ma
 				}
 			}
 
-			url := ""
+			extra := ""
 			if cfg != nil {
 				if svc, ok := cfg.Services[svcName]; ok {
 					if u := serviceURL(svc.Protocol, hostname, port); u != "" {
-						url = "  " + ui.UrlStyle.Render(u)
+						extra = "  " + ui.UrlStyle.Render(u)
+					} else if hostname != "" {
+						extra = "  " + ui.HostnameStyle.Render(hostname)
 					}
 				}
 			}
@@ -244,7 +246,7 @@ func printStatusStyled(cmd *cobra.Command, reg *registry.Registry, portStatus ma
 				ui.Arrow,
 				ui.PortStyle.Render(fmt.Sprintf("%d", port)),
 				status,
-				url,
+				extra,
 			)
 			lipgloss.Fprintln(w, line)
 		}

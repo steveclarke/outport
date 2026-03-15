@@ -436,9 +436,11 @@ func printServiceLine(w io.Writer, cfg *config.Config, svcName string, port int,
 		hostname = h
 	}
 
-	url := ""
+	extra := ""
 	if u := serviceURL(svc.Protocol, hostname, port); u != "" {
-		url = "  " + ui.UrlStyle.Render(u)
+		extra = "  " + ui.UrlStyle.Render(u)
+	} else if hostname != "" {
+		extra = "  " + ui.HostnameStyle.Render(hostname)
 	}
 
 	line := fmt.Sprintf("    %s  %s  %s %-5s%s%s",
@@ -447,7 +449,7 @@ func printServiceLine(w io.Writer, cfg *config.Config, svcName string, port int,
 		ui.Arrow,
 		ui.PortStyle.Render(fmt.Sprintf("%d", port)),
 		status,
-		url,
+		extra,
 	)
 	lipgloss.Fprintln(w, line)
 }

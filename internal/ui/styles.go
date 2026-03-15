@@ -49,6 +49,10 @@ var (
 	UrlStyle = lipgloss.NewStyle().
 			Foreground(Yellow)
 
+	// Hostname display
+	HostnameStyle = lipgloss.NewStyle().
+			Foreground(Cyan)
+
 	Red = lipgloss.Color("196")
 
 	// Port status indicators
