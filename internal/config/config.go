@@ -10,13 +10,22 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// templateVarRe matches ${service.field} references in derived value templates.
-var templateVarRe = regexp.MustCompile(`\$\{(\w+)\.(\w+)\}`)
+// hostnameRe validates hostname stems: lowercase alphanumeric, hyphens, and dots.
+var hostnameRe = regexp.MustCompile(`^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$`)
+
+// templateVarRe matches ${service.field} or ${service.field:modifier} references in derived value templates.
+var templateVarRe = regexp.MustCompile(`\$\{(\w+)\.(\w+)(?::(\w+))?\}`)
 
 // validFields are the service fields that can be referenced in templates.
 var validFields = map[string]bool{
 	"port":     true,
 	"hostname": true,
+	"url":      true,
+}
+
+// validModifiers maps field names to their allowed modifiers.
+var validModifiers = map[string]map[string]bool{
+	"url": {"direct": true},
 }
 
 func validateTemplateRefs(derivedName, template string, services map[string]Service) error {
@@ -24,16 +33,25 @@ func validateTemplateRefs(derivedName, template string, services map[string]Serv
 		return nil
 	}
 	matches := templateVarRe.FindAllStringSubmatch(template, -1)
-	for _, match := range matches {
-		svcName := match[1]
-		field := match[2]
+	for _, m := range matches {
+		svcName := m[1]
+		field := m[2]
+		modifier := ""
+		if len(m) > 3 {
+			modifier = m[3]
+		}
+
 		if _, ok := services[svcName]; !ok {
-			return fmt.Errorf("Derived value %q in %s references \"${%s.%s}\" but no service named %q exists.",
-				derivedName, FileName, svcName, field, svcName)
+			return fmt.Errorf("derived %q: references unknown service %q", derivedName, svcName)
 		}
 		if !validFields[field] {
-			return fmt.Errorf("Derived value %q in %s references \"${%s.%s}\" but %q is not a valid field. Valid fields: port, hostname.",
-				derivedName, FileName, svcName, field, field)
+			return fmt.Errorf("derived %q: unknown field %q (valid: port, hostname, url)", derivedName, field)
+		}
+		if modifier != "" {
+			mods, ok := validModifiers[field]
+			if !ok || !mods[modifier] {
+				return fmt.Errorf("derived %q: unknown modifier %q for field %q", derivedName, modifier, field)
+			}
 		}
 	}
 	return nil
@@ -273,6 +291,20 @@ func (c *Config) validate() error {
 					other, name, svc.EnvVar, envFile)
 			}
 			fileVars[envFile][svc.EnvVar] = name
+		}
+	}
+
+	for name, svc := range c.Services {
+		if svc.Hostname != "" {
+			if svc.Protocol != "http" && svc.Protocol != "https" {
+				return fmt.Errorf("service %q: hostname requires protocol http or https", name)
+			}
+			if !hostnameRe.MatchString(svc.Hostname) {
+				return fmt.Errorf("service %q: hostname %q contains invalid characters (use lowercase alphanumeric, hyphens, dots)", name, svc.Hostname)
+			}
+			if !strings.Contains(svc.Hostname, c.Name) {
+				return fmt.Errorf("service %q: hostname %q must contain project name %q", name, svc.Hostname, c.Name)
+			}
 		}
 	}
 
