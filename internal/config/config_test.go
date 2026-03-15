@@ -262,6 +262,125 @@ derived:
 	}
 }
 
+func TestLoad_DerivedPerFileValues(t *testing.T) {
+	dir := writeConfig(t, `name: myapp
+services:
+  rails:
+    env_var: RAILS_PORT
+    env_file: backend/.env
+
+derived:
+  NUXT_API_BASE_URL:
+    env_file:
+      - file: frontend/apps/main/.env
+        value: "http://localhost:${RAILS_PORT}/api/v1"
+      - file: frontend/apps/portal/.env
+        value: "http://localhost:${RAILS_PORT}/portal/api/v1"
+`)
+	cfg, err := Load(dir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	dv := cfg.Derived["NUXT_API_BASE_URL"]
+	if len(dv.EnvFiles) != 2 {
+		t.Fatalf("EnvFiles count = %d, want 2", len(dv.EnvFiles))
+	}
+	if dv.PerFile["frontend/apps/main/.env"] != "http://localhost:${RAILS_PORT}/api/v1" {
+		t.Errorf("main value = %q", dv.PerFile["frontend/apps/main/.env"])
+	}
+	if dv.PerFile["frontend/apps/portal/.env"] != "http://localhost:${RAILS_PORT}/portal/api/v1" {
+		t.Errorf("portal value = %q", dv.PerFile["frontend/apps/portal/.env"])
+	}
+	// Top-level value should be empty when all entries have per-file values
+	if dv.Value != "" {
+		t.Errorf("Value = %q, want empty (all per-file)", dv.Value)
+	}
+}
+
+func TestLoad_DerivedMixedEnvFileEntries(t *testing.T) {
+	dir := writeConfig(t, `name: myapp
+services:
+  rails:
+    env_var: RAILS_PORT
+    env_file: backend/.env
+
+derived:
+  API_URL:
+    value: "http://localhost:${RAILS_PORT}/api"
+    env_file:
+      - frontend/shared/.env
+      - file: frontend/portal/.env
+        value: "http://localhost:${RAILS_PORT}/portal/api"
+`)
+	cfg, err := Load(dir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	dv := cfg.Derived["API_URL"]
+	if len(dv.EnvFiles) != 2 {
+		t.Fatalf("EnvFiles count = %d, want 2", len(dv.EnvFiles))
+	}
+	// String entry uses top-level value
+	if dv.Value != "http://localhost:${RAILS_PORT}/api" {
+		t.Errorf("Value = %q, want top-level template", dv.Value)
+	}
+	// Object entry has per-file override
+	if dv.PerFile["frontend/portal/.env"] != "http://localhost:${RAILS_PORT}/portal/api" {
+		t.Errorf("portal value = %q", dv.PerFile["frontend/portal/.env"])
+	}
+	// String entry should NOT be in PerFile
+	if _, ok := dv.PerFile["frontend/shared/.env"]; ok {
+		t.Error("shared entry should not have a per-file override")
+	}
+}
+
+func TestLoad_DerivedPerFileValidatesReferences(t *testing.T) {
+	dir := writeConfig(t, `name: myapp
+services:
+  rails:
+    env_var: RAILS_PORT
+    env_file: backend/.env
+
+derived:
+  API_URL:
+    env_file:
+      - file: frontend/.env
+        value: "http://localhost:${MISSING_PORT}/api"
+`)
+	_, err := Load(dir)
+	if err == nil {
+		t.Fatal("expected error for invalid reference in per-file value, got nil")
+	}
+	if !strings.Contains(err.Error(), "MISSING_PORT") {
+		t.Errorf("error = %q, want to contain 'MISSING_PORT'", err.Error())
+	}
+}
+
+func TestLoad_DerivedPerFileMissingValue(t *testing.T) {
+	// When all entries are per-file objects, top-level value is optional.
+	// But a string entry without a top-level value is an error.
+	dir := writeConfig(t, `name: myapp
+services:
+  rails:
+    env_var: RAILS_PORT
+    env_file: backend/.env
+
+derived:
+  API_URL:
+    env_file:
+      - frontend/shared/.env
+      - file: frontend/portal/.env
+        value: "http://localhost:${RAILS_PORT}/portal/api"
+`)
+	_, err := Load(dir)
+	if err == nil {
+		t.Fatal("expected error for string entry without top-level value, got nil")
+	}
+	if !strings.Contains(err.Error(), "value") {
+		t.Errorf("error = %q, want to contain 'value'", err.Error())
+	}
+}
+
 func TestLoad_DerivedInvalidReference(t *testing.T) {
 	dir := writeConfig(t, `name: myapp
 services:
@@ -368,8 +487,8 @@ func TestResolveDerived_SubstitutesVars(t *testing.T) {
 
 	resolved := ResolveDerived(derived, envVarPorts)
 
-	if resolved["API_URL"] != "http://localhost:24920/api/v1" {
-		t.Errorf("API_URL = %q, want http://localhost:24920/api/v1", resolved["API_URL"])
+	if resolved["API_URL"]["frontend/.env"] != "http://localhost:24920/api/v1" {
+		t.Errorf("API_URL = %q, want http://localhost:24920/api/v1", resolved["API_URL"]["frontend/.env"])
 	}
 }
 
@@ -384,8 +503,8 @@ func TestResolveDerived_MultipleReferences(t *testing.T) {
 
 	resolved := ResolveDerived(derived, envVarPorts)
 
-	if resolved["CORS"] != "http://localhost:14139,http://localhost:24920" {
-		t.Errorf("CORS = %q, want substituted value", resolved["CORS"])
+	if resolved["CORS"][".env"] != "http://localhost:14139,http://localhost:24920" {
+		t.Errorf("CORS = %q, want substituted value", resolved["CORS"][".env"])
 	}
 }
 
@@ -400,8 +519,75 @@ func TestResolveDerived_NoReferences(t *testing.T) {
 
 	resolved := ResolveDerived(derived, envVarPorts)
 
-	if resolved["STATIC"] != "some-static-value" {
-		t.Errorf("STATIC = %q, want some-static-value", resolved["STATIC"])
+	if resolved["STATIC"][".env"] != "some-static-value" {
+		t.Errorf("STATIC = %q, want some-static-value", resolved["STATIC"][".env"])
+	}
+}
+
+func TestResolveDerived_PerFileValues(t *testing.T) {
+	derived := map[string]DerivedValue{
+		"API_URL": {
+			EnvFiles: []string{"main/.env", "portal/.env"},
+			PerFile: map[string]string{
+				"main/.env":   "http://localhost:${RAILS_PORT}/api/v1",
+				"portal/.env": "http://localhost:${RAILS_PORT}/portal/api/v1",
+			},
+		},
+	}
+	envVarPorts := map[string]int{"RAILS_PORT": 3000}
+
+	resolved := ResolveDerived(derived, envVarPorts)
+
+	mainVal := resolved["API_URL"]["main/.env"]
+	if mainVal != "http://localhost:3000/api/v1" {
+		t.Errorf("main = %q, want http://localhost:3000/api/v1", mainVal)
+	}
+	portalVal := resolved["API_URL"]["portal/.env"]
+	if portalVal != "http://localhost:3000/portal/api/v1" {
+		t.Errorf("portal = %q, want http://localhost:3000/portal/api/v1", portalVal)
+	}
+}
+
+func TestResolveDerived_MixedPerFileAndDefault(t *testing.T) {
+	derived := map[string]DerivedValue{
+		"API_URL": {
+			Value:    "http://localhost:${RAILS_PORT}/api",
+			EnvFiles: []string{"shared/.env", "portal/.env"},
+			PerFile: map[string]string{
+				"portal/.env": "http://localhost:${RAILS_PORT}/portal/api",
+			},
+		},
+	}
+	envVarPorts := map[string]int{"RAILS_PORT": 3000}
+
+	resolved := ResolveDerived(derived, envVarPorts)
+
+	sharedVal := resolved["API_URL"]["shared/.env"]
+	if sharedVal != "http://localhost:3000/api" {
+		t.Errorf("shared = %q, want default value", sharedVal)
+	}
+	portalVal := resolved["API_URL"]["portal/.env"]
+	if portalVal != "http://localhost:3000/portal/api" {
+		t.Errorf("portal = %q, want per-file value", portalVal)
+	}
+}
+
+func TestResolveDerived_DefaultValueAllFiles(t *testing.T) {
+	// When no per-file overrides, all files get the default value
+	derived := map[string]DerivedValue{
+		"API_URL": {
+			Value:    "http://localhost:${PORT}/api",
+			EnvFiles: []string{"a/.env", "b/.env"},
+		},
+	}
+	envVarPorts := map[string]int{"PORT": 3000}
+
+	resolved := ResolveDerived(derived, envVarPorts)
+
+	for _, file := range []string{"a/.env", "b/.env"} {
+		if resolved["API_URL"][file] != "http://localhost:3000/api" {
+			t.Errorf("%s = %q, want default resolved value", file, resolved["API_URL"][file])
+		}
 	}
 }
 

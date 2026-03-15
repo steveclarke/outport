@@ -105,12 +105,12 @@ func runApply(cmd *cobra.Command, args []string) error {
 
 	// Resolve derived values and add to envFileVars
 	resolvedDerived := resolveDerivedFromAlloc(cfg, ports)
-	for name, dv := range cfg.Derived {
-		for _, envFile := range dv.EnvFiles {
-			if envFileVars[envFile] == nil {
-				envFileVars[envFile] = make(map[string]string)
+	for name, fileValues := range resolvedDerived {
+		for file, value := range fileValues {
+			if envFileVars[file] == nil {
+				envFileVars[file] = make(map[string]string)
 			}
-			envFileVars[envFile][name] = resolvedDerived[name]
+			envFileVars[file][name] = value
 		}
 	}
 
@@ -148,7 +148,8 @@ func buildEnvVarPorts(cfg *config.Config, ports map[string]int) map[string]int {
 }
 
 // resolveDerivedFromAlloc resolves derived value templates using allocated ports.
-func resolveDerivedFromAlloc(cfg *config.Config, ports map[string]int) map[string]string {
+// Returns name → file → resolved value.
+func resolveDerivedFromAlloc(cfg *config.Config, ports map[string]int) map[string]map[string]string {
 	if len(cfg.Derived) == 0 {
 		return nil
 	}
@@ -180,8 +181,9 @@ type svcJSON struct {
 func boolPtr(b bool) *bool { return &b }
 
 type derivedJSON struct {
-	Value    string   `json:"value"`
-	EnvFiles []string `json:"env_files"`
+	Value    string            `json:"value,omitempty"`     // when all files share a value
+	EnvFiles []string          `json:"env_files,omitempty"` // when all files share a value
+	Values   map[string]string `json:"values,omitempty"`    // file → value when per-file
 }
 
 type applyJSON struct {
@@ -214,21 +216,39 @@ func buildServiceMap(cfg *config.Config, ports map[string]int) map[string]svcJSO
 	return services
 }
 
-func buildDerivedMap(derived map[string]config.DerivedValue, resolved map[string]string) map[string]derivedJSON {
+func buildDerivedMap(derived map[string]config.DerivedValue, resolved map[string]map[string]string) map[string]derivedJSON {
 	if len(resolved) == 0 {
 		return nil
 	}
 	m := make(map[string]derivedJSON)
-	for name, value := range resolved {
-		m[name] = derivedJSON{
-			Value:    value,
-			EnvFiles: derived[name].EnvFiles,
+	for name, fileValues := range resolved {
+		dv := derived[name]
+		// If all files have the same resolved value, use the simple format
+		allSame := true
+		var commonValue string
+		for _, v := range fileValues {
+			if commonValue == "" {
+				commonValue = v
+			} else if v != commonValue {
+				allSame = false
+				break
+			}
+		}
+		if allSame {
+			m[name] = derivedJSON{
+				Value:    commonValue,
+				EnvFiles: dv.EnvFiles,
+			}
+		} else {
+			m[name] = derivedJSON{
+				Values: fileValues,
+			}
 		}
 	}
 	return m
 }
 
-func printApplyJSON(cmd *cobra.Command, cfg *config.Config, wt *worktree.Info, ports map[string]int, resolvedDerived map[string]string, envFiles []string) error {
+func printApplyJSON(cmd *cobra.Command, cfg *config.Config, wt *worktree.Info, ports map[string]int, resolvedDerived map[string]map[string]string, envFiles []string) error {
 	out := applyJSON{
 		Project:  cfg.Name,
 		Instance: wt.Instance,
@@ -254,7 +274,7 @@ func printHeader(w io.Writer, projectName string, wt *worktree.Info) {
 	lipgloss.Fprintln(w)
 }
 
-func printApplyStyled(cmd *cobra.Command, cfg *config.Config, wt *worktree.Info, serviceNames []string, ports map[string]int, resolvedDerived map[string]string, envFiles []string) error {
+func printApplyStyled(cmd *cobra.Command, cfg *config.Config, wt *worktree.Info, serviceNames []string, ports map[string]int, resolvedDerived map[string]map[string]string, envFiles []string) error {
 	w := cmd.OutOrStdout()
 
 	printHeader(w, cfg.Name, wt)
@@ -277,23 +297,50 @@ func printApplyStyled(cmd *cobra.Command, cfg *config.Config, wt *worktree.Info,
 	return nil
 }
 
-func printDerivedValues(w io.Writer, resolved map[string]string) {
+func truncate(s string, max int) string {
+	if len(s) > max {
+		return s[:max-3] + "..."
+	}
+	return s
+}
+
+func printDerivedValues(w io.Writer, resolved map[string]map[string]string) {
 	lipgloss.Fprintln(w)
 	lipgloss.Fprintln(w, ui.DimStyle.Render("    derived:"))
 	names := sortedMapKeys(resolved)
 	for _, name := range names {
-		value := resolved[name]
-		// Truncate long values for display
-		display := value
-		if len(display) > 50 {
-			display = display[:47] + "..."
+		fileValues := resolved[name]
+		// Check if all files have the same value
+		allSame := true
+		var commonValue string
+		for _, v := range fileValues {
+			if commonValue == "" {
+				commonValue = v
+			} else if v != commonValue {
+				allSame = false
+				break
+			}
 		}
-		line := fmt.Sprintf("    %s  %s %s",
-			ui.EnvVarStyle.Render(fmt.Sprintf("%-36s", name)),
-			ui.Arrow,
-			ui.DimStyle.Render(display),
-		)
-		lipgloss.Fprintln(w, line)
+		if allSame {
+			line := fmt.Sprintf("    %s  %s %s",
+				ui.EnvVarStyle.Render(fmt.Sprintf("%-36s", name)),
+				ui.Arrow,
+				ui.DimStyle.Render(truncate(commonValue, 50)),
+			)
+			lipgloss.Fprintln(w, line)
+		} else {
+			lipgloss.Fprintln(w, fmt.Sprintf("    %s",
+				ui.EnvVarStyle.Render(name)))
+			files := sortedMapKeys(fileValues)
+			for _, file := range files {
+				line := fmt.Sprintf("      %s  %s %s",
+					ui.DimStyle.Render(fmt.Sprintf("%-34s", file)),
+					ui.Arrow,
+					ui.DimStyle.Render(truncate(fileValues[file], 50)),
+				)
+				lipgloss.Fprintln(w, line)
+			}
+		}
 	}
 }
 

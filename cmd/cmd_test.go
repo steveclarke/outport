@@ -251,6 +251,57 @@ func TestApply_DerivedStyledOutput(t *testing.T) {
 	}
 }
 
+func TestApply_DerivedPerFileValues(t *testing.T) {
+	dir := setupProject(t, `name: testapp
+services:
+  rails:
+    preferred_port: 3000
+    env_var: RAILS_PORT
+    protocol: http
+    env_file: backend/.env
+
+derived:
+  API_URL:
+    env_file:
+      - file: frontend/main/.env
+        value: "http://localhost:${RAILS_PORT}/api/v1"
+      - file: frontend/portal/.env
+        value: "http://localhost:${RAILS_PORT}/portal/api/v1"
+`)
+	os.MkdirAll(filepath.Join(dir, "backend"), 0755)
+	os.MkdirAll(filepath.Join(dir, "frontend/main"), 0755)
+	os.MkdirAll(filepath.Join(dir, "frontend/portal"), 0755)
+
+	output := executeCmd(t, "apply", "--json")
+
+	var result applyJSON
+	if err := json.Unmarshal([]byte(output), &result); err != nil {
+		t.Fatalf("invalid JSON: %v\nOutput: %s", err, output)
+	}
+
+	apiURL := result.Derived["API_URL"]
+	// Per-file values should use the "values" field
+	if apiURL.Values == nil {
+		t.Fatal("expected per-file values map, got nil")
+	}
+	if apiURL.Values["frontend/main/.env"] != "http://localhost:3000/api/v1" {
+		t.Errorf("main = %q", apiURL.Values["frontend/main/.env"])
+	}
+	if apiURL.Values["frontend/portal/.env"] != "http://localhost:3000/portal/api/v1" {
+		t.Errorf("portal = %q", apiURL.Values["frontend/portal/.env"])
+	}
+
+	// Check .env files contain the correct per-file values
+	mainEnv, _ := os.ReadFile(filepath.Join(dir, "frontend/main/.env"))
+	if !bytes.Contains(mainEnv, []byte("API_URL=http://localhost:3000/api/v1")) {
+		t.Errorf("main/.env missing correct API_URL, got:\n%s", mainEnv)
+	}
+	portalEnv, _ := os.ReadFile(filepath.Join(dir, "frontend/portal/.env"))
+	if !bytes.Contains(portalEnv, []byte("API_URL=http://localhost:3000/portal/api/v1")) {
+		t.Errorf("portal/.env missing correct API_URL, got:\n%s", portalEnv)
+	}
+}
+
 func TestApply_NoDerived_OmitsFromJSON(t *testing.T) {
 	setupProject(t, testConfig)
 

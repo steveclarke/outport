@@ -13,16 +13,41 @@ import (
 
 var templateVarRe = regexp.MustCompile(`\$\{(\w+)\}`)
 
+func validateTemplateRefs(name, template string, validVars map[string]bool) error {
+	if template == "" {
+		return nil
+	}
+	matches := templateVarRe.FindAllStringSubmatch(template, -1)
+	for _, match := range matches {
+		ref := match[1]
+		if !validVars[ref] {
+			return fmt.Errorf("Derived value %q in %s references \"${%s}\" but no service has env_var %q.",
+				name, FileName, ref, ref)
+		}
+	}
+	return nil
+}
+
 // ResolveDerived substitutes ${VAR_NAME} references in derived values
 // with the corresponding port numbers from envVarPorts.
-func ResolveDerived(derived map[string]DerivedValue, envVarPorts map[string]int) map[string]string {
-	resolved := make(map[string]string)
+// Returns name → file → resolved value.
+func ResolveDerived(derived map[string]DerivedValue, envVarPorts map[string]int) map[string]map[string]string {
+	resolved := make(map[string]map[string]string)
 	for name, dv := range derived {
-		value := dv.Value
-		for varName, port := range envVarPorts {
-			value = strings.ReplaceAll(value, "${"+varName+"}", strconv.Itoa(port))
+		fileValues := make(map[string]string)
+		for _, file := range dv.EnvFiles {
+			// Use per-file value if available, otherwise default
+			template := dv.Value
+			if pf, ok := dv.PerFile[file]; ok {
+				template = pf
+			}
+			value := template
+			for varName, port := range envVarPorts {
+				value = strings.ReplaceAll(value, "${"+varName+"}", strconv.Itoa(port))
+			}
+			fileValues[file] = value
 		}
-		resolved[name] = value
+		resolved[name] = fileValues
 	}
 	return resolved
 }
@@ -65,13 +90,50 @@ type rawService struct {
 }
 
 type DerivedValue struct {
-	Value    string   `yaml:"value"`
-	EnvFiles []string `yaml:"-"`
+	Value    string            `yaml:"value"`
+	EnvFiles []string          `yaml:"-"`
+	PerFile  map[string]string `yaml:"-"` // file → value template (overrides Value)
+}
+
+// derivedEnvFileEntry is a single entry in a derived value's env_file list.
+// Can be a plain string or an object with file + value.
+type derivedEnvFileEntry struct {
+	File  string `yaml:"file"`
+	Value string `yaml:"value"`
+}
+
+// derivedEnvFileField handles YAML that can be a string, []string, or []object.
+type derivedEnvFileField []derivedEnvFileEntry
+
+func (d *derivedEnvFileField) UnmarshalYAML(value *yaml.Node) error {
+	// Single string: "frontend/.env"
+	if value.Kind == yaml.ScalarNode {
+		*d = []derivedEnvFileEntry{{File: value.Value}}
+		return nil
+	}
+	if value.Kind != yaml.SequenceNode {
+		return fmt.Errorf("env_file must be a string or list")
+	}
+	// List — each item can be a string or an object with file + value
+	for _, item := range value.Content {
+		if item.Kind == yaml.ScalarNode {
+			*d = append(*d, derivedEnvFileEntry{File: item.Value})
+		} else if item.Kind == yaml.MappingNode {
+			var entry derivedEnvFileEntry
+			if err := item.Decode(&entry); err != nil {
+				return fmt.Errorf("invalid env_file entry: %w", err)
+			}
+			*d = append(*d, entry)
+		} else {
+			return fmt.Errorf("env_file entries must be strings or objects with file + value")
+		}
+	}
+	return nil
 }
 
 type rawDerivedValue struct {
-	Value   string       `yaml:"value"`
-	EnvFile envFileField `yaml:"env_file"`
+	Value   string              `yaml:"value"`
+	EnvFile derivedEnvFileField `yaml:"env_file"`
 }
 
 // rawConfig is the YAML deserialization target.
@@ -150,8 +212,14 @@ func (c *Config) normalize(raw *rawConfig) error {
 
 	for name, rd := range raw.RawDerived {
 		dv := DerivedValue{
-			Value:    rd.Value,
-			EnvFiles: []string(rd.EnvFile),
+			Value:   rd.Value,
+			PerFile: make(map[string]string),
+		}
+		for _, entry := range rd.EnvFile {
+			dv.EnvFiles = append(dv.EnvFiles, entry.File)
+			if entry.Value != "" {
+				dv.PerFile[entry.File] = entry.Value
+			}
 		}
 		c.Derived[name] = dv
 	}
@@ -185,11 +253,16 @@ func (c *Config) validate() error {
 	}
 
 	for name, dv := range c.Derived {
-		if dv.Value == "" {
-			return fmt.Errorf("Derived value %q in %s is missing the 'value' field.", name, FileName)
-		}
 		if len(dv.EnvFiles) == 0 {
 			return fmt.Errorf("Derived value %q in %s is missing the 'env_file' field.", name, FileName)
+		}
+
+		// Check if any env_file entries need the top-level value
+		// (string entries without per-file overrides)
+		for _, file := range dv.EnvFiles {
+			if _, hasPerFile := dv.PerFile[file]; !hasPerFile && dv.Value == "" {
+				return fmt.Errorf("Derived value %q in %s is missing the 'value' field (required for entries without per-file values).", name, FileName)
+			}
 		}
 
 		// Name must not collide with any service env_var
@@ -197,13 +270,15 @@ func (c *Config) validate() error {
 			return fmt.Errorf("Derived value %q in %s conflicts with a service env_var of the same name.", name, FileName)
 		}
 
-		// All ${VAR} references must match a service env_var
-		matches := templateVarRe.FindAllStringSubmatch(dv.Value, -1)
-		for _, match := range matches {
-			ref := match[1]
-			if !serviceEnvVars[ref] {
-				return fmt.Errorf("Derived value %q in %s references \"${%s}\" but no service has env_var %q.",
-					name, FileName, ref, ref)
+		// Validate references in top-level value
+		if err := validateTemplateRefs(name, dv.Value, serviceEnvVars); err != nil {
+			return err
+		}
+
+		// Validate references in per-file values
+		for _, pfValue := range dv.PerFile {
+			if err := validateTemplateRefs(name, pfValue, serviceEnvVars); err != nil {
+				return err
 			}
 		}
 	}
