@@ -246,6 +246,56 @@ just run apply     # Build and run with args
 just clean        # Clean build artifacts
 ```
 
+## FAQ
+
+### "My frontend and backend need to know each other's URLs, not just ports"
+
+Use [derived values](#derived-values). Outport computes URLs from allocated ports and writes finished env vars to `.env`.
+
+### "I'm running two worktrees and my sessions are colliding"
+
+Browsers share cookies across ports on the same hostname. If both worktrees serve on `localhost`, they share a cookie jar. Workaround: use an incognito window or a separate browser profile for the second worktree. Long-term: `.test` domain support ([#13](https://github.com/steveclarke/outport/issues/13)) will give each worktree its own hostname.
+
+### "Docker Compose fails with 'invalid hostPort'"
+
+If you're upgrading from a version that used inline `# managed by outport` comments, run `outport apply` to migrate to the fenced block format (v0.7.2+). The fenced format writes clean values without inline comments.
+
+### "I have a monorepo where two apps use the same env var name but need different values"
+
+Use [per-file value overrides](#derived-values) in derived values:
+
+```yaml
+derived:
+  API_BASE_URL:
+    env_file:
+      - file: frontend/app-a/.env
+        value: "http://localhost:${RAILS_PORT}/api/v1"
+      - file: frontend/app-b/.env
+        value: "http://localhost:${RAILS_PORT}/admin/api/v1"
+```
+
+### "How do I add Outport to my project's setup script?"
+
+Make it optional so developers without Outport aren't blocked:
+
+```bash
+if command -v outport > /dev/null 2>&1; then
+  outport apply
+else
+  echo "Outport not found — install: brew install steveclarke/tap/outport"
+fi
+```
+
+### "Can AI coding agents use Outport?"
+
+Yes. Install the Outport skill so your agent knows the commands and patterns:
+
+```bash
+npx skills add steveclarke/outport/skills
+```
+
+The agent can run `outport apply` in worktrees, read `outport ports --json` for structured output, and configure `.outport.yml` for new services.
+
 ## Roadmap
 
 - **v1 (current):** Port allocation + apply/unregister + `.env` writing
