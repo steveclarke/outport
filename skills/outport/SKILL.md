@@ -96,6 +96,7 @@ Most frameworks read `.env` natively or with minimal setup:
 | `env_var` | yes | Environment variable name written to `.env` |
 | `protocol` | no | `http`, `https`, `smtp`, `postgres`, `redis`, etc. HTTP services show URLs in output and work with `outport open` |
 | `preferred_port` | no | Port to try first. Falls back to hash-based allocation if taken |
+| `hostname` | no | Hostname for URL display. Used by `outport ports`, `outport open`, and JSON output. Defaults to `localhost` |
 | `env_file` | no | Where to write. String or array. Defaults to `.env` in project root |
 
 ### Writing to Multiple `.env` Files
@@ -170,12 +171,14 @@ services:
   frontend_main:
     env_var: MAIN_PORT
     protocol: http
+    hostname: myapp.localhost
     env_file:
       - frontend/apps/main/.env
       - backend/.env               # Backend needs this for CORS
   frontend_portal:
     env_var: PORTAL_PORT
     protocol: http
+    hostname: portal.myapp.localhost
     env_file:
       - frontend/apps/portal/.env
       - backend/.env               # Backend needs this for CORS
