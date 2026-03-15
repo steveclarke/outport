@@ -30,15 +30,15 @@ Entry point: `main.go` → `cmd.Execute()` (Cobra CLI).
 
 - **allocator** — Port allocation via FNV-32a hash on `"{project}/{instance}/{service}"`. An optional preferred_port can be specified per service; when omitted, the hash is the primary allocation method. Port range: 10000–39999. Collisions resolved by linear probing with wraparound.
 - **registry** — Persistent JSON store at `~/.config/outport/registry.json`. Keys are `"{project}/{instance}"` (e.g., `"myapp/main"`, `"myapp/feature-xyz"`). Atomic writes via temp file + rename.
-- **config** — Loads/validates `.outport.yml`. Supports per-service env_file for writing to different `.env` files (string or array for multi-file writes), preferred_port, explicit protocol, and derived values (`${VAR_NAME}` templates resolved at apply time). Validates env_var uniqueness per file and derived value reference validity.
+- **config** — Loads/validates `.outport.yml`. Supports per-service env_file (string or array), preferred_port, protocol, hostname, and derived values (`${VAR_NAME}` templates with optional per-file overrides). Validates env_var uniqueness per file and derived value reference validity.
 - **worktree** — Detects git worktree vs. main checkout. Parses `.git` file to extract worktree name. Defaults to `"main"`.
-- **dotenv** — Merges allocated ports into `.env` files. Variables declared in `.outport.yml` are always overwritten; all other lines are preserved untouched.
+- **dotenv** — Writes allocated ports and derived values into a fenced block (`# --- begin outport.dev ---` / `# --- end outport.dev ---`) at the bottom of `.env` files. User content outside the block is preserved. Managed vars in the user section are removed and relocated into the block. Also provides `RemoveBlock()` for cleanup.
 - **ui** — Lipgloss terminal styling constants.
 
 ### CLI commands (`cmd/`)
 
 - **apply** — Main workflow: load config → detect worktree → load registry → allocate ports → merge `.env` → display results. Use `--force` to re-allocate all ports from scratch.
-- **unregister** — Remove the current project/worktree from the registry and clean managed variables from `.env` files.
+- **unregister** — Remove the current project/worktree from the registry. Does not yet clean managed variables from `.env` files (see #23).
 - **init** — Interactive setup, creates `.outport.yml` with selected services.
 - **ports** — Show current project's allocated ports.
 - **open** — Open HTTP/HTTPS services in the default browser. Requires `protocol: http` on services.
@@ -52,7 +52,7 @@ All commands support `--json` for machine-readable output. Each command has pair
 - **Stateless commands** — Each command independently loads config, worktree info, and registry. No shared state between commands.
 - **Deterministic allocation** — Same inputs always produce the same port (idempotent `outport apply`).
 - **Instance = worktree name** — "main" for the primary checkout, worktree directory name for feature branches. Combined with project name to form unique registry keys.
-- **Config-driven .env merge** — Variables in `.outport.yml` are always written to `.env`, overwriting existing values. All other lines (comments, unrelated variables) are preserved.
+- **Fenced .env blocks** — Managed variables are written in a `# --- begin/end outport.dev ---` fenced section. User content outside the block is never touched. Vars claimed by Outport are removed from the user section and relocated into the block.
 - **Error wrapping** — Uses `fmt.Errorf("context: %w", err)` throughout.
 
 ## Testing

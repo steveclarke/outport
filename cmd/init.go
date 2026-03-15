@@ -35,6 +35,7 @@ services:
 #  web:
 #    env_var: PORT
 #    protocol: http          # enables 'outport open' and shows URLs in output
+#    hostname: myapp.localhost  # optional — defaults to localhost
 #
 #  postgres:
 #    env_var: DB_PORT

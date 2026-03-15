@@ -27,9 +27,11 @@ outport apply      # Allocate ports, write .env
 That's it. Your `.env` now has deterministic, non-conflicting ports:
 
 ```
+# --- begin outport.dev ---
 DATABASE_PORT=39972
 PORT=39519
 REDIS_PORT=30938
+# --- end outport.dev ---
 ```
 
 ## How It Works
@@ -117,17 +119,18 @@ Outport uses FNV-32 hashing on `{project}/{instance}/{service}` to produce a det
 
 Ports are stable: once allocated, running `outport apply` again reuses the same ports. New services added to your config get fresh allocations without disturbing existing ones.
 
-## Protocol
+## Protocol and Hostname
 
-Add `protocol` to services to get URLs in output and enable `outport open`:
+Add `protocol` to services to get URLs in output and enable `outport open`. Add `hostname` to control the hostname in URLs (defaults to `localhost`):
 
 ```yaml
 services:
   web:
     env_var: PORT
-    protocol: http       # shows http://localhost:<port> in output
+    protocol: http                # shows URL in output, enables 'outport open'
+    hostname: myapp.localhost     # optional — defaults to localhost
   postgres:
-    env_var: DB_PORT     # no protocol — just shows port number
+    env_var: DB_PORT              # no protocol — just shows port number
 ```
 
 Supported protocols: `http`, `https`, `smtp`, `postgres`, `redis`, and any custom string.
@@ -181,11 +184,25 @@ derived:
 After `outport apply`, `frontend/.env` contains:
 
 ```
-WEB_PORT=14139
+# --- begin outport.dev ---
 API_URL=http://localhost:24920/api/v1
+WEB_PORT=14139
+# --- end outport.dev ---
 ```
 
 Templates use `${VAR_NAME}` syntax, referencing any service `env_var`. Resolved at apply time — your app reads finished values from `.env`.
+
+When the same env var needs different values per file (common in monorepos), use per-file overrides:
+
+```yaml
+derived:
+  NUXT_API_BASE_URL:
+    env_file:
+      - file: frontend/apps/main/.env
+        value: "http://localhost:${RAILS_PORT}/api/v1"
+      - file: frontend/apps/portal/.env
+        value: "http://localhost:${RAILS_PORT}/portal/api/v1"
+```
 
 ## AI Agent Skill
 
