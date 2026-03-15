@@ -38,7 +38,7 @@ Entry point: `main.go` → `cmd.Execute()` (Cobra CLI).
 ### CLI commands (`cmd/`)
 
 - **apply** — Main workflow: load config → detect worktree → load registry → allocate ports → merge `.env` → display results. Use `--force` to re-allocate all ports from scratch.
-- **unregister** — Remove the current project/worktree from the registry. Does not yet clean managed variables from `.env` files (see #23).
+- **unregister** — Remove the current project/worktree from the registry and clean managed blocks from all `.env` files.
 - **init** — Interactive setup, creates `.outport.yml` with selected services.
 - **ports** — Show current project's allocated ports.
 - **open** — Open HTTP/HTTPS services in the default browser. Requires `protocol: http` on services.
