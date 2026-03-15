@@ -377,6 +377,26 @@ func TestMerge_PreservesContentAfterBlock(t *testing.T) {
 	}
 }
 
+func TestMerge_RemovedVarsDisappearFromBlock(t *testing.T) {
+	dir := t.TempDir()
+	envPath := filepath.Join(dir, ".env")
+
+	// First apply with two vars
+	Merge(envPath, map[string]string{"PORT": "3000", "DB_PORT": "5432"})
+
+	// Second apply with one var removed
+	Merge(envPath, map[string]string{"PORT": "3000"})
+
+	content := readEnv(t, envPath)
+
+	if !strings.Contains(content, "PORT=3000") {
+		t.Error("missing PORT")
+	}
+	if strings.Contains(content, "DB_PORT") {
+		t.Error("DB_PORT should be gone after removal from managed set")
+	}
+}
+
 func TestMerge_EmptyPortsWritesEmptyBlock(t *testing.T) {
 	dir := t.TempDir()
 	envPath := filepath.Join(dir, ".env")
