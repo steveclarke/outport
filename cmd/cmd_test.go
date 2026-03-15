@@ -3,6 +3,7 @@ package cmd
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -1079,6 +1080,317 @@ func TestPromote_AlreadyMainFails(t *testing.T) {
 	err := rootCmd.Execute()
 	if err == nil {
 		t.Fatal("expected error when promoting from main instance")
+	}
+}
+
+// --- hostname integration tests ---
+
+const testConfigWithMultipleHostnames = `name: myapp
+services:
+  web:
+    env_var: PORT
+    protocol: http
+    hostname: myapp
+  api:
+    env_var: API_PORT
+    protocol: http
+    hostname: api.myapp
+  postgres:
+    env_var: PGPORT
+derived:
+  CORS_ORIGINS:
+    value: "${web.url},${api.url}"
+    env_file: .env
+  API_BASE:
+    value: "${api.url:direct}/v1"
+    env_file: .env
+`
+
+func TestApply_WithHostnames(t *testing.T) {
+	dir := setupProject(t, testConfigWithMultipleHostnames)
+
+	output := executeCmd(t, "apply", "--json")
+
+	var result applyJSON
+	if err := json.Unmarshal([]byte(output), &result); err != nil {
+		t.Fatalf("invalid JSON output: %v\nOutput: %s", err, output)
+	}
+
+	if result.Project != "myapp" {
+		t.Errorf("project = %q, want %q", result.Project, "myapp")
+	}
+	if result.Instance != "main" {
+		t.Errorf("instance = %q, want %q", result.Instance, "main")
+	}
+	if len(result.Services) != 3 {
+		t.Fatalf("services count = %d, want 3", len(result.Services))
+	}
+
+	// Verify JSON includes hostnames for services with hostname config
+	webSvc := result.Services["web"]
+	if webSvc.Hostname != "myapp.test" {
+		t.Errorf("web hostname = %q, want %q", webSvc.Hostname, "myapp.test")
+	}
+	if webSvc.Protocol != "http" {
+		t.Errorf("web protocol = %q, want %q", webSvc.Protocol, "http")
+	}
+	if webSvc.URL == "" {
+		t.Error("web URL should not be empty")
+	}
+
+	apiSvc := result.Services["api"]
+	if apiSvc.Hostname != "api.myapp.test" {
+		t.Errorf("api hostname = %q, want %q", apiSvc.Hostname, "api.myapp.test")
+	}
+
+	// Postgres should not have a hostname
+	pgSvc := result.Services["postgres"]
+	if pgSvc.Hostname != "" {
+		t.Errorf("postgres hostname = %q, want empty", pgSvc.Hostname)
+	}
+
+	// Verify registry contains hostnames and protocols
+	regPath := filepath.Join(os.Getenv("HOME"), ".config", "outport", "registry.json")
+	reg, err := registry.Load(regPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	alloc, ok := reg.Get("myapp", "main")
+	if !ok {
+		t.Fatal("expected myapp/main in registry")
+	}
+	if alloc.Hostnames["web"] != "myapp.test" {
+		t.Errorf("registry web hostname = %q, want myapp.test", alloc.Hostnames["web"])
+	}
+	if alloc.Hostnames["api"] != "api.myapp.test" {
+		t.Errorf("registry api hostname = %q, want api.myapp.test", alloc.Hostnames["api"])
+	}
+	if alloc.Protocols["web"] != "http" {
+		t.Errorf("registry web protocol = %q, want http", alloc.Protocols["web"])
+	}
+	if alloc.Protocols["api"] != "http" {
+		t.Errorf("registry api protocol = %q, want http", alloc.Protocols["api"])
+	}
+
+	// Verify .env contains resolved derived values with url and url:direct
+	envData, err := os.ReadFile(filepath.Join(dir, ".env"))
+	if err != nil {
+		t.Fatalf("reading .env: %v", err)
+	}
+	envContent := string(envData)
+	// CORS_ORIGINS should use the .test hostnames
+	if !bytes.Contains(envData, []byte("CORS_ORIGINS=http://myapp.test,http://api.myapp.test")) {
+		t.Errorf(".env missing expected CORS_ORIGINS, got:\n%s", envContent)
+	}
+	// API_BASE should use the :direct modifier (localhost:port)
+	apiPort := result.Services["api"].Port
+	expected := fmt.Sprintf("API_BASE=http://localhost:%d/v1", apiPort)
+	if !bytes.Contains(envData, []byte(expected)) {
+		t.Errorf(".env missing expected API_BASE=%s, got:\n%s", expected, envContent)
+	}
+}
+
+func TestApply_HostnameUniquenessConflict(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	jsonFlag = false
+
+	// Project 1: "myapp" with hostname "myapp"
+	dir1 := t.TempDir()
+	os.WriteFile(filepath.Join(dir1, ".outport.yml"), []byte(`name: myapp
+services:
+  web:
+    env_var: PORT
+    protocol: http
+    hostname: myapp
+`), 0644)
+	os.Mkdir(filepath.Join(dir1, ".git"), 0755)
+
+	// Apply project 1 — should succeed
+	t.Chdir(dir1)
+	executeCmd(t, "apply", "--json")
+
+	// Project 2: different project name but same hostname stem
+	dir2 := t.TempDir()
+	os.WriteFile(filepath.Join(dir2, ".outport.yml"), []byte(`name: myapp2
+services:
+  web:
+    env_var: PORT
+    protocol: http
+    hostname: myapp2
+`), 0644)
+	os.Mkdir(filepath.Join(dir2, ".git"), 0755)
+
+	// Apply project 2 — should succeed (different hostname)
+	t.Chdir(dir2)
+	executeCmd(t, "apply", "--json")
+
+	// Project 3: a different project that conflicts with project 1's hostname
+	dir3 := t.TempDir()
+	os.WriteFile(filepath.Join(dir3, ".outport.yml"), []byte(`name: otherapp
+services:
+  web:
+    env_var: PORT
+    protocol: http
+    hostname: myapp.otherapp
+`), 0644)
+	os.Mkdir(filepath.Join(dir3, ".git"), 0755)
+
+	// This one won't conflict because "myapp.otherapp.test" != "myapp.test".
+	// Now make a real conflict by matching project 1's exact hostname.
+	os.WriteFile(filepath.Join(dir3, ".outport.yml"), []byte(`name: clash
+services:
+  web:
+    env_var: PORT
+    protocol: http
+    hostname: clash
+`), 0644)
+
+	// Apply this project — should succeed (unique hostname)
+	t.Chdir(dir3)
+	executeCmd(t, "apply", "--json")
+
+	// Now set up a project that truly conflicts with myapp's hostname
+	dir4 := t.TempDir()
+	// This config has hostname "myapp" which resolves to "myapp.test"
+	// — conflicts with project 1
+	configWithConflict := `name: fakeapp
+services:
+  web:
+    env_var: PORT
+    protocol: http
+    hostname: myapp.fakeapp
+`
+	os.WriteFile(filepath.Join(dir4, ".outport.yml"), []byte(configWithConflict), 0644)
+	os.Mkdir(filepath.Join(dir4, ".git"), 0755)
+
+	// Directly set up a registry entry that will cause a conflict
+	regPath := filepath.Join(home, ".config", "outport", "registry.json")
+	reg, err := registry.Load(regPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Manually add an entry with a hostname that will collide
+	reg.Set("existing", "main", registry.Allocation{
+		ProjectDir: t.TempDir(),
+		Ports:      map[string]int{"web": 11111},
+		Hostnames:  map[string]string{"web": "collider.test"},
+	})
+	if err := reg.Save(); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create project that tries to use the same hostname "collider"
+	dir5 := t.TempDir()
+	os.WriteFile(filepath.Join(dir5, ".outport.yml"), []byte(`name: collider
+services:
+  web:
+    env_var: PORT
+    protocol: http
+    hostname: collider
+`), 0644)
+	os.Mkdir(filepath.Join(dir5, ".git"), 0755)
+
+	t.Chdir(dir5)
+
+	rootCmd.SetOut(new(bytes.Buffer))
+	rootCmd.SetErr(new(bytes.Buffer))
+	rootCmd.SetArgs([]string{"apply"})
+
+	err = rootCmd.Execute()
+	if err == nil {
+		t.Fatal("expected error when hostname conflicts with existing project")
+	}
+	if !bytes.Contains([]byte(err.Error()), []byte("conflicts")) {
+		t.Errorf("error should mention conflict, got: %v", err)
+	}
+}
+
+func TestApply_TemplateModifiers(t *testing.T) {
+	dir := setupProject(t, `name: myapp
+services:
+  web:
+    env_var: PORT
+    preferred_port: 3000
+    protocol: http
+    hostname: myapp
+  api:
+    env_var: API_PORT
+    preferred_port: 4000
+    protocol: http
+    hostname: api.myapp
+
+derived:
+  WEB_URL:
+    value: "${web.url}/app"
+    env_file: .env
+  WEB_DIRECT:
+    value: "${web.url:direct}/app"
+    env_file: .env
+  API_URL:
+    value: "${api.url}/v1"
+    env_file: .env
+  API_DIRECT:
+    value: "${api.url:direct}/v1"
+    env_file: .env
+  COMBINED:
+    value: "${web.url},${api.url:direct}"
+    env_file: .env
+`)
+
+	output := executeCmd(t, "apply", "--json")
+
+	var result applyJSON
+	if err := json.Unmarshal([]byte(output), &result); err != nil {
+		t.Fatalf("invalid JSON: %v\nOutput: %s", err, output)
+	}
+
+	// Verify derived values in JSON output
+	webURL := result.Derived["WEB_URL"]
+	if webURL.Value != "http://myapp.test/app" {
+		t.Errorf("WEB_URL = %q, want http://myapp.test/app", webURL.Value)
+	}
+
+	webDirect := result.Derived["WEB_DIRECT"]
+	if webDirect.Value != "http://localhost:3000/app" {
+		t.Errorf("WEB_DIRECT = %q, want http://localhost:3000/app", webDirect.Value)
+	}
+
+	apiURL := result.Derived["API_URL"]
+	if apiURL.Value != "http://api.myapp.test/v1" {
+		t.Errorf("API_URL = %q, want http://api.myapp.test/v1", apiURL.Value)
+	}
+
+	apiDirect := result.Derived["API_DIRECT"]
+	if apiDirect.Value != "http://localhost:4000/v1" {
+		t.Errorf("API_DIRECT = %q, want http://localhost:4000/v1", apiDirect.Value)
+	}
+
+	combined := result.Derived["COMBINED"]
+	if combined.Value != "http://myapp.test,http://localhost:4000" {
+		t.Errorf("COMBINED = %q, want http://myapp.test,http://localhost:4000", combined.Value)
+	}
+
+	// Verify .env file contains resolved values
+	envData, err := os.ReadFile(filepath.Join(dir, ".env"))
+	if err != nil {
+		t.Fatalf("reading .env: %v", err)
+	}
+	envContent := string(envData)
+
+	expectations := map[string]string{
+		"WEB_URL":    "http://myapp.test/app",
+		"WEB_DIRECT": "http://localhost:3000/app",
+		"API_URL":    "http://api.myapp.test/v1",
+		"API_DIRECT": "http://localhost:4000/v1",
+		"COMBINED":   "http://myapp.test,http://localhost:4000",
+	}
+
+	for name, expected := range expectations {
+		envLine := name + "=" + expected
+		if !bytes.Contains(envData, []byte(envLine)) {
+			t.Errorf(".env missing %s, got:\n%s", envLine, envContent)
+		}
 	}
 }
 
