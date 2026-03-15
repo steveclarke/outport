@@ -151,6 +151,23 @@ type Config struct {
 	Derived  map[string]DerivedValue
 }
 
+// FindDir walks up from startDir looking for .outport.yml.
+// Returns the directory containing the config file.
+func FindDir(startDir string) (string, error) {
+	dir := startDir
+	for {
+		path := filepath.Join(dir, FileName)
+		if _, err := os.Stat(path); err == nil {
+			return dir, nil
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return "", fmt.Errorf("No %s found in %s or any parent directory. Run 'outport init' to create one.", FileName, startDir)
+		}
+		dir = parent
+	}
+}
+
 func Load(dir string) (*Config, error) {
 	path := filepath.Join(dir, FileName)
 	data, err := os.ReadFile(path)

@@ -16,6 +16,49 @@ func writeConfig(t *testing.T, content string) string {
 	return dir
 }
 
+// --- FindDir ---
+
+func TestFindDir_InProjectRoot(t *testing.T) {
+	dir := writeConfig(t, `name: myapp
+services:
+  web:
+    env_var: PORT
+`)
+	found, err := FindDir(dir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if found != dir {
+		t.Errorf("FindDir = %q, want %q", found, dir)
+	}
+}
+
+func TestFindDir_InSubdirectory(t *testing.T) {
+	dir := writeConfig(t, `name: myapp
+services:
+  web:
+    env_var: PORT
+`)
+	subdir := filepath.Join(dir, "backend", "app")
+	os.MkdirAll(subdir, 0755)
+
+	found, err := FindDir(subdir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if found != dir {
+		t.Errorf("FindDir = %q, want project root %q", found, dir)
+	}
+}
+
+func TestFindDir_NotFound(t *testing.T) {
+	dir := t.TempDir() // no .outport.yml anywhere
+	_, err := FindDir(dir)
+	if err == nil {
+		t.Fatal("expected error when no config found, got nil")
+	}
+}
+
 func TestLoad_SimpleConfig(t *testing.T) {
 	dir := writeConfig(t, `name: myapp
 services:

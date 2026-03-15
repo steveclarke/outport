@@ -17,9 +17,13 @@ type projectContext struct {
 }
 
 func loadProjectContext() (*projectContext, error) {
-	dir, err := os.Getwd()
+	cwd, err := os.Getwd()
 	if err != nil {
 		return nil, fmt.Errorf("Getting working directory: %w.", err)
+	}
+	dir, err := config.FindDir(cwd)
+	if err != nil {
+		return nil, err
 	}
 	cfg, err := config.Load(dir)
 	if err != nil {
