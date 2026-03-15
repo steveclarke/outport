@@ -6,6 +6,7 @@ import (
 	"io"
 	"path/filepath"
 	"sort"
+	"strings"
 
 	"charm.land/lipgloss/v2"
 	"github.com/outport-app/outport/internal/allocator"
@@ -13,7 +14,6 @@ import (
 	"github.com/outport-app/outport/internal/dotenv"
 	"github.com/outport-app/outport/internal/registry"
 	"github.com/outport-app/outport/internal/ui"
-	"github.com/outport-app/outport/internal/worktree"
 	"github.com/spf13/cobra"
 )
 
@@ -37,9 +37,9 @@ func runApply(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	dir, cfg, wt, reg := ctx.Dir, ctx.Cfg, ctx.WT, ctx.Reg
+	dir, cfg, reg := ctx.Dir, ctx.Cfg, ctx.Reg
 
-	existing, hasExisting := reg.Get(cfg.Name, wt.Instance)
+	existing, hasExisting := reg.Get(cfg.Name, ctx.Instance)
 	if forceFlag {
 		hasExisting = false
 	}
@@ -51,7 +51,7 @@ func runApply(cmd *cobra.Command, args []string) error {
 		}
 	} else {
 		// When forcing, remove our old ports from usedPorts so preferred ports can be reclaimed
-		if old, ok := reg.Get(cfg.Name, wt.Instance); ok {
+		if old, ok := reg.Get(cfg.Name, ctx.Instance); ok {
 			for _, port := range old.Ports {
 				delete(usedPorts, port)
 			}
@@ -76,7 +76,7 @@ func runApply(cmd *cobra.Command, args []string) error {
 
 		if port == 0 {
 			var err error
-			port, err = allocator.Allocate(cfg.Name, wt.Instance, svcName, svc.PreferredPort, usedPorts)
+			port, err = allocator.Allocate(cfg.Name, ctx.Instance, svcName, svc.PreferredPort, usedPorts)
 			if err != nil {
 				return fmt.Errorf("allocating port for %s: %w", svcName, err)
 			}
@@ -92,8 +92,27 @@ func runApply(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	// Compute hostnames and protocols
+	hostnames := computeHostnames(cfg, ctx.Instance)
+	protocols := computeProtocols(cfg)
+
+	// Check hostname uniqueness across registry
+	for svcName, hostname := range hostnames {
+		projectKey := cfg.Name + "/" + ctx.Instance
+		for regKey, regAlloc := range reg.Projects {
+			if regKey == projectKey {
+				continue // skip self
+			}
+			for _, existingHostname := range regAlloc.Hostnames {
+				if existingHostname == hostname {
+					return fmt.Errorf("hostname %q (service %q) conflicts with %s", hostname, svcName, regKey)
+				}
+			}
+		}
+	}
+
 	// Resolve derived values and add to envFileVars
-	resolvedDerived := resolveDerivedFromAlloc(cfg, ports)
+	resolvedDerived := resolveDerivedFromAlloc(cfg, ports, hostnames)
 	for name, fileValues := range resolvedDerived {
 		for file, value := range fileValues {
 			if envFileVars[file] == nil {
@@ -103,9 +122,11 @@ func runApply(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	reg.Set(cfg.Name, wt.Instance, registry.Allocation{
+	reg.Set(cfg.Name, ctx.Instance, registry.Allocation{
 		ProjectDir: dir,
 		Ports:      ports,
+		Hostnames:  hostnames,
+		Protocols:  protocols,
 	})
 	if err := reg.Save(); err != nil {
 		return err
@@ -120,35 +141,77 @@ func runApply(cmd *cobra.Command, args []string) error {
 	}
 
 	if jsonFlag {
-		return printApplyJSON(cmd, cfg, wt, ports, resolvedDerived, envFiles)
+		return printApplyJSON(cmd, cfg, ctx.Instance, ports, hostnames, resolvedDerived, envFiles)
 	}
-	return printApplyStyled(cmd, cfg, wt, serviceNames, ports, resolvedDerived, envFiles)
+	return printApplyStyled(cmd, cfg, ctx.Instance, serviceNames, ports, hostnames, resolvedDerived, envFiles)
+}
+
+// computeHostnames builds hostname map for an allocation.
+// For "main" instance, hostnames are stem + ".test".
+// For other instances, the project name in the stem is suffixed with "-instance".
+func computeHostnames(cfg *config.Config, instanceName string) map[string]string {
+	hostnames := make(map[string]string)
+	for name, svc := range cfg.Services {
+		if svc.Hostname == "" {
+			continue
+		}
+		stem := svc.Hostname
+		if instanceName != "main" {
+			idx := strings.LastIndex(stem, cfg.Name)
+			if idx >= 0 {
+				stem = stem[:idx] + cfg.Name + "-" + instanceName + stem[idx+len(cfg.Name):]
+			}
+		}
+		hostnames[name] = stem + ".test"
+	}
+	return hostnames
+}
+
+// computeProtocols builds protocol map from config.
+func computeProtocols(cfg *config.Config) map[string]string {
+	protocols := make(map[string]string)
+	for name, svc := range cfg.Services {
+		if svc.Protocol != "" {
+			protocols[name] = svc.Protocol
+		}
+	}
+	return protocols
 }
 
 // buildTemplateVars builds the template variable map from services and allocated ports.
-// Keys are "service.field" (e.g., "rails.port", "rails.hostname").
-func buildTemplateVars(cfg *config.Config, ports map[string]int) map[string]string {
+// Keys are "service.field" (e.g., "rails.port", "rails.hostname", "rails.url").
+func buildTemplateVars(cfg *config.Config, ports map[string]int, hostnames map[string]string) map[string]string {
 	vars := make(map[string]string)
-	for svcName, svc := range cfg.Services {
-		if port, ok := ports[svcName]; ok {
-			vars[svcName+".port"] = fmt.Sprintf("%d", port)
+	for name, svc := range cfg.Services {
+		portStr := fmt.Sprintf("%d", ports[name])
+		vars[name+".port"] = portStr
+
+		if h, ok := hostnames[name]; ok {
+			vars[name+".hostname"] = h
+			protocol := svc.Protocol
+			if protocol == "" {
+				protocol = "http"
+			}
+			vars[name+".url"] = fmt.Sprintf("%s://%s", protocol, h)
+			vars[name+".url:direct"] = fmt.Sprintf("http://localhost:%s", portStr)
+		} else {
+			hostname := svc.Hostname
+			if hostname == "" {
+				hostname = "localhost"
+			}
+			vars[name+".hostname"] = hostname
 		}
-		hostname := svc.Hostname
-		if hostname == "" {
-			hostname = "localhost"
-		}
-		vars[svcName+".hostname"] = hostname
 	}
 	return vars
 }
 
 // resolveDerivedFromAlloc resolves derived value templates using allocated ports.
 // Returns name → file → resolved value.
-func resolveDerivedFromAlloc(cfg *config.Config, ports map[string]int) map[string]map[string]string {
+func resolveDerivedFromAlloc(cfg *config.Config, ports map[string]int, hostnames map[string]string) map[string]map[string]string {
 	if len(cfg.Derived) == 0 {
 		return nil
 	}
-	templateVars := buildTemplateVars(cfg, ports)
+	templateVars := buildTemplateVars(cfg, ports, hostnames)
 	return config.ResolveDerived(cfg.Derived, templateVars)
 }
 
@@ -201,16 +264,20 @@ func serviceURL(protocol, hostname string, port int) string {
 	return ""
 }
 
-func buildServiceMap(cfg *config.Config, ports map[string]int) map[string]svcJSON {
+func buildServiceMap(cfg *config.Config, ports map[string]int, hostnames map[string]string) map[string]svcJSON {
 	services := make(map[string]svcJSON)
 	for name, svc := range cfg.Services {
+		hostname := svc.Hostname
+		if h, ok := hostnames[name]; ok {
+			hostname = h
+		}
 		services[name] = svcJSON{
 			Port:          ports[name],
 			PreferredPort: svc.PreferredPort,
 			EnvVar:        svc.EnvVar,
 			Protocol:      svc.Protocol,
-			Hostname:      svc.Hostname,
-			URL:           serviceURL(svc.Protocol, svc.Hostname, ports[name]),
+			Hostname:      hostname,
+			URL:           serviceURL(svc.Protocol, hostname, ports[name]),
 			EnvFiles:      svc.EnvFiles,
 		}
 	}
@@ -249,11 +316,11 @@ func buildDerivedMap(derived map[string]config.DerivedValue, resolved map[string
 	return m
 }
 
-func printApplyJSON(cmd *cobra.Command, cfg *config.Config, wt *worktree.Info, ports map[string]int, resolvedDerived map[string]map[string]string, envFiles []string) error {
+func printApplyJSON(cmd *cobra.Command, cfg *config.Config, instanceName string, ports map[string]int, hostnames map[string]string, resolvedDerived map[string]map[string]string, envFiles []string) error {
 	out := applyJSON{
 		Project:  cfg.Name,
-		Instance: wt.Instance,
-		Services: buildServiceMap(cfg, ports),
+		Instance: instanceName,
+		Services: buildServiceMap(cfg, ports, hostnames),
 		Derived:  buildDerivedMap(cfg.Derived, resolvedDerived),
 		EnvFiles: envFiles,
 	}
@@ -265,22 +332,18 @@ func printApplyJSON(cmd *cobra.Command, cfg *config.Config, wt *worktree.Info, p
 	return nil
 }
 
-func printHeader(w io.Writer, projectName string, wt *worktree.Info) {
-	instance := wt.Instance
-	if wt.IsWorktree {
-		instance += " (worktree)"
-	}
-	header := ui.ProjectStyle.Render(projectName) + " " + ui.InstanceStyle.Render("["+instance+"]")
+func printHeader(w io.Writer, projectName, instanceName string) {
+	header := ui.ProjectStyle.Render(projectName) + " " + ui.InstanceStyle.Render("["+instanceName+"]")
 	lipgloss.Fprintln(w, header)
 	lipgloss.Fprintln(w)
 }
 
-func printApplyStyled(cmd *cobra.Command, cfg *config.Config, wt *worktree.Info, serviceNames []string, ports map[string]int, resolvedDerived map[string]map[string]string, envFiles []string) error {
+func printApplyStyled(cmd *cobra.Command, cfg *config.Config, instanceName string, serviceNames []string, ports map[string]int, hostnames map[string]string, resolvedDerived map[string]map[string]string, envFiles []string) error {
 	w := cmd.OutOrStdout()
 
-	printHeader(w, cfg.Name, wt)
+	printHeader(w, cfg.Name, instanceName)
 
-	printFlatServices(w, cfg, serviceNames, ports, nil)
+	printFlatServices(w, cfg, serviceNames, ports, hostnames, nil)
 
 	if len(resolvedDerived) > 0 {
 		printDerivedValues(w, resolvedDerived)
@@ -345,13 +408,13 @@ func printDerivedValues(w io.Writer, resolved map[string]map[string]string) {
 	}
 }
 
-func printFlatServices(w io.Writer, cfg *config.Config, serviceNames []string, ports map[string]int, portStatus map[int]bool) {
+func printFlatServices(w io.Writer, cfg *config.Config, serviceNames []string, ports map[string]int, hostnames map[string]string, portStatus map[int]bool) {
 	for _, svcName := range serviceNames {
-		printServiceLine(w, cfg, svcName, ports[svcName], portStatus)
+		printServiceLine(w, cfg, svcName, ports[svcName], hostnames, portStatus)
 	}
 }
 
-func printServiceLine(w io.Writer, cfg *config.Config, svcName string, port int, portStatus map[int]bool) {
+func printServiceLine(w io.Writer, cfg *config.Config, svcName string, port int, hostnames map[string]string, portStatus map[int]bool) {
 	svc := cfg.Services[svcName]
 
 	status := ""
@@ -363,8 +426,13 @@ func printServiceLine(w io.Writer, cfg *config.Config, svcName string, port int,
 		}
 	}
 
+	hostname := svc.Hostname
+	if h, ok := hostnames[svcName]; ok {
+		hostname = h
+	}
+
 	url := ""
-	if u := serviceURL(svc.Protocol, svc.Hostname, port); u != "" {
+	if u := serviceURL(svc.Protocol, hostname, port); u != "" {
 		url = "  " + ui.UrlStyle.Render(u)
 	}
 

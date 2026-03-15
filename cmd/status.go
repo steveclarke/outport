@@ -9,10 +9,10 @@ import (
 	"charm.land/huh/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/outport-app/outport/internal/config"
+	"github.com/outport-app/outport/internal/instance"
 	"github.com/outport-app/outport/internal/portcheck"
 	"github.com/outport-app/outport/internal/registry"
 	"github.com/outport-app/outport/internal/ui"
-	"github.com/outport-app/outport/internal/worktree"
 	"github.com/spf13/cobra"
 )
 
@@ -34,15 +34,23 @@ func currentProjectKey() string {
 	if err != nil {
 		return ""
 	}
-	cfg, err := config.Load(dir)
+	cfgDir, err := config.FindDir(dir)
 	if err != nil {
 		return ""
 	}
-	wt, err := worktree.Detect(dir)
+	cfg, err := config.Load(cfgDir)
 	if err != nil {
 		return ""
 	}
-	return cfg.Name + "/" + wt.Instance
+	reg, err := loadRegistry()
+	if err != nil {
+		return ""
+	}
+	inst, _, err := instance.Resolve(reg, cfg.Name, cfgDir)
+	if err != nil {
+		return ""
+	}
+	return cfg.Name + "/" + inst
 }
 
 func loadProjectConfig(projectDir string) *config.Config {
@@ -54,13 +62,13 @@ func loadProjectConfig(projectDir string) *config.Config {
 }
 
 // formatProjectKey returns just the project name for main instances,
-// or "project/instance (worktree)" for worktree instances.
+// or "project/instance" for non-main instances.
 func formatProjectKey(key string) string {
 	parts := strings.SplitN(key, "/", 2)
 	if len(parts) != 2 || parts[1] == "main" {
 		return parts[0]
 	}
-	return parts[0] + "/" + parts[1] + " (worktree)"
+	return parts[0] + "/" + parts[1]
 }
 
 func runStatus(cmd *cobra.Command, args []string) error {
@@ -109,13 +117,22 @@ func printStatusJSON(cmd *cobra.Command, reg *registry.Registry, portStatus map[
 		alloc := reg.Projects[key]
 		cfg := loadProjectConfig(alloc.ProjectDir)
 
+		hostnames := alloc.Hostnames
+		if hostnames == nil {
+			hostnames = make(map[string]string)
+		}
+
 		services := make(map[string]svcJSON)
 		for svcName, port := range alloc.Ports {
 			s := svcJSON{Port: port}
 			if cfg != nil {
 				if svc, ok := cfg.Services[svcName]; ok {
+					hostname := svc.Hostname
+					if h, ok := hostnames[svcName]; ok {
+						hostname = h
+					}
 					s.Protocol = svc.Protocol
-					s.URL = serviceURL(svc.Protocol, svc.Hostname, port)
+					s.URL = serviceURL(svc.Protocol, hostname, port)
 				}
 			}
 			if portStatus != nil {
@@ -126,7 +143,7 @@ func printStatusJSON(cmd *cobra.Command, reg *registry.Registry, portStatus map[
 
 		var derived map[string]derivedJSON
 		if cfg != nil {
-			derived = buildDerivedMap(cfg.Derived, resolveDerivedFromAlloc(cfg, alloc.Ports))
+			derived = buildDerivedMap(cfg.Derived, resolveDerivedFromAlloc(cfg, alloc.Ports, hostnames))
 		}
 
 		entries = append(entries, statusEntryJSON{
@@ -158,6 +175,11 @@ func printStatusStyled(cmd *cobra.Command, reg *registry.Registry, portStatus ma
 	for i, key := range keys {
 		alloc := reg.Projects[key]
 		cfg := loadProjectConfig(alloc.ProjectDir)
+
+		hostnames := alloc.Hostnames
+		if hostnames == nil {
+			hostnames = make(map[string]string)
+		}
 
 		// Detect stale: directory missing or config missing
 		stale := false
@@ -198,10 +220,20 @@ func printStatusStyled(cmd *cobra.Command, reg *registry.Registry, portStatus ma
 				}
 			}
 
+			hostname := ""
+			if cfg != nil {
+				if svc, ok := cfg.Services[svcName]; ok {
+					hostname = svc.Hostname
+					if h, ok := hostnames[svcName]; ok {
+						hostname = h
+					}
+				}
+			}
+
 			url := ""
 			if cfg != nil {
 				if svc, ok := cfg.Services[svcName]; ok {
-					if u := serviceURL(svc.Protocol, svc.Hostname, port); u != "" {
+					if u := serviceURL(svc.Protocol, hostname, port); u != "" {
 						url = "  " + ui.UrlStyle.Render(u)
 					}
 				}
@@ -218,7 +250,7 @@ func printStatusStyled(cmd *cobra.Command, reg *registry.Registry, portStatus ma
 		}
 
 		if cfg != nil {
-			if resolved := resolveDerivedFromAlloc(cfg, alloc.Ports); len(resolved) > 0 {
+			if resolved := resolveDerivedFromAlloc(cfg, alloc.Ports, hostnames); len(resolved) > 0 {
 				printDerivedValues(w, resolved)
 			}
 		}

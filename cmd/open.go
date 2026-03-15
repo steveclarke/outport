@@ -28,7 +28,7 @@ func runOpen(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	alloc, ok := ctx.Reg.Get(ctx.Cfg.Name, ctx.WT.Instance)
+	alloc, ok := ctx.Reg.Get(ctx.Cfg.Name, ctx.Instance)
 	if !ok {
 		return fmt.Errorf("No ports allocated. Run 'outport up' first.")
 	}
