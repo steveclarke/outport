@@ -136,15 +136,21 @@ func runApply(cmd *cobra.Command, args []string) error {
 	return printApplyStyled(cmd, cfg, wt, serviceNames, ports, resolvedDerived, envFiles)
 }
 
-// buildEnvVarPorts maps env_var names to allocated port numbers.
-func buildEnvVarPorts(cfg *config.Config, ports map[string]int) map[string]int {
-	envVarPorts := make(map[string]int)
+// buildTemplateVars builds the template variable map from services and allocated ports.
+// Keys are "service.field" (e.g., "rails.port", "rails.hostname").
+func buildTemplateVars(cfg *config.Config, ports map[string]int) map[string]string {
+	vars := make(map[string]string)
 	for svcName, svc := range cfg.Services {
 		if port, ok := ports[svcName]; ok {
-			envVarPorts[svc.EnvVar] = port
+			vars[svcName+".port"] = fmt.Sprintf("%d", port)
 		}
+		hostname := svc.Hostname
+		if hostname == "" {
+			hostname = "localhost"
+		}
+		vars[svcName+".hostname"] = hostname
 	}
-	return envVarPorts
+	return vars
 }
 
 // resolveDerivedFromAlloc resolves derived value templates using allocated ports.
@@ -153,8 +159,8 @@ func resolveDerivedFromAlloc(cfg *config.Config, ports map[string]int) map[strin
 	if len(cfg.Derived) == 0 {
 		return nil
 	}
-	envVarPorts := buildEnvVarPorts(cfg, ports)
-	return config.ResolveDerived(cfg.Derived, envVarPorts)
+	templateVars := buildTemplateVars(cfg, ports)
+	return config.ResolveDerived(cfg.Derived, templateVars)
 }
 
 func sortedMapKeys[V any](m map[string]V) []string {

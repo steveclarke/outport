@@ -182,10 +182,10 @@ services:
 
 derived:
   API_URL:
-    value: "http://localhost:${RAILS_PORT}/api/v1"
+    value: "http://localhost:${rails.port}/api/v1"
     env_file: frontend/.env
   CORS_ORIGINS:
-    value: "http://localhost:${WEB_PORT}"
+    value: "http://localhost:${web.port}"
     env_file: backend/.env
 `
 
@@ -264,9 +264,9 @@ derived:
   API_URL:
     env_file:
       - file: frontend/main/.env
-        value: "http://localhost:${RAILS_PORT}/api/v1"
+        value: "http://localhost:${rails.port}/api/v1"
       - file: frontend/portal/.env
-        value: "http://localhost:${RAILS_PORT}/portal/api/v1"
+        value: "http://localhost:${rails.port}/portal/api/v1"
 `)
 	os.MkdirAll(filepath.Join(dir, "backend"), 0755)
 	os.MkdirAll(filepath.Join(dir, "frontend/main"), 0755)

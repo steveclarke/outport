@@ -125,14 +125,14 @@ finished values to `.env`.
 ```yaml
 derived:
   API_URL:
-    value: "http://localhost:${RAILS_PORT}/api/v1"
+    value: "http://localhost:${rails.port}/api/v1"
     env_file: frontend/.env
   CORS_ORIGINS:
-    value: "http://localhost:${WEB_PORT}"
+    value: "http://localhost:${web.port}"
     env_file: backend/.env
 ```
 
-- `${VAR_NAME}` references any service `env_var`
+- `${service_name.field}` references service fields (`port`, `hostname`)
 - `env_file` is required (no default — you must be explicit)
 - Derived names must not collide with service `env_var` names
 
@@ -147,9 +147,9 @@ derived:
   NUXT_API_BASE_URL:
     env_file:
       - file: frontend/apps/main/.env
-        value: "http://localhost:${RAILS_PORT}/api/v1"
+        value: "http://localhost:${rails.port}/api/v1"
       - file: frontend/apps/portal/.env
-        value: "http://localhost:${RAILS_PORT}/portal/api/v1"
+        value: "http://localhost:${rails.port}/portal/api/v1"
 ```
 
 You can mix string entries (which use a top-level `value`) with object
@@ -188,18 +188,18 @@ derived:
   NUXT_API_BASE_URL:
     env_file:
       - file: frontend/apps/main/.env
-        value: "http://localhost:${RAILS_PORT}/api/v1"
+        value: "http://localhost:${rails.port}/api/v1"
       - file: frontend/apps/portal/.env
-        value: "http://localhost:${RAILS_PORT}/portal/api/v1"
+        value: "http://localhost:${rails.port}/portal/api/v1"
 
   # Backend CORS (computed from frontend ports)
   CORE_CORS_ORIGINS:
-    value: "http://localhost:${MAIN_PORT},http://localhost:${PORTAL_PORT}"
+    value: "http://${frontend_main.hostname}:${frontend_main.port},http://${frontend_portal.hostname}:${frontend_portal.port}"
     env_file: backend/.env
 
   # Backend asset host
   SHRINE_ASSET_HOST:
-    value: "http://localhost:${RAILS_PORT}"
+    value: "http://${rails.hostname}:${rails.port}"
     env_file: backend/.env
 ```
 

@@ -174,10 +174,10 @@ services:
 
 derived:
   API_URL:
-    value: "http://localhost:${RAILS_PORT}/api/v1"
+    value: "http://localhost:${rails.port}/api/v1"
     env_file: frontend/.env
   CORS_ORIGINS:
-    value: "http://localhost:${WEB_PORT}"
+    value: "http://localhost:${web.port}"
     env_file: backend/.env
 ```
 
@@ -190,7 +190,7 @@ WEB_PORT=14139
 # --- end outport.dev ---
 ```
 
-Templates use `${VAR_NAME}` syntax, referencing any service `env_var`. Resolved at apply time — your app reads finished values from `.env`.
+Templates use `${service_name.field}` syntax — reference any service's `port` or `hostname`. Resolved at apply time — your app reads finished values from `.env`.
 
 When the same env var needs different values per file (common in monorepos), use per-file overrides:
 
@@ -199,9 +199,9 @@ derived:
   NUXT_API_BASE_URL:
     env_file:
       - file: frontend/apps/main/.env
-        value: "http://localhost:${RAILS_PORT}/api/v1"
+        value: "http://localhost:${rails.port}/api/v1"
       - file: frontend/apps/portal/.env
-        value: "http://localhost:${RAILS_PORT}/portal/api/v1"
+        value: "http://localhost:${rails.port}/portal/api/v1"
 ```
 
 ## AI Agent Skill
@@ -265,9 +265,9 @@ derived:
   API_BASE_URL:
     env_file:
       - file: frontend/app-a/.env
-        value: "http://localhost:${RAILS_PORT}/api/v1"
+        value: "http://localhost:${rails.port}/api/v1"
       - file: frontend/app-b/.env
-        value: "http://localhost:${RAILS_PORT}/admin/api/v1"
+        value: "http://localhost:${rails.port}/admin/api/v1"
 ```
 
 ### "How do I add Outport to my project's setup script?"

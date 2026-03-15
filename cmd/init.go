@@ -58,7 +58,7 @@ services:
 #
 # derived:
 #  API_URL:
-#    value: "http://localhost:${RAILS_PORT}/api/v1"
+#    value: "http://${rails.hostname}:${rails.port}/api/v1"
 #    env_file: frontend/.env
 `
 

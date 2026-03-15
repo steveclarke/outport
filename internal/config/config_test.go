@@ -256,10 +256,10 @@ services:
 
 derived:
   API_URL:
-    value: "http://localhost:${RAILS_PORT}/api/v1"
+    value: "http://localhost:${rails.port}/api/v1"
     env_file: frontend/.env
   CORS_ORIGINS:
-    value: "http://localhost:${WEB_PORT},http://localhost:${RAILS_PORT}"
+    value: "http://localhost:${web.port},http://localhost:${rails.port}"
     env_file: backend/.env
 `)
 	cfg, err := Load(dir)
@@ -270,7 +270,7 @@ derived:
 		t.Fatalf("derived count = %d, want 2", len(cfg.Derived))
 	}
 	apiURL := cfg.Derived["API_URL"]
-	if apiURL.Value != "http://localhost:${RAILS_PORT}/api/v1" {
+	if apiURL.Value != "http://localhost:${rails.port}/api/v1" {
 		t.Errorf("API_URL.Value = %q, want template string", apiURL.Value)
 	}
 	if len(apiURL.EnvFiles) != 1 || apiURL.EnvFiles[0] != "frontend/.env" {
@@ -291,7 +291,7 @@ services:
 
 derived:
   API_URL:
-    value: "http://localhost:${RAILS_PORT}/api"
+    value: "http://localhost:${rails.port}/api"
     env_file:
       - frontend/main/.env
       - frontend/portal/.env
@@ -316,9 +316,9 @@ derived:
   NUXT_API_BASE_URL:
     env_file:
       - file: frontend/apps/main/.env
-        value: "http://localhost:${RAILS_PORT}/api/v1"
+        value: "http://localhost:${rails.port}/api/v1"
       - file: frontend/apps/portal/.env
-        value: "http://localhost:${RAILS_PORT}/portal/api/v1"
+        value: "http://localhost:${rails.port}/portal/api/v1"
 `)
 	cfg, err := Load(dir)
 	if err != nil {
@@ -328,13 +328,12 @@ derived:
 	if len(dv.EnvFiles) != 2 {
 		t.Fatalf("EnvFiles count = %d, want 2", len(dv.EnvFiles))
 	}
-	if dv.PerFile["frontend/apps/main/.env"] != "http://localhost:${RAILS_PORT}/api/v1" {
+	if dv.PerFile["frontend/apps/main/.env"] != "http://localhost:${rails.port}/api/v1" {
 		t.Errorf("main value = %q", dv.PerFile["frontend/apps/main/.env"])
 	}
-	if dv.PerFile["frontend/apps/portal/.env"] != "http://localhost:${RAILS_PORT}/portal/api/v1" {
+	if dv.PerFile["frontend/apps/portal/.env"] != "http://localhost:${rails.port}/portal/api/v1" {
 		t.Errorf("portal value = %q", dv.PerFile["frontend/apps/portal/.env"])
 	}
-	// Top-level value should be empty when all entries have per-file values
 	if dv.Value != "" {
 		t.Errorf("Value = %q, want empty (all per-file)", dv.Value)
 	}
@@ -349,11 +348,11 @@ services:
 
 derived:
   API_URL:
-    value: "http://localhost:${RAILS_PORT}/api"
+    value: "http://localhost:${rails.port}/api"
     env_file:
       - frontend/shared/.env
       - file: frontend/portal/.env
-        value: "http://localhost:${RAILS_PORT}/portal/api"
+        value: "http://localhost:${rails.port}/portal/api"
 `)
 	cfg, err := Load(dir)
 	if err != nil {
@@ -363,15 +362,12 @@ derived:
 	if len(dv.EnvFiles) != 2 {
 		t.Fatalf("EnvFiles count = %d, want 2", len(dv.EnvFiles))
 	}
-	// String entry uses top-level value
-	if dv.Value != "http://localhost:${RAILS_PORT}/api" {
+	if dv.Value != "http://localhost:${rails.port}/api" {
 		t.Errorf("Value = %q, want top-level template", dv.Value)
 	}
-	// Object entry has per-file override
-	if dv.PerFile["frontend/portal/.env"] != "http://localhost:${RAILS_PORT}/portal/api" {
+	if dv.PerFile["frontend/portal/.env"] != "http://localhost:${rails.port}/portal/api" {
 		t.Errorf("portal value = %q", dv.PerFile["frontend/portal/.env"])
 	}
-	// String entry should NOT be in PerFile
 	if _, ok := dv.PerFile["frontend/shared/.env"]; ok {
 		t.Error("shared entry should not have a per-file override")
 	}
@@ -388,20 +384,18 @@ derived:
   API_URL:
     env_file:
       - file: frontend/.env
-        value: "http://localhost:${MISSING_PORT}/api"
+        value: "http://localhost:${missing.port}/api"
 `)
 	_, err := Load(dir)
 	if err == nil {
 		t.Fatal("expected error for invalid reference in per-file value, got nil")
 	}
-	if !strings.Contains(err.Error(), "MISSING_PORT") {
-		t.Errorf("error = %q, want to contain 'MISSING_PORT'", err.Error())
+	if !strings.Contains(err.Error(), "missing") {
+		t.Errorf("error = %q, want to contain 'missing'", err.Error())
 	}
 }
 
 func TestLoad_DerivedPerFileMissingValue(t *testing.T) {
-	// When all entries are per-file objects, top-level value is optional.
-	// But a string entry without a top-level value is an error.
 	dir := writeConfig(t, `name: myapp
 services:
   rails:
@@ -413,7 +407,7 @@ derived:
     env_file:
       - frontend/shared/.env
       - file: frontend/portal/.env
-        value: "http://localhost:${RAILS_PORT}/portal/api"
+        value: "http://localhost:${rails.port}/portal/api"
 `)
 	_, err := Load(dir)
 	if err == nil {
@@ -456,15 +450,35 @@ services:
 
 derived:
   API_URL:
-    value: "http://localhost:${BACKEND_PORT}/api"
+    value: "http://localhost:${backend.port}/api"
     env_file: frontend/.env
 `)
 	_, err := Load(dir)
 	if err == nil {
 		t.Fatal("expected error for invalid reference, got nil")
 	}
-	if !strings.Contains(err.Error(), "BACKEND_PORT") {
-		t.Errorf("error = %q, want to contain 'BACKEND_PORT'", err.Error())
+	if !strings.Contains(err.Error(), "backend") {
+		t.Errorf("error = %q, want to contain 'backend'", err.Error())
+	}
+}
+
+func TestLoad_DerivedInvalidField(t *testing.T) {
+	dir := writeConfig(t, `name: myapp
+services:
+  web:
+    env_var: PORT
+
+derived:
+  API_URL:
+    value: "http://localhost:${web.bogus}"
+    env_file: frontend/.env
+`)
+	_, err := Load(dir)
+	if err == nil {
+		t.Fatal("expected error for invalid field, got nil")
+	}
+	if !strings.Contains(err.Error(), "bogus") {
+		t.Errorf("error = %q, want to contain 'bogus'", err.Error())
 	}
 }
 
@@ -476,7 +490,7 @@ services:
 
 derived:
   PORT:
-    value: "http://localhost:${PORT}"
+    value: "http://localhost:${web.port}"
     env_file: frontend/.env
 `)
 	_, err := Load(dir)
@@ -515,7 +529,7 @@ services:
 
 derived:
   API_URL:
-    value: "http://localhost:${PORT}/api"
+    value: "http://localhost:${web.port}/api"
 `)
 	_, err := Load(dir)
 	if err == nil {
@@ -546,31 +560,50 @@ services:
 func TestResolveDerived_SubstitutesVars(t *testing.T) {
 	derived := map[string]DerivedValue{
 		"API_URL": {
-			Value:    "http://localhost:${RAILS_PORT}/api/v1",
+			Value:    "http://localhost:${rails.port}/api/v1",
 			EnvFiles: []string{"frontend/.env"},
 		},
 	}
-	envVarPorts := map[string]int{"RAILS_PORT": 24920}
+	vars := map[string]string{"rails.port": "24920", "rails.hostname": "localhost"}
 
-	resolved := ResolveDerived(derived, envVarPorts)
+	resolved := ResolveDerived(derived, vars)
 
 	if resolved["API_URL"]["frontend/.env"] != "http://localhost:24920/api/v1" {
 		t.Errorf("API_URL = %q, want http://localhost:24920/api/v1", resolved["API_URL"]["frontend/.env"])
 	}
 }
 
-func TestResolveDerived_MultipleReferences(t *testing.T) {
+func TestResolveDerived_HostnameReference(t *testing.T) {
 	derived := map[string]DerivedValue{
 		"CORS": {
-			Value:    "http://localhost:${WEB_PORT},http://localhost:${API_PORT}",
+			Value:    "http://${web.hostname}:${web.port}",
 			EnvFiles: []string{".env"},
 		},
 	}
-	envVarPorts := map[string]int{"WEB_PORT": 14139, "API_PORT": 24920}
+	vars := map[string]string{"web.port": "3000", "web.hostname": "myapp.localhost"}
 
-	resolved := ResolveDerived(derived, envVarPorts)
+	resolved := ResolveDerived(derived, vars)
 
-	if resolved["CORS"][".env"] != "http://localhost:14139,http://localhost:24920" {
+	if resolved["CORS"][".env"] != "http://myapp.localhost:3000" {
+		t.Errorf("CORS = %q, want http://myapp.localhost:3000", resolved["CORS"][".env"])
+	}
+}
+
+func TestResolveDerived_MultipleReferences(t *testing.T) {
+	derived := map[string]DerivedValue{
+		"CORS": {
+			Value:    "http://${web.hostname}:${web.port},http://${api.hostname}:${api.port}",
+			EnvFiles: []string{".env"},
+		},
+	}
+	vars := map[string]string{
+		"web.port": "14139", "web.hostname": "app.localhost",
+		"api.port": "24920", "api.hostname": "localhost",
+	}
+
+	resolved := ResolveDerived(derived, vars)
+
+	if resolved["CORS"][".env"] != "http://app.localhost:14139,http://localhost:24920" {
 		t.Errorf("CORS = %q, want substituted value", resolved["CORS"][".env"])
 	}
 }
@@ -582,9 +615,9 @@ func TestResolveDerived_NoReferences(t *testing.T) {
 			EnvFiles: []string{".env"},
 		},
 	}
-	envVarPorts := map[string]int{"PORT": 3000}
+	vars := map[string]string{"web.port": "3000"}
 
-	resolved := ResolveDerived(derived, envVarPorts)
+	resolved := ResolveDerived(derived, vars)
 
 	if resolved["STATIC"][".env"] != "some-static-value" {
 		t.Errorf("STATIC = %q, want some-static-value", resolved["STATIC"][".env"])
@@ -596,14 +629,14 @@ func TestResolveDerived_PerFileValues(t *testing.T) {
 		"API_URL": {
 			EnvFiles: []string{"main/.env", "portal/.env"},
 			PerFile: map[string]string{
-				"main/.env":   "http://localhost:${RAILS_PORT}/api/v1",
-				"portal/.env": "http://localhost:${RAILS_PORT}/portal/api/v1",
+				"main/.env":   "http://localhost:${rails.port}/api/v1",
+				"portal/.env": "http://localhost:${rails.port}/portal/api/v1",
 			},
 		},
 	}
-	envVarPorts := map[string]int{"RAILS_PORT": 3000}
+	vars := map[string]string{"rails.port": "3000"}
 
-	resolved := ResolveDerived(derived, envVarPorts)
+	resolved := ResolveDerived(derived, vars)
 
 	mainVal := resolved["API_URL"]["main/.env"]
 	if mainVal != "http://localhost:3000/api/v1" {
@@ -618,16 +651,16 @@ func TestResolveDerived_PerFileValues(t *testing.T) {
 func TestResolveDerived_MixedPerFileAndDefault(t *testing.T) {
 	derived := map[string]DerivedValue{
 		"API_URL": {
-			Value:    "http://localhost:${RAILS_PORT}/api",
+			Value:    "http://localhost:${rails.port}/api",
 			EnvFiles: []string{"shared/.env", "portal/.env"},
 			PerFile: map[string]string{
-				"portal/.env": "http://localhost:${RAILS_PORT}/portal/api",
+				"portal/.env": "http://localhost:${rails.port}/portal/api",
 			},
 		},
 	}
-	envVarPorts := map[string]int{"RAILS_PORT": 3000}
+	vars := map[string]string{"rails.port": "3000"}
 
-	resolved := ResolveDerived(derived, envVarPorts)
+	resolved := ResolveDerived(derived, vars)
 
 	sharedVal := resolved["API_URL"]["shared/.env"]
 	if sharedVal != "http://localhost:3000/api" {
@@ -640,16 +673,15 @@ func TestResolveDerived_MixedPerFileAndDefault(t *testing.T) {
 }
 
 func TestResolveDerived_DefaultValueAllFiles(t *testing.T) {
-	// When no per-file overrides, all files get the default value
 	derived := map[string]DerivedValue{
 		"API_URL": {
-			Value:    "http://localhost:${PORT}/api",
+			Value:    "http://localhost:${web.port}/api",
 			EnvFiles: []string{"a/.env", "b/.env"},
 		},
 	}
-	envVarPorts := map[string]int{"PORT": 3000}
+	vars := map[string]string{"web.port": "3000"}
 
-	resolved := ResolveDerived(derived, envVarPorts)
+	resolved := ResolveDerived(derived, vars)
 
 	for _, file := range []string{"a/.env", "b/.env"} {
 		if resolved["API_URL"][file] != "http://localhost:3000/api" {
@@ -658,8 +690,25 @@ func TestResolveDerived_DefaultValueAllFiles(t *testing.T) {
 	}
 }
 
+func TestResolveDerived_HostnameDefaultsToLocalhost(t *testing.T) {
+	derived := map[string]DerivedValue{
+		"URL": {
+			Value:    "http://${web.hostname}:${web.port}",
+			EnvFiles: []string{".env"},
+		},
+	}
+	// No hostname set on service — should resolve to "localhost"
+	vars := map[string]string{"web.port": "3000", "web.hostname": "localhost"}
+
+	resolved := ResolveDerived(derived, vars)
+
+	if resolved["URL"][".env"] != "http://localhost:3000" {
+		t.Errorf("URL = %q, want http://localhost:3000", resolved["URL"][".env"])
+	}
+}
+
 func TestResolveDerived_EmptyMap(t *testing.T) {
-	resolved := ResolveDerived(nil, map[string]int{"PORT": 3000})
+	resolved := ResolveDerived(nil, map[string]string{"web.port": "3000"})
 	if len(resolved) != 0 {
 		t.Errorf("expected empty map, got %v", resolved)
 	}

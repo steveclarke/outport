@@ -5,45 +5,55 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"strconv"
 	"strings"
 
 	"gopkg.in/yaml.v3"
 )
 
-var templateVarRe = regexp.MustCompile(`\$\{(\w+)\}`)
+// templateVarRe matches ${service.field} references in derived value templates.
+var templateVarRe = regexp.MustCompile(`\$\{(\w+)\.(\w+)\}`)
 
-func validateTemplateRefs(name, template string, validVars map[string]bool) error {
+// validFields are the service fields that can be referenced in templates.
+var validFields = map[string]bool{
+	"port":     true,
+	"hostname": true,
+}
+
+func validateTemplateRefs(derivedName, template string, services map[string]Service) error {
 	if template == "" {
 		return nil
 	}
 	matches := templateVarRe.FindAllStringSubmatch(template, -1)
 	for _, match := range matches {
-		ref := match[1]
-		if !validVars[ref] {
-			return fmt.Errorf("Derived value %q in %s references \"${%s}\" but no service has env_var %q.",
-				name, FileName, ref, ref)
+		svcName := match[1]
+		field := match[2]
+		if _, ok := services[svcName]; !ok {
+			return fmt.Errorf("Derived value %q in %s references \"${%s.%s}\" but no service named %q exists.",
+				derivedName, FileName, svcName, field, svcName)
+		}
+		if !validFields[field] {
+			return fmt.Errorf("Derived value %q in %s references \"${%s.%s}\" but %q is not a valid field. Valid fields: port, hostname.",
+				derivedName, FileName, svcName, field, field)
 		}
 	}
 	return nil
 }
 
-// ResolveDerived substitutes ${VAR_NAME} references in derived values
-// with the corresponding port numbers from envVarPorts.
+// ResolveDerived substitutes ${service.field} references in derived values
+// with the corresponding values from templateVars.
 // Returns name → file → resolved value.
-func ResolveDerived(derived map[string]DerivedValue, envVarPorts map[string]int) map[string]map[string]string {
+func ResolveDerived(derived map[string]DerivedValue, templateVars map[string]string) map[string]map[string]string {
 	resolved := make(map[string]map[string]string)
 	for name, dv := range derived {
 		fileValues := make(map[string]string)
 		for _, file := range dv.EnvFiles {
-			// Use per-file value if available, otherwise default
 			template := dv.Value
 			if pf, ok := dv.PerFile[file]; ok {
 				template = pf
 			}
 			value := template
-			for varName, port := range envVarPorts {
-				value = strings.ReplaceAll(value, "${"+varName+"}", strconv.Itoa(port))
+			for varName, varValue := range templateVars {
+				value = strings.ReplaceAll(value, "${"+varName+"}", varValue)
 			}
 			fileValues[file] = value
 		}
@@ -278,7 +288,6 @@ func (c *Config) validate() error {
 		}
 
 		// Check if any env_file entries need the top-level value
-		// (string entries without per-file overrides)
 		for _, file := range dv.EnvFiles {
 			if _, hasPerFile := dv.PerFile[file]; !hasPerFile && dv.Value == "" {
 				return fmt.Errorf("Derived value %q in %s is missing the 'value' field (required for entries without per-file values).", name, FileName)
@@ -290,14 +299,14 @@ func (c *Config) validate() error {
 			return fmt.Errorf("Derived value %q in %s conflicts with a service env_var of the same name.", name, FileName)
 		}
 
-		// Validate references in top-level value
-		if err := validateTemplateRefs(name, dv.Value, serviceEnvVars); err != nil {
+		// Validate ${service.field} references in top-level value
+		if err := validateTemplateRefs(name, dv.Value, c.Services); err != nil {
 			return err
 		}
 
 		// Validate references in per-file values
 		for _, pfValue := range dv.PerFile {
-			if err := validateTemplateRefs(name, pfValue, serviceEnvVars); err != nil {
+			if err := validateTemplateRefs(name, pfValue, c.Services); err != nil {
 				return err
 			}
 		}
