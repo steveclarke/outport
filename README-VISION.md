@@ -31,7 +31,7 @@ Outport is designed to solve all of this — from port allocation to hostnames, 
 ```bash
 cd ~/src/myapp
 outport init              # Create .outport.yml
-outport register          # Allocate ports, write .env
+outport apply          # Allocate ports, write .env
 ```
 
 That's it. Your services have deterministic ports. Once DNS and SSL are enabled, your app is at `https://myapp.test`.
@@ -52,13 +52,13 @@ services:
     env_var: REDIS_PORT
 ```
 
-When you run `outport register`, Outport:
+When you run `outport apply`, Outport:
 
 1. **Allocates ports** — assigns a deterministic hash-based port for each service so the same project always gets the same ports.
 2. **Writes `.env`** — every framework already reads `.env` (Docker Compose, Foreman, Rails, Nuxt), so your services pick up their ports automatically.
 3. **Registers everything** — a central registry at `~/.config/outport/` tracks all projects and worktrees so ports never collide across your entire machine.
 
-Each worktree gets its own allocation with its own deterministic ports. Run `outport register` again — same result every time.
+Each worktree gets its own allocation with its own deterministic ports. Run `outport apply` again — same result every time.
 
 ## What You Get
 
@@ -67,7 +67,7 @@ Each worktree gets its own allocation with its own deterministic ports. Run `out
 Every project and worktree gets stable, non-conflicting ports written to `.env`:
 
 ```bash
-$ outport register
+$ outport apply
 myapp
     web         PORT                 → 24920  http://localhost:24920
     postgres    DATABASE_PORT        → 21536
@@ -76,7 +76,7 @@ myapp
 Ports written to .env
 ```
 
-Ports are deterministic — same project, same worktree, same ports every time. Run `outport register` again — same result.
+Ports are deterministic — same project, same worktree, same ports every time. Run `outport apply` again — same result.
 
 ### Friendly Hostnames
 
@@ -192,13 +192,13 @@ Outport detects git worktrees automatically. Each worktree gets its own ports an
 
 ```bash
 # Main checkout
-$ outport register
+$ outport apply
 myapp
     web         PORT                 → 24920  https://myapp.test
     postgres    DATABASE_PORT        → 21536
 
 # Feature worktree — different ports, different hostname, zero conflicts
-$ outport register
+$ outport apply
 myapp [feature-login (worktree)]
     web         PORT                 → 18472  https://myapp-feature-login.test
     postgres    DATABASE_PORT        → 13567
@@ -221,9 +221,9 @@ Outport only updates variables declared in your `.outport.yml` — everything el
 
 ```
 outport init              Create .outport.yml for this project
-outport register          Register project, allocate ports, write .env
-outport reg               Short alias for register
-outport register --force  Clear and re-allocate all ports
+outport apply             Apply port configuration, write .env
+outport a                 Short alias for apply
+outport apply --force  Clear and re-allocate all ports
 outport unregister        Remove from registry, free ports
 outport ports             Show ports for the current project
 outport open              Open HTTP services in the browser
@@ -241,7 +241,7 @@ All commands support `--json` for machine-readable output.
 
 Outport uses FNV-32 hashing on `{project}/{instance}/{service}` to produce a deterministic port in the 10000-39999 range. Same inputs always produce the same port — so your project gets the same ports every time, on every machine.
 
-Allocations are persisted in `~/.config/outport/registry.json`. Ports are stable: once allocated, `outport register` reuses the same ports. New services get fresh allocations without disturbing existing ones.
+Allocations are persisted in `~/.config/outport/registry.json`. Ports are stable: once allocated, `outport apply` reuses the same ports. New services get fresh allocations without disturbing existing ones.
 
 ## AI Agent Skill
 

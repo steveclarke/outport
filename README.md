@@ -14,14 +14,14 @@ Outport allocates deterministic, non-conflicting ports for all your projects and
 
 You're running Rails on 3000, Nuxt on 5173, Postgres on 5432. You start a second project — port conflict. You spin up a git worktree — another conflict. With agentic coding tools and parallel development, you might run 3-5 instances of the same project simultaneously.
 
-Outport fixes this. Declare your services once, run `outport register`, and never think about ports again.
+Outport fixes this. Declare your services once, run `outport apply`, and never think about ports again.
 
 ## Quick Start
 
 ```bash
 # In your project directory
 outport init          # Create .outport.yml (interactive)
-outport register      # Allocate ports, write .env
+outport apply      # Allocate ports, write .env
 ```
 
 That's it. Your `.env` now has deterministic, non-conflicting ports:
@@ -47,7 +47,7 @@ services:
     env_var: REDIS_PORT
 ```
 
-Run `outport register`. Outport allocates a deterministic hash-based port (range 10000-39999) for each service and writes the result to `.env`.
+Run `outport apply`. Outport allocates a deterministic hash-based port (range 10000-39999) for each service and writes the result to `.env`.
 
 ### Preferred Ports (optional)
 
@@ -71,13 +71,13 @@ Outport detects git worktrees automatically. Each worktree gets its own set of p
 
 ```bash
 # Main checkout
-$ outport register
+$ outport apply
 outport: myapp
   web (PORT) → 39519
   postgres (DATABASE_PORT) → 39972
 
 # Feature worktree — completely different ports, zero conflicts
-$ outport register
+$ outport apply
 outport: myapp [feature-xyz (worktree)]
   web (PORT) → 28104
   postgres (DATABASE_PORT) → 13567
@@ -98,9 +98,9 @@ Outport preserves your existing `.env` variables. It only updates variables decl
 
 ```
 outport init              Create .outport.yml for this project
-outport register          Register project, allocate ports, write .env
-outport reg               Short alias for register
-outport register --force  Clear and re-allocate all ports
+outport apply          Register project, allocate ports, write .env
+outport a                 Short alias for apply
+outport apply --force  Clear and re-allocate all ports
 outport unregister        Remove from registry, free ports
 outport ports             Show ports for the current project
 outport open              Open HTTP services in the browser
@@ -115,7 +115,7 @@ All commands support `--json` for machine-readable output.
 
 Outport uses FNV-32 hashing on `{project}/{instance}/{service}` to produce a deterministic port in the 10000-39999 range. If you specify a `preferred_port` and it's available, you get it — so your main checkout can keep familiar ports like 3000 and 5432. Allocations are persisted in `~/.config/outport/registry.json`.
 
-Ports are stable: once allocated, running `outport register` again reuses the same ports. New services added to your config get fresh allocations without disturbing existing ones.
+Ports are stable: once allocated, running `outport apply` again reuses the same ports. New services added to your config get fresh allocations without disturbing existing ones.
 
 ## Protocol
 
@@ -191,13 +191,13 @@ Requires [Go 1.24+](https://go.dev/dl/) and [just](https://github.com/casey/just
 just build        # Build the binary
 just test         # Run all tests
 just lint         # Run linter
-just run register  # Build and run with args
+just run apply     # Build and run with args
 just clean        # Clean build artifacts
 ```
 
 ## Roadmap
 
-- **v1 (current):** Port allocation + register/unregister + `.env` writing
+- **v1 (current):** Port allocation + apply/unregister + `.env` writing
 - **v2:** DNS server + reverse proxy for `.test` domains (`myapp.test` instead of `localhost:39519`)
 - **v3:** Local SSL with real certificates for `.test` domains
 

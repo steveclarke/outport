@@ -16,7 +16,7 @@ just test             # Run all tests (verbose)
 just test-short       # Run tests (compact output)
 just lint             # Run golangci-lint
 just install          # Install to $GOPATH/bin
-just run <args>       # Build and run (e.g., just run register)
+just run <args>       # Build and run (e.g., just run apply)
 just release-dry-run  # Test GoReleaser locally
 ```
 
@@ -37,7 +37,7 @@ Entry point: `main.go` → `cmd.Execute()` (Cobra CLI).
 
 ### CLI commands (`cmd/`)
 
-- **register** — Main workflow: load config → detect worktree → load registry → allocate ports → merge `.env` → display results. Use `--force` to re-allocate all ports from scratch.
+- **apply** — Main workflow: load config → detect worktree → load registry → allocate ports → merge `.env` → display results. Use `--force` to re-allocate all ports from scratch.
 - **unregister** — Remove the current project/worktree from the registry and clean managed variables from `.env` files.
 - **init** — Interactive setup, creates `.outport.yml` with selected services.
 - **ports** — Show current project's allocated ports.
@@ -50,7 +50,7 @@ All commands support `--json` for machine-readable output. Each command has pair
 ## Key Design Decisions
 
 - **Stateless commands** — Each command independently loads config, worktree info, and registry. No shared state between commands.
-- **Deterministic allocation** — Same inputs always produce the same port (idempotent `outport register`).
+- **Deterministic allocation** — Same inputs always produce the same port (idempotent `outport apply`).
 - **Instance = worktree name** — "main" for the primary checkout, worktree directory name for feature branches. Combined with project name to form unique registry keys.
 - **Config-driven .env merge** — Variables in `.outport.yml` are always written to `.env`, overwriting existing values. All other lines (comments, unrelated variables) are preserved.
 - **Error wrapping** — Uses `fmt.Errorf("context: %w", err)` throughout.

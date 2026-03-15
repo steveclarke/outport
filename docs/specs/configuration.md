@@ -8,7 +8,7 @@ This spec captures design thinking from early conversations. It is NOT finalized
 
 ## Core Principle
 
-The developer should not have to think about port numbers. The default experience is: declare your services, run `outport register`, get deterministic ports. Done.
+The developer should not have to think about port numbers. The default experience is: declare your services, run `outport apply`, get deterministic ports. Done.
 
 Port numbers are an implementation detail that Outport abstracts away — the same way DNS abstracts away IP addresses.
 
@@ -68,7 +68,7 @@ services:
 When no `fixed_port` is specified, Outport assigns a deterministic port via FNV-32a hash on `{project}/{instance}/{service}`. The hash maps to the range 10000–39999.
 
 - **Deterministic**: same project + worktree + service = same port, every time
-- **Order-independent**: doesn't matter which project runs `outport register` first
+- **Order-independent**: doesn't matter which project runs `outport apply` first
 - **Collision-free**: linear probing resolves hash collisions across all registered projects
 
 This is the primary and recommended mode. Most developers should never specify a port number.
@@ -186,7 +186,7 @@ Interactive setup should:
 4. Generate a clean `.outport.yml` with just names, env vars, and protocols
 5. Optionally add `env_file` if the user specifies a non-default location
 
-### `outport register`
+### `outport apply`
 
 Reads `.outport.yml`, allocates ports, saves to the central registry, writes `.env`. This is the command that actually does the work. Alias: `outport reg`.
 

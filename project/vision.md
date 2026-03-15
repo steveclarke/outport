@@ -16,7 +16,7 @@ These problems have existed for years. Every developer has hit them. Outport is 
 
 **Outport makes your dev environment work the way it should — across every project, every device, every worktree.**
 
-Drop a config file in your project. Run `outport register`. You get:
+Drop a config file in your project. Run `outport apply`. You get:
 
 - **Deterministic ports** that never conflict, across all your projects and worktrees
 - **A friendly hostname** like `myapp.test` instead of `localhost:28104`
@@ -63,7 +63,7 @@ Because it owns all three, it can do things that are impossible when these conce
 
 ## Design Principles
 
-1. **Zero thinking** — `outport register` and forget about it
+1. **Zero thinking** — `outport apply` and forget about it
 2. **Convention over configuration** — sensible defaults, config only when needed
 3. **`.env` is the contract** — the universal integration point
 4. **Framework-agnostic** — Rails, Nuxt, Phoenix, Django, anything with env vars
