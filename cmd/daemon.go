@@ -33,8 +33,17 @@ func runDaemon(cmd *cobra.Command, args []string) error {
 
 	cfg := &daemon.DaemonConfig{
 		DNSAddr:      "127.0.0.1:15353",
-		ProxyAddr:    fmt.Sprintf(":%d", daemonPort),
 		RegistryPath: regPath,
+	}
+
+	// Try launchd socket activation first (darwin only)
+	listener, err := activateLaunchdSocket()
+	if err == nil && listener != nil {
+		cfg.Listener = listener
+		cfg.ProxyAddr = listener.Addr().String()
+	} else {
+		// Fall back to direct binding
+		cfg.ProxyAddr = fmt.Sprintf(":%d", daemonPort)
 	}
 
 	d, err := daemon.New(cfg)
