@@ -30,17 +30,6 @@ var applyCmd = &cobra.Command{
 func init() {
 	applyCmd.Flags().BoolVar(&forceFlag, "force", false, "ignore existing allocations and re-allocate all ports")
 	rootCmd.AddCommand(applyCmd)
-
-	// Hidden backward-compat aliases
-	for _, alias := range []string{"up", "register"} {
-		aliasCmd := &cobra.Command{
-			Use:    alias,
-			Hidden: true,
-			RunE:   runApply,
-		}
-		aliasCmd.Flags().BoolVar(&forceFlag, "force", false, "")
-		rootCmd.AddCommand(aliasCmd)
-	}
 }
 
 func runApply(cmd *cobra.Command, args []string) error {

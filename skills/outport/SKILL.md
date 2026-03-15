@@ -22,7 +22,7 @@ outport open web          # Open a specific service
 outport status            # Show all registered projects
 outport status --check    # Show with health checks (up/down)
 outport apply --force     # Clear and re-allocate all ports
-outport unregister        # Remove from registry, free ports
+outport unapply           # Remove ports, clean .env files
 outport gc                # Remove stale registry entries
 ```
 
@@ -296,7 +296,7 @@ collisions across all registered projects.
 Run `outport apply --force` to clear and re-allocate.
 
 ### Freeing ports from a project you're done with
-Run `outport unregister` to remove from registry and free all ports.
+Run `outport unapply` to remove from registry and free all ports.
 
 ### Adding a new service to an existing project
 Add it to `.outport.yml` and run `outport apply`. Existing allocations
@@ -308,4 +308,4 @@ and URLs.
 
 ### Services moved to different ports than expected
 Check `outport status` to see all allocations. If another project holds
-the ports you want, unregister it first, then `outport apply --force`.
+the ports you want, unapply it first, then `outport apply --force`.

@@ -687,14 +687,14 @@ func TestPorts_StyledOutput(t *testing.T) {
 
 // --- unregister ---
 
-func TestUnregister_RemovesFromRegistry(t *testing.T) {
+func TestUnapply_RemovesFromRegistry(t *testing.T) {
 	setupProject(t, testConfig)
 	executeCmd(t, "apply")
 
-	output := executeCmd(t, "unregister")
+	output := executeCmd(t, "unapply")
 
-	if !bytes.Contains([]byte(output), []byte("Unregistered")) {
-		t.Errorf("expected 'Unregistered' message, got:\n%s", output)
+	if !bytes.Contains([]byte(output), []byte("Unapplied")) {
+		t.Errorf("expected 'Unapplied' message, got:\n%s", output)
 	}
 
 	portsOutput := executeCmd(t, "ports")
@@ -703,7 +703,7 @@ func TestUnregister_RemovesFromRegistry(t *testing.T) {
 	}
 }
 
-func TestUnregister_CleansEnvFiles(t *testing.T) {
+func TestUnapply_CleansEnvFiles(t *testing.T) {
 	dir := setupProject(t, testConfigWithDerived)
 	os.MkdirAll(filepath.Join(dir, "backend"), 0755)
 	os.MkdirAll(filepath.Join(dir, "frontend"), 0755)
@@ -717,8 +717,8 @@ func TestUnregister_CleansEnvFiles(t *testing.T) {
 		t.Fatal("backend/.env should have outport block before unregister")
 	}
 
-	// Unregister should remove the blocks
-	executeCmd(t, "unregister")
+	// Unapply should remove the blocks
+	executeCmd(t, "unapply")
 
 	// Verify blocks are gone
 	backendEnv, _ = os.ReadFile(filepath.Join(dir, "backend", ".env"))
@@ -731,13 +731,13 @@ func TestUnregister_CleansEnvFiles(t *testing.T) {
 	}
 }
 
-func TestUnregister_JSONShowsCleanedFiles(t *testing.T) {
+func TestUnapply_JSONShowsCleanedFiles(t *testing.T) {
 	dir := setupProject(t, testConfigWithDerived)
 	os.MkdirAll(filepath.Join(dir, "backend"), 0755)
 	os.MkdirAll(filepath.Join(dir, "frontend"), 0755)
 
 	executeCmd(t, "apply")
-	output := executeCmd(t, "unregister", "--json")
+	output := executeCmd(t, "unapply", "--json")
 
 	var result struct {
 		Project      string   `json:"project"`
@@ -748,7 +748,7 @@ func TestUnregister_JSONShowsCleanedFiles(t *testing.T) {
 	if err := json.Unmarshal([]byte(output), &result); err != nil {
 		t.Fatalf("invalid JSON: %v\nOutput: %s", err, output)
 	}
-	if result.Status != "unregistered" {
+	if result.Status != "unapplied" {
 		t.Errorf("status = %q, want unregistered", result.Status)
 	}
 	if len(result.CleanedFiles) == 0 {
@@ -756,12 +756,12 @@ func TestUnregister_JSONShowsCleanedFiles(t *testing.T) {
 	}
 }
 
-func TestUnregister_NotRegistered(t *testing.T) {
+func TestUnapply_NotRegistered(t *testing.T) {
 	setupProject(t, testConfig)
 
 	rootCmd.SetOut(new(bytes.Buffer))
 	rootCmd.SetErr(new(bytes.Buffer))
-	rootCmd.SetArgs([]string{"unregister"})
+	rootCmd.SetArgs([]string{"unapply"})
 
 	err := rootCmd.Execute()
 	if err == nil {
@@ -769,11 +769,11 @@ func TestUnregister_NotRegistered(t *testing.T) {
 	}
 }
 
-func TestUnregister_JSON(t *testing.T) {
+func TestUnapply_JSON(t *testing.T) {
 	setupProject(t, testConfig)
 	executeCmd(t, "apply", "--json")
 
-	output := executeCmd(t, "unregister", "--json")
+	output := executeCmd(t, "unapply", "--json")
 
 	var result struct {
 		Project  string `json:"project"`
@@ -786,8 +786,8 @@ func TestUnregister_JSON(t *testing.T) {
 	if result.Project != "testapp" {
 		t.Errorf("project = %q, want %q", result.Project, "testapp")
 	}
-	if result.Status != "unregistered" {
-		t.Errorf("status = %q, want %q", result.Status, "unregistered")
+	if result.Status != "unapplied" {
+		t.Errorf("status = %q, want %q", result.Status, "unapplied")
 	}
 }
 

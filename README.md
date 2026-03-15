@@ -103,7 +103,7 @@ outport init              Create .outport.yml for this project
 outport apply          Register project, allocate ports, write .env
 outport a                 Short alias for apply
 outport apply --force  Clear and re-allocate all ports
-outport unregister        Remove from registry, free ports
+outport unapply           Remove ports, clean .env files
 outport ports             Show ports for the current project
 outport open              Open HTTP services in the browser
 outport status            Show all registered projects
@@ -294,7 +294,7 @@ The agent can run `outport apply` in worktrees, read `outport ports --json` for 
 
 ## Roadmap
 
-- **v1 (current):** Port allocation + apply/unregister + `.env` writing
+- **v1 (current):** Port allocation + apply/unapply + `.env` writing
 - **v2:** DNS server + reverse proxy for `.test` domains (`myapp.test` instead of `localhost:39519`)
 - **v3:** Local SSL with real certificates for `.test` domains
 

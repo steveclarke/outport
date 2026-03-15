@@ -12,19 +12,18 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var unregisterCmd = &cobra.Command{
-	Use:     "unregister",
-	Aliases: []string{"unreg"},
-	Short:   "Remove project from the registry and free its ports",
-	Long:    "Removes the current project/instance from the central registry, freeing all its port allocations.",
-	RunE:    runUnregister,
+var unapplyCmd = &cobra.Command{
+	Use:   "unapply",
+	Short: "Remove ports and clean .env files",
+	Long:  "Removes the managed block from all .env files and removes the project from the central registry.",
+	RunE:  runUnapply,
 }
 
 func init() {
-	rootCmd.AddCommand(unregisterCmd)
+	rootCmd.AddCommand(unapplyCmd)
 }
 
-func runUnregister(cmd *cobra.Command, args []string) error {
+func runUnapply(cmd *cobra.Command, args []string) error {
 	ctx, err := loadProjectContext()
 	if err != nil {
 		return err
@@ -45,9 +44,9 @@ func runUnregister(cmd *cobra.Command, args []string) error {
 	}
 
 	if jsonFlag {
-		return printUnregisterJSON(cmd, cfg.Name, wt.Instance, cleanedFiles)
+		return printUnapplyJSON(cmd, cfg.Name, wt.Instance, cleanedFiles)
 	}
-	return printUnregisterStyled(cmd, cfg.Name, wt, cleanedFiles)
+	return printUnapplyStyled(cmd, cfg.Name, wt, cleanedFiles)
 }
 
 // cleanEnvFiles removes the outport fenced block from all .env files
@@ -75,7 +74,7 @@ func cleanEnvFiles(dir string, cfg *config.Config) []string {
 	return cleaned
 }
 
-func printUnregisterJSON(cmd *cobra.Command, project, instance string, cleanedFiles []string) error {
+func printUnapplyJSON(cmd *cobra.Command, project, instance string, cleanedFiles []string) error {
 	out := struct {
 		Project      string   `json:"project"`
 		Instance     string   `json:"instance"`
@@ -84,7 +83,7 @@ func printUnregisterJSON(cmd *cobra.Command, project, instance string, cleanedFi
 	}{
 		Project:      project,
 		Instance:     instance,
-		Status:       "unregistered",
+		Status:       "unapplied",
 		CleanedFiles: cleanedFiles,
 	}
 	data, err := json.MarshalIndent(out, "", "  ")
@@ -95,10 +94,10 @@ func printUnregisterJSON(cmd *cobra.Command, project, instance string, cleanedFi
 	return nil
 }
 
-func printUnregisterStyled(cmd *cobra.Command, project string, wt *worktree.Info, cleanedFiles []string) error {
+func printUnapplyStyled(cmd *cobra.Command, project string, wt *worktree.Info, cleanedFiles []string) error {
 	w := cmd.OutOrStdout()
 	printHeader(w, project, wt)
-	fmt.Fprintln(w, ui.SuccessStyle.Render("Unregistered. All ports freed."))
+	fmt.Fprintln(w, ui.SuccessStyle.Render("Unapplied. All ports freed."))
 	if len(cleanedFiles) > 0 {
 		fmt.Fprintln(w, ui.SuccessStyle.Render("Cleaned managed variables from:"))
 		for _, f := range cleanedFiles {
