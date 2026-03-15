@@ -42,11 +42,7 @@ func runPorts(cmd *cobra.Command, args []string) error {
 }
 
 func printPortsJSON(cmd *cobra.Command, cfg *config.Config, instanceName string, alloc registry.Allocation) error {
-	hostnames := alloc.Hostnames
-	if hostnames == nil {
-		hostnames = make(map[string]string)
-	}
-	services := buildServiceMap(cfg, alloc.Ports, hostnames)
+	services := buildServiceMap(cfg, alloc.Ports, alloc.Hostnames)
 
 	if portsCheckFlag {
 		portStatus := checkPorts(alloc.Ports)
@@ -60,7 +56,7 @@ func printPortsJSON(cmd *cobra.Command, cfg *config.Config, instanceName string,
 		Project:  cfg.Name,
 		Instance: instanceName,
 		Services: services,
-		Derived:  buildDerivedMap(cfg.Derived, resolveDerivedFromAlloc(cfg, alloc.Ports, hostnames)),
+		Derived:  buildDerivedMap(cfg.Derived, resolveDerivedFromAlloc(cfg, alloc.Ports, alloc.Hostnames)),
 	}
 	data, err := json.MarshalIndent(out, "", "  ")
 	if err != nil {
@@ -76,19 +72,14 @@ func printPortsStyled(cmd *cobra.Command, cfg *config.Config, instanceName strin
 
 	serviceNames := sortedMapKeys(alloc.Ports)
 
-	hostnames := alloc.Hostnames
-	if hostnames == nil {
-		hostnames = make(map[string]string)
-	}
-
 	var portStatus map[int]bool
 	if portsCheckFlag {
 		portStatus = checkPorts(alloc.Ports)
 	}
 
-	printFlatServices(w, cfg, serviceNames, alloc.Ports, hostnames, portStatus)
+	printFlatServices(w, cfg, serviceNames, alloc.Ports, alloc.Hostnames, portStatus)
 
-	if resolved := resolveDerivedFromAlloc(cfg, alloc.Ports, hostnames); len(resolved) > 0 {
+	if resolved := resolveDerivedFromAlloc(cfg, alloc.Ports, alloc.Hostnames); len(resolved) > 0 {
 		printDerivedValues(w, resolved)
 	}
 

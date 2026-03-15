@@ -9,6 +9,8 @@ import (
 
 const dnsTTL = 60 // seconds
 
+var loopback = net.IPv4(127, 0, 0, 1).To4()
+
 // NewDNSServer creates a DNS server that resolves *.test to 127.0.0.1.
 func NewDNSServer(addr string) *dns.Server {
 	handler := dns.HandlerFunc(func(w dns.ResponseWriter, r *dns.Msg) {
@@ -25,7 +27,7 @@ func NewDNSServer(addr string) *dns.Server {
 						Class:  dns.ClassINET,
 						Ttl:    dnsTTL,
 					},
-					A: net.ParseIP("127.0.0.1"),
+					A: loopback,
 				})
 			}
 		}

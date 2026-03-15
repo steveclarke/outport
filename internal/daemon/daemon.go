@@ -28,10 +28,10 @@ type Daemon struct {
 // New creates a new Daemon instance.
 func New(cfg *DaemonConfig) (*Daemon, error) {
 	routes := &RouteTable{}
+	proxyHandler := NewProxy(routes)
+	routes.OnUpdate = proxyHandler.ClearCache
 
 	dnsSrv := NewDNSServer(cfg.DNSAddr)
-
-	proxyHandler := NewProxy(routes)
 	httpSrv := &http.Server{
 		Addr:    cfg.ProxyAddr,
 		Handler: proxyHandler,

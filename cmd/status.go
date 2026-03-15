@@ -9,7 +9,6 @@ import (
 	"charm.land/huh/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/outport-app/outport/internal/config"
-	"github.com/outport-app/outport/internal/instance"
 	"github.com/outport-app/outport/internal/portcheck"
 	"github.com/outport-app/outport/internal/registry"
 	"github.com/outport-app/outport/internal/ui"
@@ -29,28 +28,20 @@ func init() {
 	rootCmd.AddCommand(statusCmd)
 }
 
-func currentProjectKey() string {
-	dir, err := os.Getwd()
+func currentProjectKey(reg *registry.Registry) string {
+	cwd, err := os.Getwd()
 	if err != nil {
 		return ""
 	}
-	cfgDir, err := config.FindDir(dir)
+	dir, err := config.FindDir(cwd)
 	if err != nil {
 		return ""
 	}
-	cfg, err := config.Load(cfgDir)
-	if err != nil {
+	key, _, ok := reg.FindByDir(dir)
+	if !ok {
 		return ""
 	}
-	reg, err := loadRegistry()
-	if err != nil {
-		return ""
-	}
-	inst, _, err := instance.Resolve(reg, cfg.Name, cfgDir)
-	if err != nil {
-		return ""
-	}
-	return cfg.Name + "/" + inst
+	return key
 }
 
 func loadProjectConfig(projectDir string) *config.Config {
@@ -109,7 +100,7 @@ type statusEntryJSON struct {
 }
 
 func printStatusJSON(cmd *cobra.Command, reg *registry.Registry, portStatus map[int]bool) error {
-	currentKey := currentProjectKey()
+	currentKey := currentProjectKey(reg)
 	var entries []statusEntryJSON
 
 	keys := sortedMapKeys(reg.Projects)
@@ -117,22 +108,13 @@ func printStatusJSON(cmd *cobra.Command, reg *registry.Registry, portStatus map[
 		alloc := reg.Projects[key]
 		cfg := loadProjectConfig(alloc.ProjectDir)
 
-		hostnames := alloc.Hostnames
-		if hostnames == nil {
-			hostnames = make(map[string]string)
-		}
-
 		services := make(map[string]svcJSON)
 		for svcName, port := range alloc.Ports {
 			s := svcJSON{Port: port}
 			if cfg != nil {
 				if svc, ok := cfg.Services[svcName]; ok {
-					hostname := svc.Hostname
-					if h, ok := hostnames[svcName]; ok {
-						hostname = h
-					}
 					s.Protocol = svc.Protocol
-					s.URL = serviceURL(svc.Protocol, hostname, port)
+					s.URL = serviceURL(svc.Protocol, resolvedHostname(svc, alloc.Hostnames, svcName), port)
 				}
 			}
 			if portStatus != nil {
@@ -143,7 +125,7 @@ func printStatusJSON(cmd *cobra.Command, reg *registry.Registry, portStatus map[
 
 		var derived map[string]derivedJSON
 		if cfg != nil {
-			derived = buildDerivedMap(cfg.Derived, resolveDerivedFromAlloc(cfg, alloc.Ports, hostnames))
+			derived = buildDerivedMap(cfg.Derived, resolveDerivedFromAlloc(cfg, alloc.Ports, alloc.Hostnames))
 		}
 
 		entries = append(entries, statusEntryJSON{
@@ -167,7 +149,7 @@ var currentMarker = lipgloss.NewStyle().Foreground(ui.Green).Bold(true)
 
 func printStatusStyled(cmd *cobra.Command, reg *registry.Registry, portStatus map[int]bool) error {
 	w := cmd.OutOrStdout()
-	currentKey := currentProjectKey()
+	currentKey := currentProjectKey(reg)
 
 	keys := sortedMapKeys(reg.Projects)
 	var staleKeys []string
@@ -175,11 +157,6 @@ func printStatusStyled(cmd *cobra.Command, reg *registry.Registry, portStatus ma
 	for i, key := range keys {
 		alloc := reg.Projects[key]
 		cfg := loadProjectConfig(alloc.ProjectDir)
-
-		hostnames := alloc.Hostnames
-		if hostnames == nil {
-			hostnames = make(map[string]string)
-		}
 
 		// Detect stale: directory missing or config missing
 		stale := false
@@ -220,19 +197,10 @@ func printStatusStyled(cmd *cobra.Command, reg *registry.Registry, portStatus ma
 				}
 			}
 
-			hostname := ""
-			if cfg != nil {
-				if svc, ok := cfg.Services[svcName]; ok {
-					hostname = svc.Hostname
-					if h, ok := hostnames[svcName]; ok {
-						hostname = h
-					}
-				}
-			}
-
 			extra := ""
 			if cfg != nil {
 				if svc, ok := cfg.Services[svcName]; ok {
+					hostname := resolvedHostname(svc, alloc.Hostnames, svcName)
 					if u := serviceURL(svc.Protocol, hostname, port); u != "" {
 						extra = "  " + ui.UrlStyle.Render(u)
 					} else if hostname != "" {
@@ -252,7 +220,7 @@ func printStatusStyled(cmd *cobra.Command, reg *registry.Registry, portStatus ma
 		}
 
 		if cfg != nil {
-			if resolved := resolveDerivedFromAlloc(cfg, alloc.Ports, hostnames); len(resolved) > 0 {
+			if resolved := resolveDerivedFromAlloc(cfg, alloc.Ports, alloc.Hostnames); len(resolved) > 0 {
 				printDerivedValues(w, resolved)
 			}
 		}

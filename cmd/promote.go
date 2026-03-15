@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/outport-app/outport/internal/instance"
-	"github.com/outport-app/outport/internal/registry"
 	"github.com/outport-app/outport/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -55,18 +54,11 @@ func runPromote(cmd *cobra.Command, args []string) error {
 		// Rekey main → generated code
 		reg.Remove(cfg.Name, "main")
 
-		demotedHostnames := computeHostnames(cfg, demotedTo)
-		demotedProtocols := computeProtocols(cfg)
-
-		reg.Set(cfg.Name, demotedTo, registry.Allocation{
-			ProjectDir: mainAlloc.ProjectDir,
-			Ports:      mainAlloc.Ports,
-			Hostnames:  demotedHostnames,
-			Protocols:  demotedProtocols,
-		})
+		demotedAlloc := buildAllocation(cfg, demotedTo, mainAlloc.ProjectDir, mainAlloc.Ports)
+		reg.Set(cfg.Name, demotedTo, demotedAlloc)
 
 		// Re-merge .env files for the demoted instance
-		if err := mergeEnvFiles(mainAlloc.ProjectDir, cfg, mainAlloc.Ports, demotedHostnames); err != nil {
+		if err := mergeEnvFiles(mainAlloc.ProjectDir, cfg, mainAlloc.Ports, demotedAlloc.Hostnames); err != nil {
 			return fmt.Errorf("updating .env files for demoted instance: %w", err)
 		}
 	}
@@ -74,18 +66,11 @@ func runPromote(cmd *cobra.Command, args []string) error {
 	// Promote current instance → main
 	reg.Remove(cfg.Name, ctx.Instance)
 
-	newHostnames := computeHostnames(cfg, "main")
-	newProtocols := computeProtocols(cfg)
-
-	reg.Set(cfg.Name, "main", registry.Allocation{
-		ProjectDir: currentAlloc.ProjectDir,
-		Ports:      currentAlloc.Ports,
-		Hostnames:  newHostnames,
-		Protocols:  newProtocols,
-	})
+	promotedAlloc := buildAllocation(cfg, "main", currentAlloc.ProjectDir, currentAlloc.Ports)
+	reg.Set(cfg.Name, "main", promotedAlloc)
 
 	// Re-merge .env files for the promoted instance
-	if err := mergeEnvFiles(ctx.Dir, cfg, currentAlloc.Ports, newHostnames); err != nil {
+	if err := mergeEnvFiles(ctx.Dir, cfg, currentAlloc.Ports, promotedAlloc.Hostnames); err != nil {
 		return fmt.Errorf("updating .env files for promoted instance: %w", err)
 	}
 

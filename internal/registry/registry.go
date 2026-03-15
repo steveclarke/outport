@@ -44,6 +44,15 @@ func Load(path string) (*Registry, error) {
 	if reg.Projects == nil {
 		reg.Projects = make(map[string]Allocation)
 	}
+	for key, alloc := range reg.Projects {
+		if alloc.Hostnames == nil {
+			alloc.Hostnames = make(map[string]string)
+		}
+		if alloc.Protocols == nil {
+			alloc.Protocols = make(map[string]string)
+		}
+		reg.Projects[key] = alloc
+	}
 	reg.path = path
 
 	return reg, nil

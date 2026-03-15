@@ -4,14 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"path/filepath"
 	"sort"
 	"strings"
 
 	"charm.land/lipgloss/v2"
 	"github.com/outport-app/outport/internal/allocator"
 	"github.com/outport-app/outport/internal/config"
-	"github.com/outport-app/outport/internal/dotenv"
 	"github.com/outport-app/outport/internal/registry"
 	"github.com/outport-app/outport/internal/ui"
 	"github.com/spf13/cobra"
@@ -64,8 +62,6 @@ func runApply(cmd *cobra.Command, args []string) error {
 	}
 
 	ports := make(map[string]int)
-	envFileVars := make(map[string]map[string]string)
-
 	serviceNames := sortedMapKeys(cfg.Services)
 
 	for _, svcName := range serviceNames {
@@ -88,21 +84,13 @@ func runApply(cmd *cobra.Command, args []string) error {
 			usedPorts[port] = true
 		}
 		ports[svcName] = port
-
-		for _, envFile := range svc.EnvFiles {
-			if envFileVars[envFile] == nil {
-				envFileVars[envFile] = make(map[string]string)
-			}
-			envFileVars[envFile][svc.EnvVar] = fmt.Sprintf("%d", port)
-		}
 	}
 
-	// Compute hostnames and protocols
-	hostnames := computeHostnames(cfg, ctx.Instance)
-	protocols := computeProtocols(cfg)
+	// Build allocation
+	alloc := buildAllocation(cfg, ctx.Instance, dir, ports)
 
 	// Check hostname uniqueness across registry
-	for svcName, hostname := range hostnames {
+	for svcName, hostname := range alloc.Hostnames {
 		projectKey := cfg.Name + "/" + ctx.Instance
 		for regKey, regAlloc := range reg.Projects {
 			if regKey == projectKey {
@@ -116,39 +104,58 @@ func runApply(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// Resolve derived values and add to envFileVars
-	resolvedDerived := resolveDerivedFromAlloc(cfg, ports, hostnames)
-	for name, fileValues := range resolvedDerived {
-		for file, value := range fileValues {
-			if envFileVars[file] == nil {
-				envFileVars[file] = make(map[string]string)
-			}
-			envFileVars[file][name] = value
-		}
-	}
-
-	reg.Set(cfg.Name, ctx.Instance, registry.Allocation{
-		ProjectDir: dir,
-		Ports:      ports,
-		Hostnames:  hostnames,
-		Protocols:  protocols,
-	})
+	reg.Set(cfg.Name, ctx.Instance, alloc)
 	if err := reg.Save(); err != nil {
 		return err
 	}
 
-	envFiles := sortedMapKeys(envFileVars)
-	for _, envFile := range envFiles {
-		envPath := filepath.Join(dir, envFile)
-		if err := dotenv.Merge(envPath, envFileVars[envFile]); err != nil {
-			return fmt.Errorf("writing %s: %w", envFile, err)
-		}
+	if err := mergeEnvFiles(dir, cfg, ports, alloc.Hostnames); err != nil {
+		return err
 	}
 
+	resolvedDerived := resolveDerivedFromAlloc(cfg, ports, alloc.Hostnames)
+	envFiles := mergedEnvFileList(cfg, resolvedDerived)
+
 	if jsonFlag {
-		return printApplyJSON(cmd, cfg, ctx.Instance, ports, hostnames, resolvedDerived, envFiles)
+		return printApplyJSON(cmd, cfg, ctx.Instance, ports, alloc.Hostnames, resolvedDerived, envFiles)
 	}
-	return printApplyStyled(cmd, cfg, ctx.Instance, serviceNames, ports, hostnames, resolvedDerived, envFiles)
+	return printApplyStyled(cmd, cfg, ctx.Instance, serviceNames, ports, alloc.Hostnames, resolvedDerived, envFiles)
+}
+
+// mergedEnvFileList returns the sorted list of env files that would be written
+// by mergeEnvFiles, for display purposes.
+func mergedEnvFileList(cfg *config.Config, resolvedDerived map[string]map[string]string) []string {
+	files := make(map[string]bool)
+	for _, svc := range cfg.Services {
+		for _, envFile := range svc.EnvFiles {
+			files[envFile] = true
+		}
+	}
+	for _, fileValues := range resolvedDerived {
+		for file := range fileValues {
+			files[file] = true
+		}
+	}
+	return sortedMapKeys(files)
+}
+
+// buildAllocation constructs a registry Allocation from config, instance, directory, and ports.
+func buildAllocation(cfg *config.Config, instanceName, dir string, ports map[string]int) registry.Allocation {
+	return registry.Allocation{
+		ProjectDir: dir,
+		Ports:      ports,
+		Hostnames:  computeHostnames(cfg, instanceName),
+		Protocols:  computeProtocols(cfg),
+	}
+}
+
+// resolvedHostname returns the effective hostname for a service,
+// preferring the allocated hostname over the config default.
+func resolvedHostname(svc config.Service, hostnames map[string]string, name string) string {
+	if h, ok := hostnames[name]; ok {
+		return h
+	}
+	return svc.Hostname
 }
 
 // computeHostnames builds hostname map for an allocation.
@@ -272,10 +279,7 @@ func serviceURL(protocol, hostname string, port int) string {
 func buildServiceMap(cfg *config.Config, ports map[string]int, hostnames map[string]string) map[string]svcJSON {
 	services := make(map[string]svcJSON)
 	for name, svc := range cfg.Services {
-		hostname := svc.Hostname
-		if h, ok := hostnames[name]; ok {
-			hostname = h
-		}
+		hostname := resolvedHostname(svc, hostnames, name)
 		services[name] = svcJSON{
 			Port:          ports[name],
 			PreferredPort: svc.PreferredPort,
@@ -431,10 +435,7 @@ func printServiceLine(w io.Writer, cfg *config.Config, svcName string, port int,
 		}
 	}
 
-	hostname := svc.Hostname
-	if h, ok := hostnames[svcName]; ok {
-		hostname = h
-	}
+	hostname := resolvedHostname(svc, hostnames, svcName)
 
 	extra := ""
 	if u := serviceURL(svc.Protocol, hostname, port); u != "" {

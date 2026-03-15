@@ -8,7 +8,6 @@ import (
 	"github.com/outport-app/outport/internal/config"
 	"github.com/outport-app/outport/internal/dotenv"
 	"github.com/outport-app/outport/internal/instance"
-	"github.com/outport-app/outport/internal/registry"
 	"github.com/outport-app/outport/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -57,18 +56,11 @@ func runRename(cmd *cobra.Command, args []string) error {
 	// Move the allocation: delete old key, recompute hostnames, set new key
 	reg.Remove(cfg.Name, oldName)
 
-	newHostnames := computeHostnames(cfg, newName)
-	newProtocols := computeProtocols(cfg)
-
-	reg.Set(cfg.Name, newName, registry.Allocation{
-		ProjectDir: oldAlloc.ProjectDir,
-		Ports:      oldAlloc.Ports,
-		Hostnames:  newHostnames,
-		Protocols:  newProtocols,
-	})
+	newAlloc := buildAllocation(cfg, newName, oldAlloc.ProjectDir, oldAlloc.Ports)
+	reg.Set(cfg.Name, newName, newAlloc)
 
 	// Re-merge .env files with updated hostnames
-	if err := mergeEnvFiles(ctx.Dir, cfg, oldAlloc.Ports, newHostnames); err != nil {
+	if err := mergeEnvFiles(ctx.Dir, cfg, oldAlloc.Ports, newAlloc.Hostnames); err != nil {
 		return fmt.Errorf("updating .env files: %w", err)
 	}
 

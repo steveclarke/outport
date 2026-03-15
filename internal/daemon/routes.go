@@ -14,8 +14,9 @@ import (
 
 // RouteTable is a thread-safe hostname -> port mapping.
 type RouteTable struct {
-	mu     sync.RWMutex
-	routes map[string]int
+	mu       sync.RWMutex
+	routes   map[string]int
+	OnUpdate func() // called after every Update, if non-nil
 }
 
 // Lookup returns the port for a hostname, or 0 if not found.
@@ -26,11 +27,14 @@ func (rt *RouteTable) Lookup(hostname string) (int, bool) {
 	return port, ok
 }
 
-// Update swaps the routing table atomically.
+// Update swaps the routing table atomically and fires the OnUpdate callback.
 func (rt *RouteTable) Update(routes map[string]int) {
 	rt.mu.Lock()
-	defer rt.mu.Unlock()
 	rt.routes = routes
+	rt.mu.Unlock()
+	if rt.OnUpdate != nil {
+		rt.OnUpdate()
+	}
 }
 
 // BuildRoutes constructs a hostname -> port routing table from the registry.
