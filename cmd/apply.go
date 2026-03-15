@@ -39,6 +39,11 @@ func runApply(cmd *cobra.Command, args []string) error {
 	}
 	dir, cfg, reg := ctx.Dir, ctx.Cfg, ctx.Reg
 
+	if ctx.IsNew && ctx.Instance != "main" {
+		fmt.Printf("  Registered as %s-%s. Use 'outport rename %s <name>' to rename.\n\n",
+			cfg.Name, ctx.Instance, ctx.Instance)
+	}
+
 	existing, hasExisting := reg.Get(cfg.Name, ctx.Instance)
 	if forceFlag {
 		hasExisting = false
