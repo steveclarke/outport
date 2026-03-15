@@ -381,6 +381,30 @@ derived:
 	}
 }
 
+// --- Hostname ---
+
+func TestLoad_WithHostname(t *testing.T) {
+	dir := writeConfig(t, `name: myapp
+services:
+  web:
+    env_var: PORT
+    protocol: http
+    hostname: myapp.localhost
+  postgres:
+    env_var: DB_PORT
+`)
+	cfg, err := Load(dir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.Services["web"].Hostname != "myapp.localhost" {
+		t.Errorf("web.Hostname = %q, want myapp.localhost", cfg.Services["web"].Hostname)
+	}
+	if cfg.Services["postgres"].Hostname != "" {
+		t.Errorf("postgres.Hostname = %q, want empty", cfg.Services["postgres"].Hostname)
+	}
+}
+
 func TestLoad_DerivedInvalidReference(t *testing.T) {
 	dir := writeConfig(t, `name: myapp
 services:

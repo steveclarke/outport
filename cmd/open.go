@@ -40,7 +40,7 @@ func runOpen(cmd *cobra.Command, args []string) error {
 	opened := 0
 	for _, svcName := range sortedMapKeys(ctx.Cfg.Services) {
 		svc := ctx.Cfg.Services[svcName]
-		url := serviceURL(svc.Protocol, alloc.Ports[svcName])
+		url := serviceURL(svc.Protocol, svc.Hostname, alloc.Ports[svcName])
 		if url == "" {
 			continue
 		}
@@ -70,7 +70,7 @@ func openService(cmd *cobra.Command, cfg *config.Config, alloc registry.Allocati
 		return fmt.Errorf("No port allocated for %q. Run 'outport up' first.", name)
 	}
 
-	url := serviceURL(svc.Protocol, port)
+	url := serviceURL(svc.Protocol, svc.Hostname, port)
 	if url == "" {
 		return fmt.Errorf("Service %q has no protocol set. Add 'protocol: http' to open it in the browser.", name)
 	}

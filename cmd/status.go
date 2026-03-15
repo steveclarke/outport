@@ -115,7 +115,7 @@ func printStatusJSON(cmd *cobra.Command, reg *registry.Registry, portStatus map[
 			if cfg != nil {
 				if svc, ok := cfg.Services[svcName]; ok {
 					s.Protocol = svc.Protocol
-					s.URL = serviceURL(svc.Protocol, port)
+					s.URL = serviceURL(svc.Protocol, svc.Hostname, port)
 				}
 			}
 			if portStatus != nil {
@@ -201,7 +201,7 @@ func printStatusStyled(cmd *cobra.Command, reg *registry.Registry, portStatus ma
 			url := ""
 			if cfg != nil {
 				if svc, ok := cfg.Services[svcName]; ok {
-					if u := serviceURL(svc.Protocol, port); u != "" {
+					if u := serviceURL(svc.Protocol, svc.Hostname, port); u != "" {
 						url = "  " + ui.UrlStyle.Render(u)
 					}
 				}

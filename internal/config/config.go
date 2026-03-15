@@ -77,6 +77,7 @@ type Service struct {
 	PreferredPort int          `yaml:"preferred_port"`
 	EnvVar        string       `yaml:"env_var"`
 	Protocol      string       `yaml:"protocol"`
+	Hostname      string       `yaml:"hostname"`
 	rawEnvFile    envFileField // populated during YAML unmarshal, resolved to EnvFiles in normalize
 	EnvFiles      []string     `yaml:"-"`
 }
@@ -86,6 +87,7 @@ type rawService struct {
 	PreferredPort int          `yaml:"preferred_port"`
 	EnvVar        string       `yaml:"env_var"`
 	Protocol      string       `yaml:"protocol"`
+	Hostname      string       `yaml:"hostname"`
 	EnvFile       envFileField `yaml:"env_file"`
 }
 
@@ -194,6 +196,7 @@ func toService(rs rawService) Service {
 		PreferredPort: rs.PreferredPort,
 		EnvVar:        rs.EnvVar,
 		Protocol:      rs.Protocol,
+		Hostname:      rs.Hostname,
 		rawEnvFile:    rs.EnvFile,
 	}
 }

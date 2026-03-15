@@ -173,6 +173,7 @@ type svcJSON struct {
 	PreferredPort int      `json:"preferred_port,omitempty"`
 	EnvVar        string   `json:"env_var"`
 	Protocol      string   `json:"protocol,omitempty"`
+	Hostname      string   `json:"hostname,omitempty"`
 	URL           string   `json:"url,omitempty"`
 	EnvFiles      []string `json:"env_files"`
 	Up            *bool    `json:"up,omitempty"`
@@ -194,9 +195,13 @@ type applyJSON struct {
 	EnvFiles []string               `json:"env_files"`
 }
 
-func serviceURL(protocol string, port int) string {
+func serviceURL(protocol, hostname string, port int) string {
 	if protocol == "http" || protocol == "https" {
-		return fmt.Sprintf("%s://localhost:%d", protocol, port)
+		host := hostname
+		if host == "" {
+			host = "localhost"
+		}
+		return fmt.Sprintf("%s://%s:%d", protocol, host, port)
 	}
 	return ""
 }
@@ -209,7 +214,8 @@ func buildServiceMap(cfg *config.Config, ports map[string]int) map[string]svcJSO
 			PreferredPort: svc.PreferredPort,
 			EnvVar:        svc.EnvVar,
 			Protocol:      svc.Protocol,
-			URL:           serviceURL(svc.Protocol, ports[name]),
+			Hostname:      svc.Hostname,
+			URL:           serviceURL(svc.Protocol, svc.Hostname, ports[name]),
 			EnvFiles:      svc.EnvFiles,
 		}
 	}
@@ -363,7 +369,7 @@ func printServiceLine(w io.Writer, cfg *config.Config, svcName string, port int,
 	}
 
 	url := ""
-	if u := serviceURL(svc.Protocol, port); u != "" {
+	if u := serviceURL(svc.Protocol, svc.Hostname, port); u != "" {
 		url = "  " + ui.UrlStyle.Render(u)
 	}
 

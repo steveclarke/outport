@@ -799,16 +799,19 @@ func TestOpen_NoProtocol(t *testing.T) {
 // --- serviceURL ---
 
 func TestServiceURL(t *testing.T) {
-	if url := serviceURL("http", 3000); url != "http://localhost:3000" {
-		t.Errorf("serviceURL(http, 3000) = %q, want http://localhost:3000", url)
+	if url := serviceURL("http", "", 3000); url != "http://localhost:3000" {
+		t.Errorf("serviceURL(http, '', 3000) = %q, want http://localhost:3000", url)
 	}
-	if url := serviceURL("https", 8443); url != "https://localhost:8443" {
-		t.Errorf("serviceURL(https, 8443) = %q, want https://localhost:8443", url)
+	if url := serviceURL("https", "", 8443); url != "https://localhost:8443" {
+		t.Errorf("serviceURL(https, '', 8443) = %q, want https://localhost:8443", url)
 	}
-	if url := serviceURL("tcp", 5432); url != "" {
-		t.Errorf("serviceURL(tcp, 5432) = %q, want empty", url)
+	if url := serviceURL("http", "myapp.localhost", 3000); url != "http://myapp.localhost:3000" {
+		t.Errorf("serviceURL(http, myapp.localhost, 3000) = %q, want http://myapp.localhost:3000", url)
 	}
-	if url := serviceURL("", 6379); url != "" {
-		t.Errorf("serviceURL('', 6379) = %q, want empty", url)
+	if url := serviceURL("tcp", "", 5432); url != "" {
+		t.Errorf("serviceURL(tcp, '', 5432) = %q, want empty", url)
+	}
+	if url := serviceURL("", "", 6379); url != "" {
+		t.Errorf("serviceURL('', '', 6379) = %q, want empty", url)
 	}
 }
