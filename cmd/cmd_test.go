@@ -703,6 +703,59 @@ func TestUnregister_RemovesFromRegistry(t *testing.T) {
 	}
 }
 
+func TestUnregister_CleansEnvFiles(t *testing.T) {
+	dir := setupProject(t, testConfigWithDerived)
+	os.MkdirAll(filepath.Join(dir, "backend"), 0755)
+	os.MkdirAll(filepath.Join(dir, "frontend"), 0755)
+
+	// Apply to write .env files with fenced blocks
+	executeCmd(t, "apply")
+
+	// Verify blocks exist before unregister
+	backendEnv, _ := os.ReadFile(filepath.Join(dir, "backend", ".env"))
+	if !bytes.Contains(backendEnv, []byte("# --- begin outport.dev ---")) {
+		t.Fatal("backend/.env should have outport block before unregister")
+	}
+
+	// Unregister should remove the blocks
+	executeCmd(t, "unregister")
+
+	// Verify blocks are gone
+	backendEnv, _ = os.ReadFile(filepath.Join(dir, "backend", ".env"))
+	if bytes.Contains(backendEnv, []byte("# --- begin outport.dev ---")) {
+		t.Error("backend/.env should not have outport block after unregister")
+	}
+	frontendEnv, _ := os.ReadFile(filepath.Join(dir, "frontend", ".env"))
+	if bytes.Contains(frontendEnv, []byte("# --- begin outport.dev ---")) {
+		t.Error("frontend/.env should not have outport block after unregister")
+	}
+}
+
+func TestUnregister_JSONShowsCleanedFiles(t *testing.T) {
+	dir := setupProject(t, testConfigWithDerived)
+	os.MkdirAll(filepath.Join(dir, "backend"), 0755)
+	os.MkdirAll(filepath.Join(dir, "frontend"), 0755)
+
+	executeCmd(t, "apply")
+	output := executeCmd(t, "unregister", "--json")
+
+	var result struct {
+		Project      string   `json:"project"`
+		Instance     string   `json:"instance"`
+		Status       string   `json:"status"`
+		CleanedFiles []string `json:"cleaned_files"`
+	}
+	if err := json.Unmarshal([]byte(output), &result); err != nil {
+		t.Fatalf("invalid JSON: %v\nOutput: %s", err, output)
+	}
+	if result.Status != "unregistered" {
+		t.Errorf("status = %q, want unregistered", result.Status)
+	}
+	if len(result.CleanedFiles) == 0 {
+		t.Error("expected cleaned_files to list env files")
+	}
+}
+
 func TestUnregister_NotRegistered(t *testing.T) {
 	setupProject(t, testConfig)
 
