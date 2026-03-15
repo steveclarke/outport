@@ -112,6 +112,40 @@ func TestRegistry_Remove(t *testing.T) {
 	}
 }
 
+func TestAllocationWithHostnames(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "registry.json")
+
+	reg := &Registry{Projects: make(map[string]Allocation), path: path}
+	reg.Set("myapp", "main", Allocation{
+		ProjectDir: "/src/myapp",
+		Ports:      map[string]int{"rails": 24920},
+		Hostnames:  map[string]string{"rails": "myapp.test"},
+		Protocols:  map[string]string{"rails": "http"},
+	})
+
+	err := reg.Save()
+	if err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+
+	loaded, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+
+	alloc, ok := loaded.Get("myapp", "main")
+	if !ok {
+		t.Fatal("expected allocation")
+	}
+	if alloc.Hostnames["rails"] != "myapp.test" {
+		t.Errorf("hostname: got %q, want %q", alloc.Hostnames["rails"], "myapp.test")
+	}
+	if alloc.Protocols["rails"] != "http" {
+		t.Errorf("protocol: got %q, want %q", alloc.Protocols["rails"], "http")
+	}
+}
+
 func TestDefaultPath(t *testing.T) {
 	path, err := DefaultPath()
 	if err != nil {

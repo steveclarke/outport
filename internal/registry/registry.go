@@ -8,8 +8,10 @@ import (
 )
 
 type Allocation struct {
-	ProjectDir string         `json:"project_dir"`
-	Ports      map[string]int `json:"ports"`
+	ProjectDir string            `json:"project_dir"`
+	Ports      map[string]int    `json:"ports"`
+	Hostnames  map[string]string `json:"hostnames,omitempty"`
+	Protocols  map[string]string `json:"protocols,omitempty"`
 }
 
 func registryKey(project, instance string) string {
