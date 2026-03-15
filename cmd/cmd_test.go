@@ -853,6 +853,235 @@ func TestOpen_NoProtocol(t *testing.T) {
 
 // --- serviceURL ---
 
+// --- rename ---
+
+const testConfigWithHostnames = `name: testapp
+services:
+  web:
+    preferred_port: 3000
+    env_var: PORT
+    protocol: http
+    hostname: testapp
+  postgres:
+    preferred_port: 5432
+    env_var: DATABASE_PORT
+`
+
+func TestRename_Success(t *testing.T) {
+	dir := setupProject(t, testConfigWithHostnames)
+
+	// Apply to create the "main" instance
+	executeCmd(t, "apply", "--json")
+
+	// Rename main → staging
+	output := executeCmd(t, "rename", "--json", "main", "staging")
+
+	var result struct {
+		Project     string `json:"project"`
+		OldInstance string `json:"old_instance"`
+		NewInstance string `json:"new_instance"`
+		Status      string `json:"status"`
+	}
+	if err := json.Unmarshal([]byte(output), &result); err != nil {
+		t.Fatalf("invalid JSON: %v\nOutput: %s", err, output)
+	}
+	if result.Project != "testapp" {
+		t.Errorf("project = %q, want testapp", result.Project)
+	}
+	if result.OldInstance != "main" {
+		t.Errorf("old_instance = %q, want main", result.OldInstance)
+	}
+	if result.NewInstance != "staging" {
+		t.Errorf("new_instance = %q, want staging", result.NewInstance)
+	}
+	if result.Status != "renamed" {
+		t.Errorf("status = %q, want renamed", result.Status)
+	}
+
+	// Verify registry has new key with correct hostnames
+	regPath := filepath.Join(os.Getenv("HOME"), ".config", "outport", "registry.json")
+	reg, err := registry.Load(regPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := reg.Get("testapp", "main"); ok {
+		t.Error("old instance 'main' should be gone from registry")
+	}
+	alloc, ok := reg.Get("testapp", "staging")
+	if !ok {
+		t.Fatal("new instance 'staging' should be in registry")
+	}
+	// For non-main, hostname should contain the instance suffix
+	if alloc.Hostnames["web"] != "testapp-staging.test" {
+		t.Errorf("hostname = %q, want testapp-staging.test", alloc.Hostnames["web"])
+	}
+	// Ports should be preserved
+	if alloc.Ports["web"] != 3000 {
+		t.Errorf("web port = %d, want 3000", alloc.Ports["web"])
+	}
+
+	// Verify .env was updated
+	envData, err := os.ReadFile(filepath.Join(dir, ".env"))
+	if err != nil {
+		t.Fatalf("reading .env: %v", err)
+	}
+	if !bytes.Contains(envData, []byte("PORT=3000")) {
+		t.Errorf(".env missing PORT=3000, got:\n%s", envData)
+	}
+}
+
+func TestRename_CollisionFails(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	jsonFlag = false
+
+	// Create main project directory
+	dir1 := t.TempDir()
+	os.WriteFile(filepath.Join(dir1, ".outport.yml"), []byte(testConfig), 0644)
+	os.Mkdir(filepath.Join(dir1, ".git"), 0755)
+
+	// Apply from dir1 to create "main" instance
+	t.Chdir(dir1)
+	executeCmd(t, "apply", "--json")
+
+	// Create a second directory for the same project
+	dir2 := t.TempDir()
+	os.WriteFile(filepath.Join(dir2, ".outport.yml"), []byte(testConfig), 0644)
+	os.Mkdir(filepath.Join(dir2, ".git"), 0755)
+
+	// Apply from dir2 to create a code-based instance
+	t.Chdir(dir2)
+	out2 := executeCmd(t, "apply", "--json")
+	var r2 applyJSON
+	json.Unmarshal([]byte(out2), &r2)
+	codeName := r2.Instance
+
+	// Try to rename code instance to "main" — should collide
+	rootCmd.SetOut(new(bytes.Buffer))
+	rootCmd.SetErr(new(bytes.Buffer))
+	rootCmd.SetArgs([]string{"rename", codeName, "main"})
+
+	err := rootCmd.Execute()
+	if err == nil {
+		t.Fatal("expected error when renaming to existing instance name")
+	}
+}
+
+func TestRename_InvalidNameFails(t *testing.T) {
+	setupProject(t, testConfig)
+	executeCmd(t, "apply", "--json")
+
+	rootCmd.SetOut(new(bytes.Buffer))
+	rootCmd.SetErr(new(bytes.Buffer))
+	rootCmd.SetArgs([]string{"rename", "main", "has_underscore"})
+
+	err := rootCmd.Execute()
+	if err == nil {
+		t.Fatal("expected error for invalid instance name")
+	}
+}
+
+// --- promote ---
+
+func TestPromote_Success(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	jsonFlag = false
+
+	// Create main project directory
+	dir1 := t.TempDir()
+	os.WriteFile(filepath.Join(dir1, ".outport.yml"), []byte(testConfigWithHostnames), 0644)
+	os.Mkdir(filepath.Join(dir1, ".git"), 0755)
+
+	// Apply from dir1 to create "main" instance
+	t.Chdir(dir1)
+	executeCmd(t, "apply", "--json")
+
+	// Create a second directory for the same project
+	dir2 := t.TempDir()
+	os.WriteFile(filepath.Join(dir2, ".outport.yml"), []byte(testConfigWithHostnames), 0644)
+	os.Mkdir(filepath.Join(dir2, ".git"), 0755)
+
+	// Apply from dir2 to create a code-based instance
+	t.Chdir(dir2)
+	out2 := executeCmd(t, "apply", "--json")
+	var r2 applyJSON
+	json.Unmarshal([]byte(out2), &r2)
+	codeName := r2.Instance
+
+	// Promote the code instance to main
+	output := executeCmd(t, "promote", "--json")
+
+	var result struct {
+		Project   string `json:"project"`
+		Promoted  string `json:"promoted"`
+		DemotedTo string `json:"demoted_to"`
+		Status    string `json:"status"`
+	}
+	if err := json.Unmarshal([]byte(output), &result); err != nil {
+		t.Fatalf("invalid JSON: %v\nOutput: %s", err, output)
+	}
+	if result.Project != "testapp" {
+		t.Errorf("project = %q, want testapp", result.Project)
+	}
+	if result.Promoted != codeName {
+		t.Errorf("promoted = %q, want %q", result.Promoted, codeName)
+	}
+	if result.DemotedTo == "" {
+		t.Error("demoted_to should not be empty when main existed")
+	}
+	if result.Status != "promoted" {
+		t.Errorf("status = %q, want promoted", result.Status)
+	}
+
+	// Verify registry: promoted instance is now "main"
+	regPath := filepath.Join(home, ".config", "outport", "registry.json")
+	reg, err := registry.Load(regPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mainAlloc, ok := reg.Get("testapp", "main")
+	if !ok {
+		t.Fatal("expected 'main' instance in registry after promote")
+	}
+	// The promoted instance should now have main hostnames
+	if mainAlloc.Hostnames["web"] != "testapp.test" {
+		t.Errorf("promoted hostname = %q, want testapp.test", mainAlloc.Hostnames["web"])
+	}
+	// The promoted instance's dir should be dir2
+	if mainAlloc.ProjectDir != dir2 {
+		t.Errorf("main project dir = %q, want %q", mainAlloc.ProjectDir, dir2)
+	}
+
+	// The demoted instance should exist with a code name
+	demotedAlloc, ok := reg.Get("testapp", result.DemotedTo)
+	if !ok {
+		t.Fatalf("expected demoted instance %q in registry", result.DemotedTo)
+	}
+	if demotedAlloc.ProjectDir != dir1 {
+		t.Errorf("demoted project dir = %q, want %q", demotedAlloc.ProjectDir, dir1)
+	}
+	// Demoted instance should have suffixed hostname
+	expectedHostname := "testapp-" + result.DemotedTo + ".test"
+	if demotedAlloc.Hostnames["web"] != expectedHostname {
+		t.Errorf("demoted hostname = %q, want %q", demotedAlloc.Hostnames["web"], expectedHostname)
+	}
+}
+
+func TestPromote_AlreadyMainFails(t *testing.T) {
+	setupProject(t, testConfig)
+	executeCmd(t, "apply", "--json")
+
+	rootCmd.SetOut(new(bytes.Buffer))
+	rootCmd.SetErr(new(bytes.Buffer))
+	rootCmd.SetArgs([]string{"promote"})
+
+	err := rootCmd.Execute()
+	if err == nil {
+		t.Fatal("expected error when promoting from main instance")
+	}
+}
+
 func TestServiceURL(t *testing.T) {
 	if url := serviceURL("http", "", 3000); url != "http://localhost:3000" {
 		t.Errorf("serviceURL(http, '', 3000) = %q, want http://localhost:3000", url)
