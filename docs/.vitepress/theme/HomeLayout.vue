@@ -338,6 +338,8 @@ MYAPP_URL=<span class="success">http://myapp.test</span></pre>
   border: 1px solid var(--vp-c-divider);
   border-radius: 10px;
   padding: 1.75rem;
+  display: flex;
+  flex-direction: column;
 }
 .step-number {
   display: inline-flex;
@@ -375,7 +377,8 @@ MYAPP_URL=<span class="success">http://myapp.test</span></pre>
   padding: 0.75rem 1rem;
   border-radius: 6px;
   font-size: 0.8rem;
-  margin-top: 0.75rem;
+  margin-top: auto;
+  padding-top: 1rem;
   font-family: var(--vp-font-family-mono);
   white-space: pre;
   overflow-x: auto;
