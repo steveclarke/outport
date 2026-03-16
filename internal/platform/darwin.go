@@ -166,3 +166,29 @@ func UnloadAgent() error {
 	}
 	return nil
 }
+
+// TrustCA adds the CA certificate to the macOS login keychain trust store.
+// This triggers a macOS GUI dialog prompting for the login keychain password.
+func TrustCA(certPath string) error {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return fmt.Errorf("finding home directory: %w", err)
+	}
+	keychainPath := filepath.Join(home, "Library", "Keychains", "login.keychain-db")
+	cmd := exec.Command("security", "add-trusted-cert", "-r", "trustRoot", "-k", keychainPath, certPath)
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("adding CA to trust store (did you cancel the dialog?): %w", err)
+	}
+	return nil
+}
+
+// UntrustCA removes the CA certificate from the macOS trust store.
+func UntrustCA(certPath string) error {
+	cmd := exec.Command("security", "remove-trusted-cert", certPath)
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("removing CA from trust store: %w", err)
+	}
+	return nil
+}
