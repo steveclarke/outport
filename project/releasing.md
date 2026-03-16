@@ -42,13 +42,24 @@ This triggers the GitHub Actions release workflow (`.github/workflows/release.ym
    - Creates a GitHub release with tar.gz archives and checksums
    - Updates the Homebrew formula in `steveclarke/homebrew-tap`
 
-### 4. Verify
+### 4. Deploy docs
+
+If any documentation changes were included in this release, deploy the docs site:
+
+```bash
+npm run docs:build
+npx wrangler pages deploy docs/.vitepress/dist --project-name outport-dev
+```
+
+Once [GitHub issue #37](https://github.com/steveclarke/outport/issues/37) is resolved, this step becomes automatic on push to master.
+
+### 5. Verify
 
 - Check the [GitHub Actions run](https://github.com/steveclarke/outport/actions) completed successfully
 - Check the [GitHub release](https://github.com/steveclarke/outport/releases) has the correct assets
 - Check that `steveclarke/homebrew-tap` has a new commit updating the formula
 
-### 5. Test the install
+### 6. Test the install
 
 ```bash
 brew update

@@ -94,3 +94,5 @@ Run before committing or merging:
 - [ ] `init` presets in `cmd/init.go` include any new service types
 - [ ] `--json` output works for any changed commands
 - [ ] CLAUDE.md reflects any architectural changes (new packages, commands, design decisions)
+- [ ] Docs site (`docs/`) updated if commands, config fields, or user-facing behavior changed
+- [ ] If docs changed: `npm run docs:build` succeeds and deploy via `npx wrangler pages deploy docs/.vitepress/dist --project-name outport-dev`

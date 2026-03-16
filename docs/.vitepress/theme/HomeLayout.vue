@@ -44,7 +44,7 @@
     <!-- FEATURES -->
     <section class="features">
       <div class="features-heading">
-        <h2>What you get</h2>
+        <h2>Features</h2>
       </div>
       <div class="feature-grid">
         <div class="feature-card">
@@ -74,7 +74,7 @@
 
     <!-- HOW IT WORKS -->
     <section class="how-it-works">
-      <h2>Three commands. Zero thinking.</h2>
+      <h2>Get up and running</h2>
       <div class="steps">
         <div class="step">
           <div class="step-number">1</div>
@@ -123,8 +123,7 @@ MYAPP_URL=<span class="success">http://myapp.test</span></pre>
 
     <!-- INSTALL -->
     <section class="install">
-      <h2>Get started in seconds</h2>
-      <p>One command. Single binary. No dependencies.</p>
+      <h2>Install</h2>
       <div class="install-cmd">
         <span class="dollar">$</span> brew install steveclarke/tap/outport
       </div>
