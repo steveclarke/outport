@@ -84,9 +84,9 @@ services:
     hostname: myapp
 ```
 
-This makes the service accessible at `http://myapp.test` (after running `outport setup`).
+This makes the service accessible at `https://myapp.test` (after running `outport setup`). All `.test` hostnames get HTTPS automatically when the local CA is installed — no per-service configuration is needed.
 
-For non-main instances, the hostname is automatically suffixed: `http://myapp-bkrm.test`.
+For non-main instances, the hostname is automatically suffixed: `https://myapp-bkrm.test`.
 
 #### `preferred_port`
 
@@ -132,10 +132,10 @@ derived:
 |----------|------------|----------|
 | `${service.port}` | `24920` | Raw port number |
 | `${service.hostname}` | `myapp.test` | `.test` hostname |
-| `${service.url}` | `http://myapp.test` | Browser-facing URLs (CORS, asset hosts) |
+| `${service.url}` | `https://myapp.test` | Browser-facing URLs (CORS, asset hosts) |
 | `${service.url:direct}` | `http://localhost:24920` | Server-to-server (API calls, WebSocket) |
 
-Use `${service.url}` for URLs the browser sees. Use `${service.url:direct}` for server-to-server communication that bypasses the proxy.
+Use `${service.url}` for URLs the browser sees — it produces `https://` URLs when the local CA is installed (via `outport setup`). Use `${service.url:direct}` for server-to-server communication that bypasses the proxy (always `http://localhost:{port}`).
 
 #### Per-File Overrides
 

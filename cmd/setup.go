@@ -70,8 +70,14 @@ func runSetup(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	caCertPath, _ := certmanager.CACertPath()
-	caKeyPath, _ := certmanager.CAKeyPath()
+	caCertPath, err := certmanager.CACertPath()
+	if err != nil {
+		return err
+	}
+	caKeyPath, err := certmanager.CAKeyPath()
+	if err != nil {
+		return err
+	}
 
 	if !certmanager.IsCAInstalled() {
 		if !jsonFlag {
@@ -127,8 +133,14 @@ func runTeardown(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	caCertPath, _ := certmanager.CACertPath()
-	caKeyPath, _ := certmanager.CAKeyPath()
+	caCertPath, err := certmanager.CACertPath()
+	if err != nil {
+		return err
+	}
+	caKeyPath, err := certmanager.CAKeyPath()
+	if err != nil {
+		return err
+	}
 	if certmanager.IsCAInstalled() {
 		if !jsonFlag {
 			fmt.Fprintln(w, "Removing CA from trust store...")

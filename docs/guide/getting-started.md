@@ -50,7 +50,7 @@ Output:
 ```
 myapp [main]
 
-    web       PORT        → 24920  http://myapp.test
+    web       PORT        → 24920  https://myapp.test
     postgres  DB_PORT     → 21536
     redis     REDIS_PORT  → 29454
 ```
@@ -70,13 +70,13 @@ Run `outport apply` again — you'll get the same ports every time. It's idempot
 
 ## Enable .test Domains (Optional)
 
-For friendly hostnames like `myapp.test` instead of `localhost:24920`:
+For friendly hostnames like `https://myapp.test` instead of `localhost:24920`:
 
 ```bash
 outport setup
 ```
 
-This installs a local DNS server and reverse proxy (requires sudo for the DNS resolver file). Services with `protocol: http` and `hostname` become accessible at their `.test` URL.
+This installs a local DNS server, reverse proxy, and a local Certificate Authority for HTTPS (requires sudo). After setup, services with `protocol: http` and `hostname` become accessible at their `.test` URL with full HTTPS — `http://` requests are automatically redirected to `https://` via 307.
 
 Manage the daemon:
 
@@ -93,7 +93,7 @@ When you run `outport apply`:
 1. **Config loaded** — `.outport.yml` is read from the current directory (or nearest parent).
 2. **Instance resolved** — The first checkout of a project is "main". Additional checkouts (worktrees, clones) get auto-generated codes like "bxcf".
 3. **Ports allocated** — Each service gets a deterministic port via FNV-32a hash on `"{project}/{instance}/{service}"`. Range: 10000–39999.
-4. **Registry updated** — Allocations are saved to `~/.config/outport/registry.json`.
+4. **Registry updated** — Allocations are saved to `~/.local/share/outport/registry.json`.
 5. **.env written** — Ports are written inside a fenced block (`# --- begin/end outport.dev ---`). Your existing `.env` content is preserved.
 
 ## Next Steps

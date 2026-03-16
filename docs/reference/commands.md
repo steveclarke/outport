@@ -132,27 +132,35 @@ Promotes the current worktree instance to "main", demoting the existing main ins
 
 ## Daemon
 
-These commands manage the `.test` domain DNS resolver and HTTP reverse proxy.
+These commands manage the `.test` domain DNS resolver, HTTPS reverse proxy, and local Certificate Authority.
 
 ### `outport setup`
 
-Install the DNS resolver and daemon.
+Install the DNS resolver, daemon, and local Certificate Authority.
 
 ```bash
 outport setup
 ```
 
-Installs the `.test` DNS resolver (`/etc/resolver/test`, requires sudo) and a LaunchAgent that runs a DNS server (port 15353) and HTTP reverse proxy (port 80). After setup, `*.test` hostnames resolve to your local services.
+Installs the `.test` DNS resolver (`/etc/resolver/test`, requires sudo), a LaunchAgent that runs a DNS server (port 15353) and reverse proxy (ports 80 and 443), and generates a local Certificate Authority that is added to the macOS trust store. After setup, `*.test` hostnames resolve to your local services with full HTTPS support. HTTP requests are automatically redirected to HTTPS via 307.
+
+| Flag | Description |
+|------|-------------|
+| `--json` | Output results as JSON (includes `ca_generated`, `ca_trusted` fields) |
 
 ### `outport teardown`
 
-Remove the DNS resolver and daemon.
+Remove the DNS resolver, daemon, and Certificate Authority.
 
 ```bash
 outport teardown
 ```
 
-Unloads the daemon, removes the LaunchAgent plist, and removes the DNS resolver file.
+Unloads the daemon, removes the LaunchAgent plist, removes the DNS resolver file, removes the CA from the macOS trust store, deletes the CA files, and removes cached certificates from `~/.cache/outport/certs/`.
+
+| Flag | Description |
+|------|-------------|
+| `--json` | Output results as JSON (includes `ca_removed`, `certs_cleaned` fields) |
 
 ### `outport up`
 
@@ -162,7 +170,7 @@ Start the daemon.
 outport up
 ```
 
-Loads the LaunchAgent to start the DNS resolver and HTTP proxy.
+Loads the LaunchAgent to start the DNS resolver and reverse proxy.
 
 ### `outport down`
 
@@ -172,4 +180,4 @@ Stop the daemon.
 outport down
 ```
 
-Unloads the LaunchAgent to stop the DNS resolver and HTTP proxy.
+Unloads the LaunchAgent to stop the DNS resolver and reverse proxy.

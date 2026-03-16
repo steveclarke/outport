@@ -73,9 +73,9 @@ func redirectToHTTPS(w http.ResponseWriter, r *http.Request) {
 
 // Run starts the daemon and blocks until the context is cancelled.
 func (d *Daemon) Run(ctx context.Context) error {
-	serverCount := 3
+	serverCount := 3 // DNS + HTTP + route watcher
 	if d.tlsProxy != nil {
-		serverCount = 4
+		serverCount = 4 // + HTTPS
 	}
 	errCh := make(chan error, serverCount)
 
