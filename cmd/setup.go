@@ -47,25 +47,26 @@ func runSetup(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("could not find outport binary in PATH: %w", err)
 	}
 
-	// Install LaunchAgent plist (no sudo needed)
-	fmt.Fprintln(w, "Installing LaunchAgent...")
+	fmt.Fprintln(w, "Installing .test domain routing...")
+	fmt.Fprintln(w)
+
 	if err := platform.WritePlist(outportBin); err != nil {
 		return err
 	}
 
-	// Create resolver file (needs sudo)
-	fmt.Fprintln(w, "Creating /etc/resolver/test (sudo may prompt for your password)...")
+	// Resolver file needs sudo — explain why
+	fmt.Fprintln(w, "  Your password is needed to configure .test DNS resolution.")
+	fmt.Fprintln(w)
 	if err := platform.WriteResolverFile(); err != nil {
 		return err
 	}
 
-	// Load the agent
-	fmt.Fprintln(w, "Loading daemon...")
 	if err := platform.LoadAgent(); err != nil {
 		return err
 	}
 
-	fmt.Fprintln(w, ui.SuccessStyle.Render("Setup complete. *.test domains will resolve to your local services."))
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, ui.SuccessStyle.Render("Done! *.test domains are now routing to your local services."))
 	return nil
 }
 
