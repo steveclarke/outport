@@ -404,7 +404,7 @@ func TestStatus_StaleProjectMarkedNotFound(t *testing.T) {
 	jsonFlag = false
 
 	// Create a registry with a stale entry (nonexistent dir)
-	regPath := filepath.Join(home, ".config", "outport", "registry.json")
+	regPath := filepath.Join(home, ".local", "share", "outport", "registry.json")
 	reg, err := registry.Load(regPath)
 	if err != nil {
 		t.Fatal(err)
@@ -444,7 +444,7 @@ func TestStatus_StaleProjectInJSON(t *testing.T) {
 	jsonFlag = false
 
 	// Create a registry with a stale entry (directory gone)
-	regPath := filepath.Join(home, ".config", "outport", "registry.json")
+	regPath := filepath.Join(home, ".local", "share", "outport", "registry.json")
 	reg, err := registry.Load(regPath)
 	if err != nil {
 		t.Fatal(err)
@@ -482,7 +482,7 @@ func TestGC_RemovesStaleEntries(t *testing.T) {
 	jsonFlag = false
 
 	// Manually create a registry with a stale entry
-	regPath := filepath.Join(home, ".config", "outport", "registry.json")
+	regPath := filepath.Join(home, ".local", "share", "outport", "registry.json")
 	reg, err := registry.Load(regPath)
 	if err != nil {
 		t.Fatal(err)
@@ -525,7 +525,7 @@ func TestGC_NoStaleEntries(t *testing.T) {
 	t.Chdir(projectDir)
 	jsonFlag = false
 
-	regPath := filepath.Join(home, ".config", "outport", "registry.json")
+	regPath := filepath.Join(home, ".local", "share", "outport", "registry.json")
 	reg, err := registry.Load(regPath)
 	if err != nil {
 		t.Fatal(err)
@@ -555,7 +555,7 @@ func TestGC_RemovesMissingConfig(t *testing.T) {
 	t.Chdir(projectDir)
 	jsonFlag = false
 
-	regPath := filepath.Join(home, ".config", "outport", "registry.json")
+	regPath := filepath.Join(home, ".local", "share", "outport", "registry.json")
 	reg, err := registry.Load(regPath)
 	if err != nil {
 		t.Fatal(err)
@@ -617,7 +617,7 @@ func TestStatus_MissingConfigMarkedStale(t *testing.T) {
 	t.Chdir(projectDir)
 	jsonFlag = false
 
-	regPath := filepath.Join(home, ".config", "outport", "registry.json")
+	regPath := filepath.Join(home, ".local", "share", "outport", "registry.json")
 	reg, err := registry.Load(regPath)
 	if err != nil {
 		t.Fatal(err)
@@ -900,7 +900,7 @@ func TestRename_Success(t *testing.T) {
 	}
 
 	// Verify registry has new key with correct hostnames
-	regPath := filepath.Join(os.Getenv("HOME"), ".config", "outport", "registry.json")
+	regPath := filepath.Join(os.Getenv("HOME"), ".local", "share", "outport", "registry.json")
 	reg, err := registry.Load(regPath)
 	if err != nil {
 		t.Fatal(err)
@@ -1036,7 +1036,7 @@ func TestPromote_Success(t *testing.T) {
 	}
 
 	// Verify registry: promoted instance is now "main"
-	regPath := filepath.Join(home, ".config", "outport", "registry.json")
+	regPath := filepath.Join(home, ".local", "share", "outport", "registry.json")
 	reg, err := registry.Load(regPath)
 	if err != nil {
 		t.Fatal(err)
@@ -1150,7 +1150,7 @@ func TestApply_WithHostnames(t *testing.T) {
 	}
 
 	// Verify registry contains hostnames and protocols
-	regPath := filepath.Join(os.Getenv("HOME"), ".config", "outport", "registry.json")
+	regPath := filepath.Join(os.Getenv("HOME"), ".local", "share", "outport", "registry.json")
 	reg, err := registry.Load(regPath)
 	if err != nil {
 		t.Fatal(err)
@@ -1265,7 +1265,7 @@ services:
 	os.Mkdir(filepath.Join(dir4, ".git"), 0755)
 
 	// Directly set up a registry entry that will cause a conflict
-	regPath := filepath.Join(home, ".config", "outport", "registry.json")
+	regPath := filepath.Join(home, ".local", "share", "outport", "registry.json")
 	reg, err := registry.Load(regPath)
 	if err != nil {
 		t.Fatal(err)
