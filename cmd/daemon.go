@@ -2,10 +2,12 @@ package cmd
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"os/signal"
 	"syscall"
 
+	"github.com/outport-app/outport/internal/certmanager"
 	"github.com/outport-app/outport/internal/daemon"
 	"github.com/outport-app/outport/internal/registry"
 	"github.com/spf13/cobra"
@@ -36,14 +38,33 @@ func runDaemon(cmd *cobra.Command, args []string) error {
 		RegistryPath: regPath,
 	}
 
-	// Try launchd socket activation first (darwin only)
-	listener, err := activateLaunchdSocket()
-	if err == nil && listener != nil {
-		cfg.Listener = listener
-		cfg.ProxyAddr = listener.Addr().String()
+	// Try launchd HTTP socket activation (darwin only)
+	if httpLn, err := activateLaunchdHTTPSocket(); err == nil && httpLn != nil {
+		cfg.HTTPListener = httpLn
+		cfg.ProxyAddr = httpLn.Addr().String()
 	} else {
-		// Fall back to direct binding
 		cfg.ProxyAddr = fmt.Sprintf(":%d", daemonPort)
+	}
+
+	// Try launchd HTTPS socket activation (darwin only)
+	if httpsLn, err := activateLaunchdHTTPSSocket(); err == nil && httpsLn != nil {
+		cfg.HTTPSListener = httpsLn
+	}
+
+	// Wire TLS if the CA is installed
+	if certmanager.IsCAInstalled() {
+		caCertPath, _ := certmanager.CACertPath()
+		caKeyPath, _ := certmanager.CAKeyPath()
+		cacheDir, _ := certmanager.CertCacheDir()
+
+		store, err := certmanager.NewCertStore(caCertPath, caKeyPath, cacheDir)
+		if err != nil {
+			return fmt.Errorf("initializing cert store: %w", err)
+		}
+
+		cfg.TLSConfig = &tls.Config{
+			GetCertificate: store.GetCertificate,
+		}
 	}
 
 	d, err := daemon.New(cfg)

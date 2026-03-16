@@ -8,6 +8,10 @@ import (
 	launchd "github.com/bored-engineer/go-launchd"
 )
 
-func activateLaunchdSocket() (net.Listener, error) {
-	return launchd.Activate("Socket")
+func activateLaunchdHTTPSocket() (net.Listener, error) {
+	return launchd.Activate("HTTPSocket")
+}
+
+func activateLaunchdHTTPSSocket() (net.Listener, error) {
+	return launchd.Activate("HTTPSSocket")
 }
