@@ -6,7 +6,7 @@
       <p class="subtitle">
         Outport gives every project deterministic, non-conflicting ports — with
         <code>.test</code> hostnames, <code>.env</code> integration, and
-        multi-instance support. Just works.
+        multi-instance support.
       </p>
       <div class="hero-ctas">
         <a href="/guide/getting-started" class="btn-primary">Get Started</a>
