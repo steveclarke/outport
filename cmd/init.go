@@ -33,7 +33,7 @@ services:
   web:
     env_var: PORT
     protocol: http
-    hostname: %s
+    hostname: %s.test
 #
 #  postgres:
 #    env_var: DB_PORT
@@ -43,7 +43,7 @@ services:
 #  frontend:
 #    env_var: FRONTEND_PORT
 #    protocol: http
-#    hostname: app.%s
+#    hostname: app.%s.test
 #
 # Write to a different .env file (default is .env in project root):
 #

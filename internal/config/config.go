@@ -299,10 +299,11 @@ func (c *Config) validate() error {
 			if svc.Protocol != "http" && svc.Protocol != "https" {
 				return fmt.Errorf("service %q: hostname requires protocol http or https", name)
 			}
-			if !hostnameRe.MatchString(svc.Hostname) {
+			stem := strings.TrimSuffix(svc.Hostname, ".test")
+			if !hostnameRe.MatchString(stem) {
 				return fmt.Errorf("service %q: hostname %q contains invalid characters (use lowercase alphanumeric, hyphens, dots)", name, svc.Hostname)
 			}
-			if !strings.Contains(svc.Hostname, c.Name) {
+			if !strings.Contains(stem, c.Name) {
 				return fmt.Errorf("service %q: hostname %q must contain project name %q", name, svc.Hostname, c.Name)
 			}
 		}

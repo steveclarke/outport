@@ -167,7 +167,7 @@ func computeHostnames(cfg *config.Config, instanceName string) map[string]string
 		if svc.Hostname == "" {
 			continue
 		}
-		stem := svc.Hostname
+		stem := strings.TrimSuffix(svc.Hostname, ".test")
 		if instanceName != "main" {
 			idx := strings.LastIndex(stem, cfg.Name)
 			if idx >= 0 {
