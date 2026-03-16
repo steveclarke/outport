@@ -43,3 +43,15 @@ release-dry-run:
 release tag:
     git tag {{tag}}
     git push origin {{tag}}
+
+# Start VitePress dev server (requires: npm install)
+docs:
+    npm run docs:dev
+
+# Build VitePress site for production
+docs-build:
+    npm run docs:build
+
+# Preview production build
+docs-preview:
+    npm run docs:preview
