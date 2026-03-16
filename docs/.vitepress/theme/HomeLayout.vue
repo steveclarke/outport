@@ -123,7 +123,7 @@ MYAPP_URL=<span class="success">http://myapp.test</span></pre>
 
     <!-- INSTALL -->
     <section class="install">
-      <h2>Get started in seconds</h2>
+      <h2>Try it</h2>
       <div class="install-cmd">
         <span class="dollar">$</span> brew install steveclarke/tap/outport
       </div>
@@ -403,7 +403,7 @@ MYAPP_URL=<span class="success">http://myapp.test</span></pre>
   font-weight: 700;
   font-size: 2rem;
   color: #031C54;
-  margin-bottom: 0.75rem;
+  margin-bottom: 2rem;
 }
 .install p {
   color: var(--vp-c-text-3);
