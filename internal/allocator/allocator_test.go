@@ -43,7 +43,7 @@ func TestHashPort_DifferentInputsDifferentPorts(t *testing.T) {
 }
 
 func TestAllocate_NoCollisions(t *testing.T) {
-	port, err := Allocate("myapp", "main", "web", 0, nil)
+	port, err := Allocate("myapp", "main", "web", 0, nil, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -57,7 +57,7 @@ func TestAllocate_WithCollision(t *testing.T) {
 	idealPort := HashPort("myapp", "main", "web")
 	usedPorts := map[int]bool{idealPort: true}
 
-	port, err := Allocate("myapp", "main", "web", 0, usedPorts)
+	port, err := Allocate("myapp", "main", "web", 0, usedPorts, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -80,7 +80,7 @@ func TestAllocate_WithMultipleCollisions(t *testing.T) {
 		usedPorts[p] = true
 	}
 
-	port, err := Allocate("myapp", "main", "web", 0, usedPorts)
+	port, err := Allocate("myapp", "main", "web", 0, usedPorts, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -93,7 +93,7 @@ func TestAllocate_WithMultipleCollisions(t *testing.T) {
 }
 
 func TestAllocate_PreferredPortAvailable(t *testing.T) {
-	port, err := Allocate("myapp", "main", "web", 3000, nil)
+	port, err := Allocate("myapp", "main", "web", 3000, nil, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -104,7 +104,7 @@ func TestAllocate_PreferredPortAvailable(t *testing.T) {
 
 func TestAllocate_PreferredPortTaken(t *testing.T) {
 	usedPorts := map[int]bool{3000: true}
-	port, err := Allocate("myapp", "main", "web", 3000, usedPorts)
+	port, err := Allocate("myapp", "main", "web", 3000, usedPorts, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -117,7 +117,7 @@ func TestAllocate_PreferredPortTaken(t *testing.T) {
 }
 
 func TestAllocate_PreferredPortZero(t *testing.T) {
-	port, err := Allocate("myapp", "main", "web", 0, nil)
+	port, err := Allocate("myapp", "main", "web", 0, nil, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -128,11 +128,40 @@ func TestAllocate_PreferredPortZero(t *testing.T) {
 }
 
 func TestReservedPortPreferredFallsBack(t *testing.T) {
-	port, err := Allocate("proj", "inst", "svc", ReservedDNSPort, map[int]bool{})
+	port, err := Allocate("proj", "inst", "svc", ReservedDNSPort, map[int]bool{}, nil)
 	if err != nil {
 		t.Fatalf("Allocate: %v", err)
 	}
 	if port == ReservedDNSPort {
 		t.Fatalf("should not allocate reserved port even when preferred")
+	}
+}
+
+func TestAllocate_SkipsBusyPort(t *testing.T) {
+	idealPort := HashPort("myapp", "main", "web")
+	busyPort := idealPort
+	checker := func(p int) bool { return p == busyPort }
+
+	port, err := Allocate("myapp", "main", "web", 0, nil, checker)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if port == busyPort {
+		t.Errorf("should have skipped busy port %d", busyPort)
+	}
+	if port != busyPort+1 {
+		t.Errorf("expected next port %d, got %d", busyPort+1, port)
+	}
+}
+
+func TestAllocate_PreferredPortBusyFallsBack(t *testing.T) {
+	checker := func(p int) bool { return p == 3000 }
+
+	port, err := Allocate("myapp", "main", "web", 3000, nil, checker)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if port == 3000 {
+		t.Error("should not have used busy preferred port")
 	}
 }

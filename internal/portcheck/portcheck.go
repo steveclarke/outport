@@ -7,11 +7,25 @@ import (
 	"time"
 )
 
-const timeout = 200 * time.Millisecond
+const (
+	timeout      = 200 * time.Millisecond
+	quickTimeout = 100 * time.Millisecond
+)
 
 // IsUp checks if a port is accepting TCP connections on localhost.
 func IsUp(port int) bool {
 	conn, err := net.DialTimeout("tcp", fmt.Sprintf("localhost:%d", port), timeout)
+	if err != nil {
+		return false
+	}
+	conn.Close()
+	return true
+}
+
+// IsBound checks if a port is in use on localhost, using a shorter timeout
+// suitable for the allocation hot path.
+func IsBound(port int) bool {
+	conn, err := net.DialTimeout("tcp", fmt.Sprintf("localhost:%d", port), quickTimeout)
 	if err != nil {
 		return false
 	}

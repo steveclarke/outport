@@ -10,6 +10,7 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/outport-app/outport/internal/allocator"
 	"github.com/outport-app/outport/internal/config"
+	"github.com/outport-app/outport/internal/portcheck"
 	"github.com/outport-app/outport/internal/registry"
 	"github.com/outport-app/outport/internal/ui"
 	"github.com/spf13/cobra"
@@ -77,7 +78,7 @@ func runApply(cmd *cobra.Command, args []string) error {
 
 		if port == 0 {
 			var err error
-			port, err = allocator.Allocate(cfg.Name, ctx.Instance, svcName, svc.PreferredPort, usedPorts)
+			port, err = allocator.Allocate(cfg.Name, ctx.Instance, svcName, svc.PreferredPort, usedPorts, portcheck.IsBound)
 			if err != nil {
 				return fmt.Errorf("allocating port for %s: %w", svcName, err)
 			}
