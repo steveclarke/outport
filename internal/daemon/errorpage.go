@@ -13,15 +13,19 @@ const errorPageTemplate = `<!DOCTYPE html>
 <title>%s</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes breathe{0%%,100%%{opacity:.12}50%%{opacity:.2}}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#fafbfc;padding:2rem}
-.c{text-align:center;max-width:420px}
-.mark{width:48px;height:48px;margin:0 auto 1.5rem;opacity:.15}
+.c{text-align:center;max-width:420px;animation:fadeIn .4s ease-out}
+.mark{width:48px;height:48px;margin:0 auto 1.5rem;animation:breathe 4s ease-in-out infinite}
 .host{font-family:'SF Mono','Fira Code',monospace;font-size:1.125rem;color:#1e293b;font-weight:600;margin-bottom:.5rem}
 .msg{font-size:.9375rem;color:#64748b;line-height:1.6;margin-bottom:1.5rem}
 .msg code{font-family:'SF Mono','Fira Code',monospace;font-size:.875rem;color:#475569;background:#f1f5f9;padding:.125rem .375rem;border-radius:4px}
 .hint{display:inline-block;font-family:'SF Mono','Fira Code',monospace;font-size:.8125rem;color:#475569;background:#f1f5f9;padding:.375rem .75rem;border-radius:6px;border:1px solid #e2e8f0}
 .foot{margin-top:2rem;font-size:.75rem;color:#94a3b8}
-.foot a{color:#64748b;text-decoration:none}
+.foot a{color:#64748b;text-decoration:none;transition:color .2s}
+.foot a:hover{color:#475569}
+@media(prefers-reduced-motion:reduce){.c{animation:none}.mark{animation:none;opacity:.15}}
 </style>
 </head>
 <body>
