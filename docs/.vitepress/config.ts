@@ -22,7 +22,7 @@ export default defineConfig({
   ],
 
   themeConfig: {
-    logo: { src: '/logo-horizontal-color.svg', alt: 'Outport', width: 120, height: 32 },
+    logo: '/logo-horizontal-color.svg',
     siteTitle: false,
 
     nav: [
