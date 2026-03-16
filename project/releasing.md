@@ -44,8 +44,8 @@ This triggers the GitHub Actions release workflow (`.github/workflows/release.ym
 
 ### 4. Verify
 
-- Check the [GitHub Actions run](https://github.com/outport-app/outport/actions) completed successfully
-- Check the [GitHub release](https://github.com/outport-app/outport/releases) has the correct assets
+- Check the [GitHub Actions run](https://github.com/steveclarke/outport/actions) completed successfully
+- Check the [GitHub release](https://github.com/steveclarke/outport/releases) has the correct assets
 - Check that `steveclarke/homebrew-tap` has a new commit updating the formula
 
 ### 5. Test the install
