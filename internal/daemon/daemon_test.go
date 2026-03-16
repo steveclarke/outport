@@ -50,7 +50,7 @@ func TestDaemonStartAndShutdown(t *testing.T) {
 		DNSAddr:      dnsAddr,
 		ProxyAddr:    ln.Addr().String(),
 		RegistryPath: regPath,
-		Listener:     ln,
+		HTTPListener: ln,
 	})
 	if err != nil {
 		t.Fatalf("New: %v", err)
