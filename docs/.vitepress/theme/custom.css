@@ -45,6 +45,12 @@ h1, h2, h3, h4, h5, h6,
   letter-spacing: -0.01em;
 }
 
+/* Prevent search from filling entire nav */
+.VPNavBarSearch.search {
+  flex-grow: 0 !important;
+  padding-left: 16px;
+}
+
 /* Brand button color */
 .VPButton.brand {
   background-color: #2E86AB;
