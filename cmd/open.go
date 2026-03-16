@@ -48,7 +48,7 @@ func runOpen(cmd *cobra.Command, args []string) error {
 			}
 			url = fmt.Sprintf("%s://%s", protocol, h)
 		} else {
-			url = serviceURL(svc.Protocol, svc.Hostname, alloc.Ports[svcName])
+			url = serviceURL(svc.Protocol, svc.Hostname, alloc.Ports[svcName], false)
 		}
 		if url == "" {
 			continue
@@ -86,7 +86,7 @@ func openService(cmd *cobra.Command, cfg *config.Config, alloc registry.Allocati
 		}
 		url = fmt.Sprintf("%s://%s", svc.Protocol, h)
 	} else {
-		url = serviceURL(svc.Protocol, svc.Hostname, port)
+		url = serviceURL(svc.Protocol, svc.Hostname, port, false)
 	}
 	if url == "" {
 		return fmt.Errorf("Service %q has no protocol set. Add 'protocol: http' to open it in the browser.", name)

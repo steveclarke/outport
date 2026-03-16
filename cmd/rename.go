@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"github.com/outport-app/outport/internal/certmanager"
 	"github.com/outport-app/outport/internal/config"
 	"github.com/outport-app/outport/internal/dotenv"
 	"github.com/outport-app/outport/internal/instance"
@@ -60,7 +61,8 @@ func runRename(cmd *cobra.Command, args []string) error {
 	reg.Set(cfg.Name, newName, newAlloc)
 
 	// Re-merge .env files with updated hostnames
-	if err := mergeEnvFiles(ctx.Dir, cfg, oldAlloc.Ports, newAlloc.Hostnames); err != nil {
+	useHTTPS := certmanager.IsCAInstalled()
+	if err := mergeEnvFiles(ctx.Dir, cfg, oldAlloc.Ports, newAlloc.Hostnames, useHTTPS); err != nil {
 		return fmt.Errorf("updating .env files: %w", err)
 	}
 
@@ -76,7 +78,7 @@ func runRename(cmd *cobra.Command, args []string) error {
 
 // mergeEnvFiles rebuilds and writes env file vars for an allocation.
 // This is used by rename and promote to update .env files after hostnames change.
-func mergeEnvFiles(dir string, cfg *config.Config, ports map[string]int, hostnames map[string]string) error {
+func mergeEnvFiles(dir string, cfg *config.Config, ports map[string]int, hostnames map[string]string, useHTTPS bool) error {
 	envFileVars := make(map[string]map[string]string)
 
 	for svcName, svc := range cfg.Services {
@@ -90,7 +92,7 @@ func mergeEnvFiles(dir string, cfg *config.Config, ports map[string]int, hostnam
 	}
 
 	// Resolve derived values and add to envFileVars
-	resolvedDerived := resolveDerivedFromAlloc(cfg, ports, hostnames)
+	resolvedDerived := resolveDerivedFromAlloc(cfg, ports, hostnames, useHTTPS)
 	for name, fileValues := range resolvedDerived {
 		for file, value := range fileValues {
 			if envFileVars[file] == nil {

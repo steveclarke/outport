@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/outport-app/outport/internal/certmanager"
+	"github.com/outport-app/outport/internal/config"
 	"github.com/outport-app/outport/internal/registry"
 )
 
@@ -1395,19 +1397,78 @@ derived:
 }
 
 func TestServiceURL(t *testing.T) {
-	if url := serviceURL("http", "", 3000); url != "http://localhost:3000" {
-		t.Errorf("serviceURL(http, '', 3000) = %q, want http://localhost:3000", url)
+	if url := serviceURL("http", "", 3000, false); url != "http://localhost:3000" {
+		t.Errorf("serviceURL(http, '', 3000, false) = %q, want http://localhost:3000", url)
 	}
-	if url := serviceURL("https", "", 8443); url != "https://localhost:8443" {
-		t.Errorf("serviceURL(https, '', 8443) = %q, want https://localhost:8443", url)
+	if url := serviceURL("https", "", 8443, false); url != "https://localhost:8443" {
+		t.Errorf("serviceURL(https, '', 8443, false) = %q, want https://localhost:8443", url)
 	}
-	if url := serviceURL("http", "myapp.localhost", 3000); url != "http://myapp.localhost:3000" {
-		t.Errorf("serviceURL(http, myapp.localhost, 3000) = %q, want http://myapp.localhost:3000", url)
+	if url := serviceURL("http", "myapp.localhost", 3000, false); url != "http://myapp.localhost:3000" {
+		t.Errorf("serviceURL(http, myapp.localhost, 3000, false) = %q, want http://myapp.localhost:3000", url)
 	}
-	if url := serviceURL("tcp", "", 5432); url != "" {
-		t.Errorf("serviceURL(tcp, '', 5432) = %q, want empty", url)
+	if url := serviceURL("tcp", "", 5432, false); url != "" {
+		t.Errorf("serviceURL(tcp, '', 5432, false) = %q, want empty", url)
 	}
-	if url := serviceURL("", "", 6379); url != "" {
-		t.Errorf("serviceURL('', '', 6379) = %q, want empty", url)
+	if url := serviceURL("", "", 6379, false); url != "" {
+		t.Errorf("serviceURL('', '', 6379, false) = %q, want empty", url)
+	}
+	// With useHTTPS=true, .test hostnames get https://
+	if url := serviceURL("http", "myapp.test", 3000, true); url != "https://myapp.test" {
+		t.Errorf("serviceURL(http, myapp.test, 3000, true) = %q, want https://myapp.test", url)
+	}
+	// Without useHTTPS, .test hostnames keep original protocol
+	if url := serviceURL("http", "myapp.test", 3000, false); url != "http://myapp.test" {
+		t.Errorf("serviceURL(http, myapp.test, 3000, false) = %q, want http://myapp.test", url)
+	}
+}
+
+func TestBuildTemplateVarsHTTPS(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	dataDir := filepath.Join(home, ".local", "share", "outport")
+	os.MkdirAll(dataDir, 0755)
+	certmanager.GenerateCA(
+		filepath.Join(dataDir, "ca-cert.pem"),
+		filepath.Join(dataDir, "ca-key.pem"),
+	)
+
+	cfg := &config.Config{
+		Name: "myapp",
+		Services: map[string]config.Service{
+			"rails": {EnvVar: "PORT", Protocol: "http", Hostname: "myapp.test"},
+		},
+	}
+	ports := map[string]int{"rails": 3000}
+	hostnames := map[string]string{"rails": "myapp.test"}
+
+	useHTTPS := certmanager.IsCAInstalled()
+	vars := buildTemplateVars(cfg, ports, hostnames, useHTTPS)
+
+	if vars["rails.url"] != "https://myapp.test" {
+		t.Errorf("rails.url = %q, want %q", vars["rails.url"], "https://myapp.test")
+	}
+	if vars["rails.url:direct"] != "http://localhost:3000" {
+		t.Errorf("rails.url:direct = %q, want %q", vars["rails.url:direct"], "http://localhost:3000")
+	}
+}
+
+func TestBuildTemplateVarsHTTP(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home) // No CA here
+
+	cfg := &config.Config{
+		Name: "myapp",
+		Services: map[string]config.Service{
+			"rails": {EnvVar: "PORT", Protocol: "http", Hostname: "myapp.test"},
+		},
+	}
+	ports := map[string]int{"rails": 3000}
+	hostnames := map[string]string{"rails": "myapp.test"}
+
+	useHTTPS := certmanager.IsCAInstalled()
+	vars := buildTemplateVars(cfg, ports, hostnames, useHTTPS)
+
+	if vars["rails.url"] != "http://myapp.test" {
+		t.Errorf("rails.url = %q, want %q", vars["rails.url"], "http://myapp.test")
 	}
 }

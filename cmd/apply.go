@@ -9,6 +9,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 	"github.com/outport-app/outport/internal/allocator"
+	"github.com/outport-app/outport/internal/certmanager"
 	"github.com/outport-app/outport/internal/config"
 	"github.com/outport-app/outport/internal/portcheck"
 	"github.com/outport-app/outport/internal/registry"
@@ -110,17 +111,19 @@ func runApply(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if err := mergeEnvFiles(dir, cfg, ports, alloc.Hostnames); err != nil {
+	useHTTPS := certmanager.IsCAInstalled()
+
+	if err := mergeEnvFiles(dir, cfg, ports, alloc.Hostnames, useHTTPS); err != nil {
 		return err
 	}
 
-	resolvedDerived := resolveDerivedFromAlloc(cfg, ports, alloc.Hostnames)
+	resolvedDerived := resolveDerivedFromAlloc(cfg, ports, alloc.Hostnames, useHTTPS)
 	envFiles := mergedEnvFileList(cfg, resolvedDerived)
 
 	if jsonFlag {
-		return printApplyJSON(cmd, cfg, ctx.Instance, ports, alloc.Hostnames, resolvedDerived, envFiles)
+		return printApplyJSON(cmd, cfg, ctx.Instance, ports, alloc.Hostnames, resolvedDerived, envFiles, useHTTPS)
 	}
-	return printApplyStyled(cmd, cfg, ctx.Instance, serviceNames, ports, alloc.Hostnames, resolvedDerived, envFiles)
+	return printApplyStyled(cmd, cfg, ctx.Instance, serviceNames, ports, alloc.Hostnames, resolvedDerived, envFiles, useHTTPS)
 }
 
 // mergedEnvFileList returns the sorted list of env files that would be written
@@ -193,7 +196,8 @@ func computeProtocols(cfg *config.Config) map[string]string {
 
 // buildTemplateVars builds the template variable map from services and allocated ports.
 // Keys are "service.field" (e.g., "rails.port", "rails.hostname", "rails.url").
-func buildTemplateVars(cfg *config.Config, ports map[string]int, hostnames map[string]string) map[string]string {
+// When useHTTPS is true, .url uses https:// for .test hostnames.
+func buildTemplateVars(cfg *config.Config, ports map[string]int, hostnames map[string]string, useHTTPS bool) map[string]string {
 	vars := make(map[string]string)
 	for name, svc := range cfg.Services {
 		portStr := fmt.Sprintf("%d", ports[name])
@@ -204,6 +208,9 @@ func buildTemplateVars(cfg *config.Config, ports map[string]int, hostnames map[s
 			protocol := svc.Protocol
 			if protocol == "" {
 				protocol = "http"
+			}
+			if useHTTPS && (protocol == "http" || protocol == "https") {
+				protocol = "https"
 			}
 			vars[name+".url"] = fmt.Sprintf("%s://%s", protocol, h)
 			vars[name+".url:direct"] = fmt.Sprintf("http://localhost:%s", portStr)
@@ -220,11 +227,11 @@ func buildTemplateVars(cfg *config.Config, ports map[string]int, hostnames map[s
 
 // resolveDerivedFromAlloc resolves derived value templates using allocated ports.
 // Returns name → file → resolved value.
-func resolveDerivedFromAlloc(cfg *config.Config, ports map[string]int, hostnames map[string]string) map[string]map[string]string {
+func resolveDerivedFromAlloc(cfg *config.Config, ports map[string]int, hostnames map[string]string, useHTTPS bool) map[string]map[string]string {
 	if len(cfg.Derived) == 0 {
 		return nil
 	}
-	templateVars := buildTemplateVars(cfg, ports, hostnames)
+	templateVars := buildTemplateVars(cfg, ports, hostnames, useHTTPS)
 	return config.ResolveDerived(cfg.Derived, templateVars)
 }
 
@@ -266,21 +273,25 @@ type applyJSON struct {
 	EnvFiles []string               `json:"env_files"`
 }
 
-func serviceURL(protocol, hostname string, port int) string {
+func serviceURL(protocol, hostname string, port int, useHTTPS bool) string {
 	if protocol == "http" || protocol == "https" {
 		host := hostname
 		if host == "" {
 			host = "localhost"
 		}
+		scheme := protocol
+		if useHTTPS && strings.HasSuffix(host, ".test") {
+			scheme = "https"
+		}
 		if strings.HasSuffix(host, ".test") {
-			return fmt.Sprintf("%s://%s", protocol, host)
+			return fmt.Sprintf("%s://%s", scheme, host)
 		}
 		return fmt.Sprintf("%s://%s:%d", protocol, host, port)
 	}
 	return ""
 }
 
-func buildServiceMap(cfg *config.Config, ports map[string]int, hostnames map[string]string) map[string]svcJSON {
+func buildServiceMap(cfg *config.Config, ports map[string]int, hostnames map[string]string, useHTTPS bool) map[string]svcJSON {
 	services := make(map[string]svcJSON)
 	for name, svc := range cfg.Services {
 		hostname := resolvedHostname(svc, hostnames, name)
@@ -290,7 +301,7 @@ func buildServiceMap(cfg *config.Config, ports map[string]int, hostnames map[str
 			EnvVar:        svc.EnvVar,
 			Protocol:      svc.Protocol,
 			Hostname:      hostname,
-			URL:           serviceURL(svc.Protocol, hostname, ports[name]),
+			URL:           serviceURL(svc.Protocol, hostname, ports[name], useHTTPS),
 			EnvFiles:      svc.EnvFiles,
 		}
 	}
@@ -329,11 +340,11 @@ func buildDerivedMap(derived map[string]config.DerivedValue, resolved map[string
 	return m
 }
 
-func printApplyJSON(cmd *cobra.Command, cfg *config.Config, instanceName string, ports map[string]int, hostnames map[string]string, resolvedDerived map[string]map[string]string, envFiles []string) error {
+func printApplyJSON(cmd *cobra.Command, cfg *config.Config, instanceName string, ports map[string]int, hostnames map[string]string, resolvedDerived map[string]map[string]string, envFiles []string, useHTTPS bool) error {
 	out := applyJSON{
 		Project:  cfg.Name,
 		Instance: instanceName,
-		Services: buildServiceMap(cfg, ports, hostnames),
+		Services: buildServiceMap(cfg, ports, hostnames, useHTTPS),
 		Derived:  buildDerivedMap(cfg.Derived, resolvedDerived),
 		EnvFiles: envFiles,
 	}
@@ -351,12 +362,12 @@ func printHeader(w io.Writer, projectName, instanceName string) {
 	lipgloss.Fprintln(w)
 }
 
-func printApplyStyled(cmd *cobra.Command, cfg *config.Config, instanceName string, serviceNames []string, ports map[string]int, hostnames map[string]string, resolvedDerived map[string]map[string]string, envFiles []string) error {
+func printApplyStyled(cmd *cobra.Command, cfg *config.Config, instanceName string, serviceNames []string, ports map[string]int, hostnames map[string]string, resolvedDerived map[string]map[string]string, envFiles []string, useHTTPS bool) error {
 	w := cmd.OutOrStdout()
 
 	printHeader(w, cfg.Name, instanceName)
 
-	printFlatServices(w, cfg, serviceNames, ports, hostnames, nil)
+	printFlatServices(w, cfg, serviceNames, ports, hostnames, nil, useHTTPS)
 
 	if len(resolvedDerived) > 0 {
 		printDerivedValues(w, resolvedDerived)
@@ -421,13 +432,13 @@ func printDerivedValues(w io.Writer, resolved map[string]map[string]string) {
 	}
 }
 
-func printFlatServices(w io.Writer, cfg *config.Config, serviceNames []string, ports map[string]int, hostnames map[string]string, portStatus map[int]bool) {
+func printFlatServices(w io.Writer, cfg *config.Config, serviceNames []string, ports map[string]int, hostnames map[string]string, portStatus map[int]bool, useHTTPS bool) {
 	for _, svcName := range serviceNames {
-		printServiceLine(w, cfg, svcName, ports[svcName], hostnames, portStatus)
+		printServiceLine(w, cfg, svcName, ports[svcName], hostnames, portStatus, useHTTPS)
 	}
 }
 
-func printServiceLine(w io.Writer, cfg *config.Config, svcName string, port int, hostnames map[string]string, portStatus map[int]bool) {
+func printServiceLine(w io.Writer, cfg *config.Config, svcName string, port int, hostnames map[string]string, portStatus map[int]bool, useHTTPS bool) {
 	svc := cfg.Services[svcName]
 
 	status := ""
@@ -442,7 +453,7 @@ func printServiceLine(w io.Writer, cfg *config.Config, svcName string, port int,
 	hostname := resolvedHostname(svc, hostnames, svcName)
 
 	extra := ""
-	if u := serviceURL(svc.Protocol, hostname, port); u != "" {
+	if u := serviceURL(svc.Protocol, hostname, port, useHTTPS); u != "" {
 		extra = "  " + ui.UrlStyle.Render(u)
 	} else if hostname != "" {
 		extra = "  " + ui.HostnameStyle.Render(hostname)
