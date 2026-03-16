@@ -5,7 +5,7 @@
       <h1>Stop fighting <span class="accent">port conflicts</span></h1>
       <p class="subtitle">
         Port orchestration for multi-project development. Deterministic ports,
-        <code>.test</code> hostnames, <code>.env</code> integration, and
+        <code>.test</code> hostnames with automatic HTTPS, <code>.env</code> integration, and
         multi-instance support — all from a single config file.
       </p>
       <div class="hero-ctas">
@@ -55,7 +55,7 @@
         <div class="feature-card">
           <div class="feature-icon">.t</div>
           <h3>.test Domains</h3>
-          <p>Real hostnames like <code>myapp.test</code> instead of <code>localhost:3000</code>. Built-in DNS and reverse proxy.</p>
+          <p>Real hostnames like <code>myapp.test</code> instead of <code>localhost:3000</code>. Built-in DNS, reverse proxy, and automatic HTTPS.</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon">&gt;_</div>
@@ -66,6 +66,11 @@
           <div class="feature-icon">.e</div>
           <h3>.env Integration</h3>
           <p>Ports, URLs, and derived values written directly to your <code>.env</code> files. Your app reads them natively.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">S</div>
+          <h3>Automatic HTTPS</h3>
+          <p>Local Certificate Authority trusted by your OS and browsers. Every <code>.test</code> domain gets HTTPS — zero configuration per service.</p>
         </div>
       </div>
     </section>
@@ -114,7 +119,7 @@ services:
 PORT=<span class="value">13842</span>
 PGPORT=<span class="value">28391</span>
 REDIS_PORT=<span class="value">19204</span>
-MYAPP_URL=<span class="success">http://myapp.test</span></pre>
+MYAPP_URL=<span class="success">https://myapp.test</span></pre>
         </div>
       </div>
     </section>
@@ -267,11 +272,14 @@ MYAPP_URL=<span class="success">http://myapp.test</span></pre>
   letter-spacing: -0.01em;
 }
 .feature-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  display: flex;
+  flex-wrap: wrap;
   gap: 1.25rem;
+  justify-content: center;
 }
 .feature-card {
+  flex: 0 1 calc(50% - 0.625rem);
+  min-width: 280px;
   background: #ffffff;
   border: 1px solid var(--vp-c-divider);
   border-radius: 10px;
@@ -438,7 +446,7 @@ MYAPP_URL=<span class="success">http://myapp.test</span></pre>
 /* Responsive */
 @media (max-width: 768px) {
   .hero h1 { font-size: 2.25rem; }
-  .feature-grid { grid-template-columns: 1fr; }
+  .feature-card { flex: 0 1 100%; }
   .steps { grid-template-columns: 1fr; }
   .hero-ctas { flex-direction: column; align-items: center; }
 }
