@@ -21,7 +21,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .msg code{font-family:'SF Mono','Fira Code',monospace;font-size:.875rem;color:#475569;background:#f1f5f9;padding:.125rem .375rem;border-radius:4px}
 .hint{display:inline-block;font-family:'SF Mono','Fira Code',monospace;font-size:.8125rem;color:#475569;background:#f1f5f9;padding:.375rem .75rem;border-radius:6px;border:1px solid #e2e8f0}
 .foot{margin-top:2rem;font-size:.75rem;color:#94a3b8}
-.foot a{color:#94a3b8;text-decoration:none}
+.foot a{color:#64748b;text-decoration:none}
 </style>
 </head>
 <body>
