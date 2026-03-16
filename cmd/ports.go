@@ -11,6 +11,7 @@ import (
 )
 
 var portsCheckFlag bool
+var portsDerivedFlag bool
 
 var portsCmd = &cobra.Command{
 	Use:   "ports",
@@ -20,6 +21,7 @@ var portsCmd = &cobra.Command{
 
 func init() {
 	portsCmd.Flags().BoolVar(&portsCheckFlag, "check", false, "check if ports are accepting connections")
+	portsCmd.Flags().BoolVar(&portsDerivedFlag, "derived", false, "show derived values")
 	rootCmd.AddCommand(portsCmd)
 }
 
@@ -56,7 +58,9 @@ func printPortsJSON(cmd *cobra.Command, cfg *config.Config, instanceName string,
 		Project:  cfg.Name,
 		Instance: instanceName,
 		Services: services,
-		Derived:  buildDerivedMap(cfg.Derived, resolveDerivedFromAlloc(cfg, alloc.Ports, alloc.Hostnames)),
+	}
+	if portsDerivedFlag {
+		out.Derived = buildDerivedMap(cfg.Derived, resolveDerivedFromAlloc(cfg, alloc.Ports, alloc.Hostnames))
 	}
 	data, err := json.MarshalIndent(out, "", "  ")
 	if err != nil {
@@ -79,8 +83,10 @@ func printPortsStyled(cmd *cobra.Command, cfg *config.Config, instanceName strin
 
 	printFlatServices(w, cfg, serviceNames, alloc.Ports, alloc.Hostnames, portStatus)
 
-	if resolved := resolveDerivedFromAlloc(cfg, alloc.Ports, alloc.Hostnames); len(resolved) > 0 {
-		printDerivedValues(w, resolved)
+	if portsDerivedFlag {
+		if resolved := resolveDerivedFromAlloc(cfg, alloc.Ports, alloc.Hostnames); len(resolved) > 0 {
+			printDerivedValues(w, resolved)
+		}
 	}
 
 	return nil
