@@ -1,8 +1,8 @@
 package registry
 
 import (
+	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 )
 
@@ -186,11 +186,16 @@ func TestFindByProject(t *testing.T) {
 }
 
 func TestDefaultPath(t *testing.T) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		t.Fatalf("UserHomeDir: %v", err)
+	}
 	path, err := DefaultPath()
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf("DefaultPath: %v", err)
 	}
-	if !strings.HasSuffix(path, ".config/outport/registry.json") {
-		t.Errorf("path = %q, want suffix .config/outport/registry.json", path)
+	expected := filepath.Join(home, ".local", "share", "outport", "registry.json")
+	if path != expected {
+		t.Errorf("DefaultPath() = %q, want %q", path, expected)
 	}
 }
