@@ -8,7 +8,6 @@ import (
 	"github.com/outport-app/outport/internal/config"
 	"github.com/outport-app/outport/internal/dotenv"
 	"github.com/outport-app/outport/internal/ui"
-	"github.com/outport-app/outport/internal/worktree"
 	"github.com/spf13/cobra"
 )
 
@@ -28,25 +27,25 @@ func runUnapply(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	cfg, wt, reg := ctx.Cfg, ctx.WT, ctx.Reg
+	cfg, reg := ctx.Cfg, ctx.Reg
 
-	_, ok := reg.Get(cfg.Name, wt.Instance)
+	_, ok := reg.Get(cfg.Name, ctx.Instance)
 	if !ok {
-		return fmt.Errorf("project %q (instance %q) is not registered", cfg.Name, wt.Instance)
+		return fmt.Errorf("project %q (instance %q) is not registered", cfg.Name, ctx.Instance)
 	}
 
 	// Clean managed blocks from .env files
 	cleanedFiles := cleanEnvFiles(ctx.Dir, cfg)
 
-	reg.Remove(cfg.Name, wt.Instance)
+	reg.Remove(cfg.Name, ctx.Instance)
 	if err := reg.Save(); err != nil {
 		return err
 	}
 
 	if jsonFlag {
-		return printUnapplyJSON(cmd, cfg.Name, wt.Instance, cleanedFiles)
+		return printUnapplyJSON(cmd, cfg.Name, ctx.Instance, cleanedFiles)
 	}
-	return printUnapplyStyled(cmd, cfg.Name, wt, cleanedFiles)
+	return printUnapplyStyled(cmd, cfg.Name, ctx.Instance, cleanedFiles)
 }
 
 // cleanEnvFiles removes the outport fenced block from all .env files
@@ -94,9 +93,9 @@ func printUnapplyJSON(cmd *cobra.Command, project, instance string, cleanedFiles
 	return nil
 }
 
-func printUnapplyStyled(cmd *cobra.Command, project string, wt *worktree.Info, cleanedFiles []string) error {
+func printUnapplyStyled(cmd *cobra.Command, project, instanceName string, cleanedFiles []string) error {
 	w := cmd.OutOrStdout()
-	printHeader(w, project, wt)
+	printHeader(w, project, instanceName)
 	fmt.Fprintln(w, ui.SuccessStyle.Render("Unapplied. All ports freed."))
 	if len(cleanedFiles) > 0 {
 		fmt.Fprintln(w, ui.SuccessStyle.Render("Cleaned managed variables from:"))

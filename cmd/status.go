@@ -12,7 +12,6 @@ import (
 	"github.com/outport-app/outport/internal/portcheck"
 	"github.com/outport-app/outport/internal/registry"
 	"github.com/outport-app/outport/internal/ui"
-	"github.com/outport-app/outport/internal/worktree"
 	"github.com/spf13/cobra"
 )
 
@@ -29,20 +28,20 @@ func init() {
 	rootCmd.AddCommand(statusCmd)
 }
 
-func currentProjectKey() string {
-	dir, err := os.Getwd()
+func currentProjectKey(reg *registry.Registry) string {
+	cwd, err := os.Getwd()
 	if err != nil {
 		return ""
 	}
-	cfg, err := config.Load(dir)
+	dir, err := config.FindDir(cwd)
 	if err != nil {
 		return ""
 	}
-	wt, err := worktree.Detect(dir)
-	if err != nil {
+	key, _, ok := reg.FindByDir(dir)
+	if !ok {
 		return ""
 	}
-	return cfg.Name + "/" + wt.Instance
+	return key
 }
 
 func loadProjectConfig(projectDir string) *config.Config {
@@ -54,13 +53,13 @@ func loadProjectConfig(projectDir string) *config.Config {
 }
 
 // formatProjectKey returns just the project name for main instances,
-// or "project/instance (worktree)" for worktree instances.
+// or "project/instance" for non-main instances.
 func formatProjectKey(key string) string {
 	parts := strings.SplitN(key, "/", 2)
 	if len(parts) != 2 || parts[1] == "main" {
 		return parts[0]
 	}
-	return parts[0] + "/" + parts[1] + " (worktree)"
+	return parts[0] + "/" + parts[1]
 }
 
 func runStatus(cmd *cobra.Command, args []string) error {
@@ -101,7 +100,7 @@ type statusEntryJSON struct {
 }
 
 func printStatusJSON(cmd *cobra.Command, reg *registry.Registry, portStatus map[int]bool) error {
-	currentKey := currentProjectKey()
+	currentKey := currentProjectKey(reg)
 	var entries []statusEntryJSON
 
 	keys := sortedMapKeys(reg.Projects)
@@ -115,7 +114,7 @@ func printStatusJSON(cmd *cobra.Command, reg *registry.Registry, portStatus map[
 			if cfg != nil {
 				if svc, ok := cfg.Services[svcName]; ok {
 					s.Protocol = svc.Protocol
-					s.URL = serviceURL(svc.Protocol, svc.Hostname, port)
+					s.URL = serviceURL(svc.Protocol, resolvedHostname(svc, alloc.Hostnames, svcName), port)
 				}
 			}
 			if portStatus != nil {
@@ -126,7 +125,7 @@ func printStatusJSON(cmd *cobra.Command, reg *registry.Registry, portStatus map[
 
 		var derived map[string]derivedJSON
 		if cfg != nil {
-			derived = buildDerivedMap(cfg.Derived, resolveDerivedFromAlloc(cfg, alloc.Ports))
+			derived = buildDerivedMap(cfg.Derived, resolveDerivedFromAlloc(cfg, alloc.Ports, alloc.Hostnames))
 		}
 
 		entries = append(entries, statusEntryJSON{
@@ -150,7 +149,7 @@ var currentMarker = lipgloss.NewStyle().Foreground(ui.Green).Bold(true)
 
 func printStatusStyled(cmd *cobra.Command, reg *registry.Registry, portStatus map[int]bool) error {
 	w := cmd.OutOrStdout()
-	currentKey := currentProjectKey()
+	currentKey := currentProjectKey(reg)
 
 	keys := sortedMapKeys(reg.Projects)
 	var staleKeys []string
@@ -198,11 +197,14 @@ func printStatusStyled(cmd *cobra.Command, reg *registry.Registry, portStatus ma
 				}
 			}
 
-			url := ""
+			extra := ""
 			if cfg != nil {
 				if svc, ok := cfg.Services[svcName]; ok {
-					if u := serviceURL(svc.Protocol, svc.Hostname, port); u != "" {
-						url = "  " + ui.UrlStyle.Render(u)
+					hostname := resolvedHostname(svc, alloc.Hostnames, svcName)
+					if u := serviceURL(svc.Protocol, hostname, port); u != "" {
+						extra = "  " + ui.UrlStyle.Render(u)
+					} else if hostname != "" {
+						extra = "  " + ui.HostnameStyle.Render(hostname)
 					}
 				}
 			}
@@ -212,13 +214,13 @@ func printStatusStyled(cmd *cobra.Command, reg *registry.Registry, portStatus ma
 				ui.Arrow,
 				ui.PortStyle.Render(fmt.Sprintf("%d", port)),
 				status,
-				url,
+				extra,
 			)
 			lipgloss.Fprintln(w, line)
 		}
 
 		if cfg != nil {
-			if resolved := resolveDerivedFromAlloc(cfg, alloc.Ports); len(resolved) > 0 {
+			if resolved := resolveDerivedFromAlloc(cfg, alloc.Ports, alloc.Hostnames); len(resolved) > 0 {
 				printDerivedValues(w, resolved)
 			}
 		}

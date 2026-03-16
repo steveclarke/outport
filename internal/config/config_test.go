@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -711,6 +712,135 @@ func TestResolveDerived_EmptyMap(t *testing.T) {
 	resolved := ResolveDerived(nil, map[string]string{"web.port": "3000"})
 	if len(resolved) != 0 {
 		t.Errorf("expected empty map, got %v", resolved)
+	}
+}
+
+// --- Hostname Validation ---
+
+func TestHostnameRequiresHTTPProtocol(t *testing.T) {
+	yaml := `
+name: myapp
+services:
+  postgres:
+    env_var: PGPORT
+    hostname: myapp
+`
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, ".outport.yml"), []byte(yaml), 0644)
+	_, err := Load(dir)
+	if err == nil {
+		t.Fatal("expected error for hostname without http protocol")
+	}
+	if !strings.Contains(err.Error(), "hostname") {
+		t.Errorf("error should mention hostname, got: %v", err)
+	}
+}
+
+func TestHostnameValidCharacters(t *testing.T) {
+	tests := []struct {
+		hostname string
+		wantErr  bool
+	}{
+		{"myapp", false},
+		{"portal.myapp", false},
+		{"myapp-web", false},
+		{"my_app", true},    // underscores invalid in DNS
+		{"MY_APP", true},    // uppercase invalid
+		{"my app", true},    // spaces invalid
+		{"othername", true}, // must contain project name "myapp"
+	}
+	for _, tt := range tests {
+		yaml := fmt.Sprintf(`
+name: myapp
+services:
+  web:
+    env_var: PORT
+    protocol: http
+    hostname: %s
+`, tt.hostname)
+		dir := t.TempDir()
+		os.WriteFile(filepath.Join(dir, ".outport.yml"), []byte(yaml), 0644)
+		_, err := Load(dir)
+		if (err != nil) != tt.wantErr {
+			t.Errorf("hostname %q: err=%v, wantErr=%v", tt.hostname, err, tt.wantErr)
+		}
+	}
+}
+
+// --- Template Modifier Support ---
+
+func TestTemplateModifierParsing(t *testing.T) {
+	yaml := `
+name: myapp
+services:
+  rails:
+    env_var: PORT
+    protocol: http
+    hostname: myapp
+derived:
+  API_URL:
+    value: "${rails.url:direct}/api"
+    env_file: .env
+`
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, ".outport.yml"), []byte(yaml), 0644)
+	cfg, err := Load(dir)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+
+	vars := map[string]string{
+		"rails.port":       "24920",
+		"rails.hostname":   "myapp.test",
+		"rails.url":        "http://myapp.test",
+		"rails.url:direct": "http://localhost:24920",
+	}
+	resolved := ResolveDerived(cfg.Derived, vars)
+	val := resolved["API_URL"][".env"]
+	if val != "http://localhost:24920/api" {
+		t.Errorf("got %q, want %q", val, "http://localhost:24920/api")
+	}
+}
+
+func TestTemplateModifierValidation(t *testing.T) {
+	yaml := `
+name: myapp
+services:
+  rails:
+    env_var: PORT
+    protocol: http
+    hostname: myapp
+derived:
+  BAD:
+    value: "${rails.url:bogus}"
+    env_file: .env
+`
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, ".outport.yml"), []byte(yaml), 0644)
+	_, err := Load(dir)
+	if err == nil {
+		t.Fatal("expected error for unrecognized modifier")
+	}
+}
+
+func TestURLFieldValidation(t *testing.T) {
+	yaml := `
+name: myapp
+services:
+  rails:
+    env_var: PORT
+    protocol: http
+    hostname: myapp
+derived:
+  SITE_URL:
+    value: "${rails.url}"
+    env_file: .env
+`
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, ".outport.yml"), []byte(yaml), 0644)
+	_, err := Load(dir)
+	if err != nil {
+		t.Fatalf("expected no error for url field, got: %v", err)
 	}
 }
 

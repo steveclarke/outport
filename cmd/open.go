@@ -28,9 +28,9 @@ func runOpen(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	alloc, ok := ctx.Reg.Get(ctx.Cfg.Name, ctx.WT.Instance)
+	alloc, ok := ctx.Reg.Get(ctx.Cfg.Name, ctx.Instance)
 	if !ok {
-		return fmt.Errorf("No ports allocated. Run 'outport up' first.")
+		return fmt.Errorf("No ports allocated. Run 'outport apply' first.")
 	}
 
 	if len(args) == 1 {
@@ -40,7 +40,16 @@ func runOpen(cmd *cobra.Command, args []string) error {
 	opened := 0
 	for _, svcName := range sortedMapKeys(ctx.Cfg.Services) {
 		svc := ctx.Cfg.Services[svcName]
-		url := serviceURL(svc.Protocol, svc.Hostname, alloc.Ports[svcName])
+		var url string
+		if h, ok := alloc.Hostnames[svcName]; ok {
+			protocol := svc.Protocol
+			if protocol == "" {
+				continue
+			}
+			url = fmt.Sprintf("%s://%s", protocol, h)
+		} else {
+			url = serviceURL(svc.Protocol, svc.Hostname, alloc.Ports[svcName])
+		}
 		if url == "" {
 			continue
 		}
@@ -67,10 +76,18 @@ func openService(cmd *cobra.Command, cfg *config.Config, alloc registry.Allocati
 
 	port, ok := alloc.Ports[name]
 	if !ok {
-		return fmt.Errorf("No port allocated for %q. Run 'outport up' first.", name)
+		return fmt.Errorf("No port allocated for %q. Run 'outport apply' first.", name)
 	}
 
-	url := serviceURL(svc.Protocol, svc.Hostname, port)
+	var url string
+	if h, hok := alloc.Hostnames[name]; hok {
+		if svc.Protocol == "" {
+			return fmt.Errorf("Service %q has no protocol set. Add 'protocol: http' to open it in the browser.", name)
+		}
+		url = fmt.Sprintf("%s://%s", svc.Protocol, h)
+	} else {
+		url = serviceURL(svc.Protocol, svc.Hostname, port)
+	}
 	if url == "" {
 		return fmt.Errorf("Service %q has no protocol set. Add 'protocol: http' to open it in the browser.", name)
 	}

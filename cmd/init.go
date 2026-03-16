@@ -24,42 +24,42 @@ const configTemplate = `# Outport configuration
 # Docs: https://outport.app
 #
 # Declare your services, then run 'outport apply' to allocate ports.
-# Outport assigns deterministic ports and writes them to .env as environment variables.
-# Your app reads the env vars — Outport doesn't touch your app's config files.
+# Outport assigns deterministic ports and writes them to .env.
+# Run 'outport setup' to enable .test domains (e.g., %s.test).
 
 name: %s
 
 services:
-# Add your services here. Each needs at least an env_var.
-#
-#  web:
-#    env_var: PORT
-#    protocol: http          # enables 'outport open' and shows URLs in output
-#    hostname: myapp.localhost  # optional — defaults to localhost
+  web:
+    env_var: PORT
+    protocol: http
+    hostname: %s.test
 #
 #  postgres:
 #    env_var: DB_PORT
+#
+# Multiple HTTP services get subdomain hostnames:
+#
+#  frontend:
+#    env_var: FRONTEND_PORT
+#    protocol: http
+#    hostname: app.%s.test
 #
 # Write to a different .env file (default is .env in project root):
 #
 #  rails:
 #    env_var: RAILS_PORT
 #    env_file: backend/.env
-#
-# Write the same var to multiple .env files:
-#
-#  postgres:
-#    env_var: DB_PORT
-#    env_file:
-#      - backend/.env
-#      - .env
 
 # Derived values — computed env vars that reference allocated ports:
 #
 # derived:
-#  API_URL:
-#    value: "http://${rails.hostname}:${rails.port}/api/v1"
-#    env_file: frontend/.env
+#  CORS_ORIGINS:
+#    value: "${web.url}"
+#    env_file: .env
+#
+#  # Use :direct for server-to-server URLs (bypasses .test proxy):
+#  # API_URL: "${web.url:direct}/api/v1"
 `
 
 func runInit(cmd *cobra.Command, args []string) error {
@@ -74,7 +74,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 	}
 
 	name := filepath.Base(dir)
-	content := fmt.Sprintf(configTemplate, name)
+	content := fmt.Sprintf(configTemplate, name, name, name, name)
 
 	if err := os.WriteFile(configPath, []byte(content), 0644); err != nil {
 		return fmt.Errorf("Writing config: %w.", err)

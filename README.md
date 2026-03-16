@@ -6,9 +6,9 @@
 
 # Outport
 
-Dev port manager for multi-project, multi-worktree development.
+Dev port manager and port orchestration tool for multi-project development.
 
-Outport allocates deterministic, non-conflicting ports for all your projects and writes them to `.env` files. No more port conflicts. No more guessing what's running where.
+Outport allocates deterministic, non-conflicting ports for all your projects, assigns `.test` hostnames, and writes everything to `.env` files. No more port conflicts. No more guessing what's running where.
 
 ## The Problem
 
@@ -65,25 +65,40 @@ services:
     preferred_port: 5432
 ```
 
-Same project, same worktree, same ports. Every time.
+Same project, same instance, same ports. Every time.
 
-### Worktree Support
+### Multiple Instances
 
-Outport detects git worktrees automatically. Each worktree gets its own set of ports:
+Every clone, worktree, or checkout of a project is an **instance**. The first is "main" — subsequent instances get auto-generated codes:
 
 ```bash
 # Main checkout
 $ outport apply
-outport: myapp
-  web (PORT) → 39519
-  postgres (DATABASE_PORT) → 39972
+myapp [main]
+    web    PORT    → 39519  http://myapp.test
 
-# Feature worktree — completely different ports, zero conflicts
+# Second clone / worktree — different ports, different hostname
 $ outport apply
-outport: myapp [feature-xyz (worktree)]
-  web (PORT) → 28104
-  postgres (DATABASE_PORT) → 13567
+  Registered as myapp-bkrm. Use 'outport rename bkrm <name>' to rename.
+myapp [bkrm]
+    web    PORT    → 28104  http://myapp-bkrm.test
 ```
+
+Each instance gets its own ports and `.test` hostname. Cookie isolation is automatic — `myapp.test` and `myapp-bkrm.test` are completely separate domains.
+
+### .test Domains
+
+Run `outport setup` once to enable friendly hostnames. Services with `hostname` get a `.test` URL routed through a local DNS + reverse proxy:
+
+```yaml
+services:
+  web:
+    env_var: PORT
+    protocol: http
+    hostname: myapp.test
+```
+
+After `outport apply`, access your app at `http://myapp.test` — no port numbers. The proxy runs on port 80 via macOS launchd, starts at login, and updates routes automatically when you `outport apply`.
 
 ## Integration
 
@@ -100,15 +115,21 @@ Outport preserves your existing `.env` variables. It only updates variables decl
 
 ```
 outport init              Create .outport.yml for this project
-outport apply          Register project, allocate ports, write .env
+outport apply             Register project, allocate ports, write .env
 outport a                 Short alias for apply
-outport apply --force  Clear and re-allocate all ports
+outport apply --force     Clear and re-allocate all ports
 outport unapply           Remove ports, clean .env files
 outport ports             Show ports for the current project
 outport open              Open HTTP services in the browser
 outport status            Show all registered projects
 outport status --check    Show with health checks (up/down)
 outport gc                Remove stale registry entries
+outport setup             Install DNS resolver and daemon for .test domains
+outport teardown          Remove DNS resolver and daemon
+outport up                Start the daemon manually
+outport down              Stop the daemon manually
+outport rename <old> <new>  Rename an instance of the current project
+outport promote           Promote the current instance to main
 ```
 
 All commands support `--json` for machine-readable output.
@@ -121,19 +142,23 @@ Ports are stable: once allocated, running `outport apply` again reuses the same 
 
 ## Protocol and Hostname
 
-Add `protocol` to services to get URLs in output and enable `outport open`. Add `hostname` to control the hostname in URLs (defaults to `localhost`):
+Add `protocol` and `hostname` to HTTP services for `.test` domain routing and `outport open`:
 
 ```yaml
 services:
   web:
     env_var: PORT
-    protocol: http                # shows URL in output, enables 'outport open'
-    hostname: myapp.localhost     # optional — defaults to localhost
+    protocol: http
+    hostname: myapp.test          # → http://myapp.test (after outport setup)
+  api:
+    env_var: API_PORT
+    protocol: http
+    hostname: api.myapp.test      # subdomains for multi-service projects
   postgres:
-    env_var: DB_PORT              # no protocol — just shows port number
+    env_var: DB_PORT              # no protocol — port only
 ```
 
-Supported protocols: `http`, `https`, `smtp`, `postgres`, `redis`, and any custom string.
+Run `outport setup` once to enable `.test` domain routing. Services without `hostname` still work — they just don't get a `.test` URL.
 
 ## Multiple .env Files
 
@@ -158,7 +183,7 @@ Services without `env_file` write to `.env` in the project root. `env_file` can 
 
 ## Derived Values
 
-Applications don't just need port numbers — they need URLs. Derived values let you define computed environment variables that reference allocated ports:
+Applications don't just need port numbers — they need URLs. Derived values let you define computed environment variables that reference your services:
 
 ```yaml
 name: my-monorepo
@@ -166,18 +191,20 @@ services:
   rails:
     env_var: RAILS_PORT
     protocol: http
+    hostname: mymonorepo.test
     env_file: backend/.env
   web:
     env_var: WEB_PORT
     protocol: http
+    hostname: app.mymonorepo.test
     env_file: frontend/.env
 
 derived:
   API_URL:
-    value: "http://localhost:${rails.port}/api/v1"
+    value: "${rails.url:direct}/api/v1"    # server-to-server: http://localhost:24920/api/v1
     env_file: frontend/.env
   CORS_ORIGINS:
-    value: "http://localhost:${web.port}"
+    value: "${web.url}"                     # browser-facing: http://app.mymonorepo.test
     env_file: backend/.env
 ```
 
@@ -190,7 +217,16 @@ WEB_PORT=14139
 # --- end outport.dev ---
 ```
 
-Templates use `${service_name.field}` syntax — reference any service's `port` or `hostname`. Resolved at apply time — your app reads finished values from `.env`.
+### Template fields
+
+| Template | Resolves to | Use case |
+|----------|------------|----------|
+| `${rails.port}` | `24920` | Raw port number |
+| `${rails.hostname}` | `mymonorepo.test` | `.test` hostname |
+| `${rails.url}` | `http://mymonorepo.test` | Browser-facing URLs (CORS, asset hosts) |
+| `${rails.url:direct}` | `http://localhost:24920` | Server-to-server (API calls, WebSocket) |
+
+Use `${service.url}` for URLs the browser will see. Use `${service.url:direct}` for server-to-server communication that bypasses the proxy.
 
 When the same env var needs different values per file (common in monorepos), use per-file overrides:
 
@@ -199,9 +235,9 @@ derived:
   NUXT_API_BASE_URL:
     env_file:
       - file: frontend/apps/main/.env
-        value: "http://localhost:${rails.port}/api/v1"
+        value: "${rails.url:direct}/api/v1"
       - file: frontend/apps/portal/.env
-        value: "http://localhost:${rails.port}/portal/api/v1"
+        value: "${rails.url:direct}/portal/api/v1"
 ```
 
 ## AI Agent Skill
@@ -252,9 +288,9 @@ just clean        # Clean build artifacts
 
 Use [derived values](#derived-values). Outport computes URLs from allocated ports and writes finished env vars to `.env`.
 
-### "I'm running two worktrees and my sessions are colliding"
+### "I'm running two instances and my sessions are colliding"
 
-Browsers share cookies across ports on the same hostname. If both worktrees serve on `localhost`, they share a cookie jar. Workaround: use an incognito window or a separate browser profile for the second worktree. Long-term: `.test` domain support ([#13](https://github.com/steveclarke/outport/issues/13)) will give each worktree its own hostname.
+Run `outport setup` to enable `.test` domains. Each instance gets its own hostname (`myapp.test` vs `myapp-bkrm.test`), so cookies are isolated automatically. No incognito windows needed.
 
 ### "I have a monorepo where two apps use the same env var name but need different values"
 
@@ -265,9 +301,9 @@ derived:
   API_BASE_URL:
     env_file:
       - file: frontend/app-a/.env
-        value: "http://localhost:${rails.port}/api/v1"
+        value: "${rails.url:direct}/api/v1"
       - file: frontend/app-b/.env
-        value: "http://localhost:${rails.port}/admin/api/v1"
+        value: "${rails.url:direct}/admin/api/v1"
 ```
 
 ### "How do I add Outport to my project's setup script?"
@@ -290,7 +326,7 @@ Yes. Install the Outport skill so your agent knows the commands and patterns:
 npx skills add steveclarke/outport/skills
 ```
 
-The agent can run `outport apply` in worktrees, read `outport ports --json` for structured output, and configure `.outport.yml` for new services.
+The agent can run `outport apply` in any instance, read `outport ports --json` for structured output, and configure `.outport.yml` for new services.
 
 ## How Outport Compares
 
@@ -301,10 +337,10 @@ This isn't about competition — these are all good tools. This grid helps you s
 | | Outport | [Portless](https://github.com/vercel-labs/portless) | [portree](https://github.com/fairy-pitta/portree) | [dot-test](https://github.com/zarpay/dot-test) | [puma-dev](https://github.com/puma/puma-dev) | [Laravel Valet](https://laravel.com/docs/valet) |
 |---|:---:|:---:|:---:|:---:|:---:|:---:|
 | **Deterministic ports** | Yes (hash) | Ephemeral | Yes (hash) | Sequential | No | No |
-| **Worktree-aware** | Yes | Yes | Yes | No | No | No |
+| **Instance-aware** | Yes | Yes | Yes | No | No | No |
 | **Multi-service wiring** | Yes | No | Partial | No | No | No |
 | **Writes to .env** | Yes | No¹ | No | Yes² | No | No |
-| **Friendly hostnames** | Planned | Yes | Yes | Yes | Yes | Yes |
+| **Friendly hostnames** | Yes (.test) | Yes | Yes | Yes | Yes | Yes |
 | **SSL certificates** | Planned | Yes | Yes | No | Yes | Yes |
 | **Framework-agnostic** | Yes | Yes | Yes | Rails only | Ruby/Rack | PHP/Laravel |
 | **No runtime wrapper** | Yes³ | No | No | Yes³ | No | No |
@@ -320,16 +356,16 @@ This isn't about competition — these are all good tools. This grid helps you s
 If you're a single developer running one Rails app, most of these tools work fine. The differences show up when things get real:
 
 - **Multiple projects at once** — three Rails apps all defaulting to port 3000, each with their own Postgres and Redis. You need them all running simultaneously, completely segregated.
-- **Worktrees for parallel AI agents** — you tell three agents to work on three features, each in its own worktree. Every worktree needs a complete, non-conflicting set of ports for all services — web, database, cache, everything.
+- **Parallel AI agents** — you tell three agents to work on three features, each in its own instance. Every instance gets non-conflicting ports and a unique `.test` hostname — complete isolation.
 - **Multi-service apps** — your Nuxt frontend needs your Rails backend's URL. Your backend needs the frontend's URL for CORS. Outport's [derived values](#derived-values) wire this up declaratively — one config file, and every `.env` gets finished URLs.
-- **Declare once, apply anywhere** — check `.outport.yml` into your repo. Every developer, every machine, every worktree gets deterministic ports with `outport apply`. No manual port bookkeeping, no "which port was that again?"
+- **Declare once, apply anywhere** — check `.outport.yml` into your repo. Every developer, every machine, every instance gets deterministic ports with `outport apply`. No manual port bookkeeping, no "which port was that again?"
 
-Outport handles the simple case (one app, one port) and scales to the complex case (monorepo, multiple services, parallel worktrees, agentic workflows) without changing your existing tools.
+Outport handles the simple case (one app, one port) and scales to the complex case (monorepo, multiple services, parallel instances, agentic workflows) without changing your existing tools.
 
 ## Roadmap
 
-- **v1 (current):** Port allocation + apply/unapply + `.env` writing
-- **v2:** DNS server + reverse proxy for `.test` domains (`myapp.test` instead of `localhost:39519`)
+- **v1:** Port allocation + `.env` writing
+- **v2 (current):** DNS server + reverse proxy for `.test` domains, instance model
 - **v3:** Local SSL with real certificates for `.test` domains
 
 ## License

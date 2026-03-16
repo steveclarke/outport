@@ -7,7 +7,6 @@ import (
 	"github.com/outport-app/outport/internal/config"
 	"github.com/outport-app/outport/internal/portcheck"
 	"github.com/outport-app/outport/internal/registry"
-	"github.com/outport-app/outport/internal/worktree"
 	"github.com/spf13/cobra"
 )
 
@@ -30,20 +29,20 @@ func runPorts(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	alloc, ok := ctx.Reg.Get(ctx.Cfg.Name, ctx.WT.Instance)
+	alloc, ok := ctx.Reg.Get(ctx.Cfg.Name, ctx.Instance)
 	if !ok {
 		fmt.Fprintln(cmd.OutOrStdout(), "No ports allocated. Run 'outport apply' first.")
 		return nil
 	}
 
 	if jsonFlag {
-		return printPortsJSON(cmd, ctx.Cfg, ctx.WT, alloc)
+		return printPortsJSON(cmd, ctx.Cfg, ctx.Instance, alloc)
 	}
-	return printPortsStyled(cmd, ctx.Cfg, ctx.WT, alloc)
+	return printPortsStyled(cmd, ctx.Cfg, ctx.Instance, alloc)
 }
 
-func printPortsJSON(cmd *cobra.Command, cfg *config.Config, wt *worktree.Info, alloc registry.Allocation) error {
-	services := buildServiceMap(cfg, alloc.Ports)
+func printPortsJSON(cmd *cobra.Command, cfg *config.Config, instanceName string, alloc registry.Allocation) error {
+	services := buildServiceMap(cfg, alloc.Ports, alloc.Hostnames)
 
 	if portsCheckFlag {
 		portStatus := checkPorts(alloc.Ports)
@@ -55,9 +54,9 @@ func printPortsJSON(cmd *cobra.Command, cfg *config.Config, wt *worktree.Info, a
 
 	out := applyJSON{
 		Project:  cfg.Name,
-		Instance: wt.Instance,
+		Instance: instanceName,
 		Services: services,
-		Derived:  buildDerivedMap(cfg.Derived, resolveDerivedFromAlloc(cfg, alloc.Ports)),
+		Derived:  buildDerivedMap(cfg.Derived, resolveDerivedFromAlloc(cfg, alloc.Ports, alloc.Hostnames)),
 	}
 	data, err := json.MarshalIndent(out, "", "  ")
 	if err != nil {
@@ -67,9 +66,9 @@ func printPortsJSON(cmd *cobra.Command, cfg *config.Config, wt *worktree.Info, a
 	return nil
 }
 
-func printPortsStyled(cmd *cobra.Command, cfg *config.Config, wt *worktree.Info, alloc registry.Allocation) error {
+func printPortsStyled(cmd *cobra.Command, cfg *config.Config, instanceName string, alloc registry.Allocation) error {
 	w := cmd.OutOrStdout()
-	printHeader(w, cfg.Name, wt)
+	printHeader(w, cfg.Name, instanceName)
 
 	serviceNames := sortedMapKeys(alloc.Ports)
 
@@ -78,9 +77,9 @@ func printPortsStyled(cmd *cobra.Command, cfg *config.Config, wt *worktree.Info,
 		portStatus = checkPorts(alloc.Ports)
 	}
 
-	printFlatServices(w, cfg, serviceNames, alloc.Ports, portStatus)
+	printFlatServices(w, cfg, serviceNames, alloc.Ports, alloc.Hostnames, portStatus)
 
-	if resolved := resolveDerivedFromAlloc(cfg, alloc.Ports); len(resolved) > 0 {
+	if resolved := resolveDerivedFromAlloc(cfg, alloc.Ports, alloc.Hostnames); len(resolved) > 0 {
 		printDerivedValues(w, resolved)
 	}
 

@@ -112,6 +112,79 @@ func TestRegistry_Remove(t *testing.T) {
 	}
 }
 
+func TestAllocationWithHostnames(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "registry.json")
+
+	reg := &Registry{Projects: make(map[string]Allocation), path: path}
+	reg.Set("myapp", "main", Allocation{
+		ProjectDir: "/src/myapp",
+		Ports:      map[string]int{"rails": 24920},
+		Hostnames:  map[string]string{"rails": "myapp.test"},
+		Protocols:  map[string]string{"rails": "http"},
+	})
+
+	err := reg.Save()
+	if err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+
+	loaded, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+
+	alloc, ok := loaded.Get("myapp", "main")
+	if !ok {
+		t.Fatal("expected allocation")
+	}
+	if alloc.Hostnames["rails"] != "myapp.test" {
+		t.Errorf("hostname: got %q, want %q", alloc.Hostnames["rails"], "myapp.test")
+	}
+	if alloc.Protocols["rails"] != "http" {
+		t.Errorf("protocol: got %q, want %q", alloc.Protocols["rails"], "http")
+	}
+}
+
+func TestFindByDir(t *testing.T) {
+	reg := &Registry{Projects: make(map[string]Allocation)}
+	reg.Set("myapp", "main", Allocation{ProjectDir: "/src/myapp"})
+	reg.Set("myapp", "bkrm", Allocation{ProjectDir: "/tmp/myapp-clone"})
+
+	key, alloc, ok := reg.FindByDir("/src/myapp")
+	if !ok {
+		t.Fatal("expected to find by dir")
+	}
+	if key != "myapp/main" {
+		t.Errorf("key: got %q, want %q", key, "myapp/main")
+	}
+	if alloc.ProjectDir != "/src/myapp" {
+		t.Errorf("dir: got %q", alloc.ProjectDir)
+	}
+
+	_, _, ok = reg.FindByDir("/nonexistent")
+	if ok {
+		t.Error("expected not found for nonexistent dir")
+	}
+}
+
+func TestFindByProject(t *testing.T) {
+	reg := &Registry{Projects: make(map[string]Allocation)}
+	reg.Set("myapp", "main", Allocation{ProjectDir: "/src/myapp"})
+	reg.Set("myapp", "bkrm", Allocation{ProjectDir: "/tmp/myapp-clone"})
+	reg.Set("other", "main", Allocation{ProjectDir: "/src/other"})
+
+	instances := reg.FindByProject("myapp")
+	if len(instances) != 2 {
+		t.Fatalf("expected 2 instances, got %d", len(instances))
+	}
+
+	instances = reg.FindByProject("nonexistent")
+	if len(instances) != 0 {
+		t.Fatalf("expected 0 instances, got %d", len(instances))
+	}
+}
+
 func TestDefaultPath(t *testing.T) {
 	path, err := DefaultPath()
 	if err != nil {

@@ -5,7 +5,11 @@ go 1.26.1
 require (
 	charm.land/huh/v2 v2.0.3
 	charm.land/lipgloss/v2 v2.0.2
+	github.com/bored-engineer/go-launchd v0.0.0-20241220214420-b514778f4f80
+	github.com/fsnotify/fsnotify v1.9.0
+	github.com/miekg/dns v1.1.72
 	github.com/spf13/cobra v1.9.1
+	golang.org/x/net v0.48.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -33,6 +37,8 @@ require (
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/spf13/pflag v1.0.6 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
+	golang.org/x/mod v0.31.0 // indirect
 	golang.org/x/sync v0.19.0 // indirect
 	golang.org/x/sys v0.42.0 // indirect
+	golang.org/x/tools v0.40.0 // indirect
 )

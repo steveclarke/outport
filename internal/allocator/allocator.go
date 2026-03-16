@@ -6,10 +6,15 @@ import (
 )
 
 const (
-	MinPort   = 10000
-	MaxPort   = 39999
-	portRange = MaxPort - MinPort + 1
+	MinPort         = 10000
+	MaxPort         = 39999
+	portRange       = MaxPort - MinPort + 1
+	ReservedDNSPort = 15353
 )
+
+var reservedPorts = map[int]bool{
+	ReservedDNSPort: true,
+}
 
 func HashPort(project, instance, service string) int {
 	h := fnv.New32a()
@@ -18,12 +23,13 @@ func HashPort(project, instance, service string) int {
 }
 
 func Allocate(project, instance, service string, preferred int, usedPorts map[int]bool) (int, error) {
-	if preferred > 0 && !usedPorts[preferred] {
+	if preferred > 0 && !usedPorts[preferred] && !reservedPorts[preferred] {
 		return preferred, nil
 	}
+
 	start := HashPort(project, instance, service)
 	port := start
-	for usedPorts[port] {
+	for usedPorts[port] || reservedPorts[port] {
 		port++
 		if port > MaxPort {
 			port = MinPort
