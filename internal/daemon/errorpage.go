@@ -18,6 +18,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .mark{width:48px;height:48px;margin:0 auto 1.5rem;opacity:.15}
 .host{font-family:'SF Mono','Fira Code',monospace;font-size:1.125rem;color:#1e293b;font-weight:600;margin-bottom:.5rem}
 .msg{font-size:.9375rem;color:#64748b;line-height:1.6;margin-bottom:1.5rem}
+.msg code{font-family:'SF Mono','Fira Code',monospace;font-size:.875rem;color:#475569;background:#f1f5f9;padding:.125rem .375rem;border-radius:4px}
 .hint{display:inline-block;font-family:'SF Mono','Fira Code',monospace;font-size:.8125rem;color:#475569;background:#f1f5f9;padding:.375rem .75rem;border-radius:6px;border:1px solid #e2e8f0}
 .foot{margin-top:2rem;font-size:.75rem;color:#94a3b8}
 .foot a{color:#94a3b8;text-decoration:none}
@@ -34,7 +35,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 </svg>
 <div class="host">%s</div>
 <div class="msg">%s</div>
-<div class="hint">%s</div>
+%s
 <div class="foot">Routed by <a href="https://outport.dev">Outport</a></div>
 </div>
 </body>

@@ -46,16 +46,16 @@ func (p *ProxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	port, ok := p.routes.Lookup(hostname)
 	if !ok {
 		writeErrorPage(w, http.StatusBadGateway, hostname,
-			"No project is configured for this hostname.",
-			"Add hostname: "+hostname+" to .outport.yml and run outport apply")
+			"No project is configured for this hostname.<br>Add a matching hostname to your <code>.outport.yml</code> and run:",
+			`<div class="hint">outport apply</div>`)
 		return
 	}
 
 	proxy := p.getOrCreateProxy(port)
 	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
 		writeErrorPage(w, http.StatusBadGateway, hostname,
-			"This app isn't running yet.",
-			"Start your app, then refresh this page.")
+			"This app isn't running yet.<br>Start your app, then refresh this page.",
+			"")
 	}
 	proxy.ServeHTTP(w, r)
 }
