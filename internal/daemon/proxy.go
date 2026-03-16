@@ -31,7 +31,7 @@ func (p *ProxyHandler) getOrCreateProxy(port int) *httputil.ReverseProxy {
 	if v, ok := p.proxies.Load(port); ok {
 		return v.(*httputil.ReverseProxy)
 	}
-	target, _ := url.Parse(fmt.Sprintf("http://127.0.0.1:%d", port))
+	target, _ := url.Parse(fmt.Sprintf("http://localhost:%d", port))
 	proxy := httputil.NewSingleHostReverseProxy(target)
 	p.proxies.Store(port, proxy)
 	return proxy
