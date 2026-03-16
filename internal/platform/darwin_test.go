@@ -53,6 +53,22 @@ func TestIsSetup(t *testing.T) {
 	_ = IsSetup()
 }
 
+func TestGeneratePlistDualSockets(t *testing.T) {
+	plist := GeneratePlist("/usr/local/bin/outport")
+	if !strings.Contains(plist, "<key>HTTPSocket</key>") {
+		t.Error("plist missing HTTPSocket key")
+	}
+	if !strings.Contains(plist, "<key>HTTPSSocket</key>") {
+		t.Error("plist missing HTTPSSocket key")
+	}
+	if !strings.Contains(plist, "<string>443</string>") {
+		t.Error("plist missing port 443")
+	}
+	if strings.Contains(plist, `<key>Socket</key>`) {
+		t.Error("plist still has old Socket key")
+	}
+}
+
 func TestPlistPath(t *testing.T) {
 	path := plistPath()
 	if path == "" {

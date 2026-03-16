@@ -114,12 +114,19 @@ func GeneratePlist(outportBinary string) string {
     <true/>
     <key>Sockets</key>
     <dict>
-        <key>Socket</key>
+        <key>HTTPSocket</key>
         <dict>
             <key>SockNodeName</key>
             <string>127.0.0.1</string>
             <key>SockServiceName</key>
             <string>80</string>
+        </dict>
+        <key>HTTPSSocket</key>
+        <dict>
+            <key>SockNodeName</key>
+            <string>127.0.0.1</string>
+            <key>SockServiceName</key>
+            <string>443</string>
         </dict>
     </dict>
     <key>StandardOutPath</key>
