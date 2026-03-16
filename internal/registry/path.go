@@ -1,15 +1,15 @@
 package registry
 
 import (
-	"fmt"
-	"os"
 	"path/filepath"
+
+	"github.com/outport-app/outport/internal/paths"
 )
 
 func DefaultPath() (string, error) {
-	home, err := os.UserHomeDir()
+	dir, err := paths.DataDir()
 	if err != nil {
-		return "", fmt.Errorf("finding home directory: %w", err)
+		return "", err
 	}
-	return filepath.Join(home, ".local", "share", "outport", "registry.json"), nil
+	return filepath.Join(dir, "registry.json"), nil
 }

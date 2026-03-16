@@ -122,18 +122,19 @@ func (d *Daemon) Run(ctx context.Context) error {
 	// Wait for context cancellation or error
 	select {
 	case <-ctx.Done():
-		d.dns.Shutdown()
-		d.proxy.Close()
-		if d.tlsProxy != nil {
-			d.tlsProxy.Close()
-		}
+		d.shutdown()
 		return nil
 	case err := <-errCh:
-		d.dns.Shutdown()
-		d.proxy.Close()
-		if d.tlsProxy != nil {
-			d.tlsProxy.Close()
-		}
+		d.shutdown()
 		return fmt.Errorf("daemon component failed: %w", err)
+	}
+}
+
+// shutdown gracefully stops all daemon servers.
+func (d *Daemon) shutdown() {
+	d.dns.Shutdown()
+	d.proxy.Close()
+	if d.tlsProxy != nil {
+		d.tlsProxy.Close()
 	}
 }

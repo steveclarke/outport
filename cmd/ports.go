@@ -38,16 +38,16 @@ func runPorts(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	useHTTPS := certmanager.IsCAInstalled()
+	useHTTPS = certmanager.IsCAInstalled()
 
 	if jsonFlag {
-		return printPortsJSON(cmd, ctx.Cfg, ctx.Instance, alloc, useHTTPS)
+		return printPortsJSON(cmd, ctx.Cfg, ctx.Instance, alloc)
 	}
-	return printPortsStyled(cmd, ctx.Cfg, ctx.Instance, alloc, useHTTPS)
+	return printPortsStyled(cmd, ctx.Cfg, ctx.Instance, alloc)
 }
 
-func printPortsJSON(cmd *cobra.Command, cfg *config.Config, instanceName string, alloc registry.Allocation, useHTTPS bool) error {
-	services := buildServiceMap(cfg, alloc.Ports, alloc.Hostnames, useHTTPS)
+func printPortsJSON(cmd *cobra.Command, cfg *config.Config, instanceName string, alloc registry.Allocation) error {
+	services := buildServiceMap(cfg, alloc.Ports, alloc.Hostnames)
 
 	if portsCheckFlag {
 		portStatus := checkPorts(alloc.Ports)
@@ -63,7 +63,7 @@ func printPortsJSON(cmd *cobra.Command, cfg *config.Config, instanceName string,
 		Services: services,
 	}
 	if portsDerivedFlag {
-		out.Derived = buildDerivedMap(cfg.Derived, resolveDerivedFromAlloc(cfg, alloc.Ports, alloc.Hostnames, useHTTPS))
+		out.Derived = buildDerivedMap(cfg.Derived, resolveDerivedFromAlloc(cfg, alloc.Ports, alloc.Hostnames))
 	}
 	data, err := json.MarshalIndent(out, "", "  ")
 	if err != nil {
@@ -73,7 +73,7 @@ func printPortsJSON(cmd *cobra.Command, cfg *config.Config, instanceName string,
 	return nil
 }
 
-func printPortsStyled(cmd *cobra.Command, cfg *config.Config, instanceName string, alloc registry.Allocation, useHTTPS bool) error {
+func printPortsStyled(cmd *cobra.Command, cfg *config.Config, instanceName string, alloc registry.Allocation) error {
 	w := cmd.OutOrStdout()
 	printHeader(w, cfg.Name, instanceName)
 
@@ -84,10 +84,10 @@ func printPortsStyled(cmd *cobra.Command, cfg *config.Config, instanceName strin
 		portStatus = checkPorts(alloc.Ports)
 	}
 
-	printFlatServices(w, cfg, serviceNames, alloc.Ports, alloc.Hostnames, portStatus, useHTTPS)
+	printFlatServices(w, cfg, serviceNames, alloc.Ports, alloc.Hostnames, portStatus)
 
 	if portsDerivedFlag {
-		if resolved := resolveDerivedFromAlloc(cfg, alloc.Ports, alloc.Hostnames, useHTTPS); len(resolved) > 0 {
+		if resolved := resolveDerivedFromAlloc(cfg, alloc.Ports, alloc.Hostnames); len(resolved) > 0 {
 			printDerivedValues(w, resolved)
 		}
 	}

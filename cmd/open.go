@@ -34,10 +34,10 @@ func runOpen(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("No ports allocated. Run 'outport apply' first.")
 	}
 
-	useHTTPS := certmanager.IsCAInstalled()
+	useHTTPS = certmanager.IsCAInstalled()
 
 	if len(args) == 1 {
-		return openService(cmd, ctx.Cfg, alloc, args[0], useHTTPS)
+		return openService(cmd, ctx.Cfg, alloc, args[0])
 	}
 
 	opened := 0
@@ -49,12 +49,9 @@ func runOpen(cmd *cobra.Command, args []string) error {
 			if protocol == "" {
 				continue
 			}
-			if useHTTPS {
-				protocol = "https"
-			}
-			url = fmt.Sprintf("%s://%s", protocol, h)
+			url = fmt.Sprintf("%s://%s", effectiveScheme(protocol, h), h)
 		} else {
-			url = serviceURL(svc.Protocol, svc.Hostname, alloc.Ports[svcName], useHTTPS)
+			url = serviceURL(svc.Protocol, svc.Hostname, alloc.Ports[svcName])
 		}
 		if url == "" {
 			continue
@@ -74,7 +71,7 @@ func runOpen(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func openService(cmd *cobra.Command, cfg *config.Config, alloc registry.Allocation, name string, useHTTPS bool) error {
+func openService(cmd *cobra.Command, cfg *config.Config, alloc registry.Allocation, name string) error {
 	svc, ok := cfg.Services[name]
 	if !ok {
 		return fmt.Errorf("Service %q not found in .outport.yml.", name)
@@ -90,13 +87,9 @@ func openService(cmd *cobra.Command, cfg *config.Config, alloc registry.Allocati
 		if svc.Protocol == "" {
 			return fmt.Errorf("Service %q has no protocol set. Add 'protocol: http' to open it in the browser.", name)
 		}
-		protocol := svc.Protocol
-		if useHTTPS {
-			protocol = "https"
-		}
-		url = fmt.Sprintf("%s://%s", protocol, h)
+		url = fmt.Sprintf("%s://%s", effectiveScheme(svc.Protocol, h), h)
 	} else {
-		url = serviceURL(svc.Protocol, svc.Hostname, port, useHTTPS)
+		url = serviceURL(svc.Protocol, svc.Hostname, port)
 	}
 	if url == "" {
 		return fmt.Errorf("Service %q has no protocol set. Add 'protocol: http' to open it in the browser.", name)

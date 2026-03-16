@@ -8,7 +8,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
-	"encoding/pem"
 	"fmt"
 	"math/big"
 	"os"
@@ -112,12 +111,7 @@ func saveCertToDisk(cacheDir, hostname string, cert *tls.Certificate) error {
 	}
 
 	certPath := filepath.Join(cacheDir, hostname+".pem")
-	certFile, err := os.Create(certPath)
-	if err != nil {
-		return fmt.Errorf("creating cert file: %w", err)
-	}
-	defer certFile.Close()
-	if err := pem.Encode(certFile, &pem.Block{Type: "CERTIFICATE", Bytes: cert.Certificate[0]}); err != nil {
+	if err := writeCertPEM(certPath, cert.Certificate[0]); err != nil {
 		return fmt.Errorf("encoding cert PEM: %w", err)
 	}
 
@@ -125,16 +119,9 @@ func saveCertToDisk(cacheDir, hostname string, cert *tls.Certificate) error {
 	if !ok {
 		return fmt.Errorf("private key is not ECDSA")
 	}
-	keyDER, err := x509.MarshalECPrivateKey(ecKey)
-	if err != nil {
-		return fmt.Errorf("marshaling server key: %w", err)
-	}
-	keyFile, err := os.OpenFile(filepath.Join(cacheDir, hostname+"-key.pem"), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
-	if err != nil {
-		return fmt.Errorf("creating key file: %w", err)
-	}
-	defer keyFile.Close()
-	if err := pem.Encode(keyFile, &pem.Block{Type: "EC PRIVATE KEY", Bytes: keyDER}); err != nil {
+
+	keyPath := filepath.Join(cacheDir, hostname+"-key.pem")
+	if err := writeKeyPEM(keyPath, ecKey); err != nil {
 		return fmt.Errorf("encoding key PEM: %w", err)
 	}
 

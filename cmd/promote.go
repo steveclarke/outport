@@ -39,7 +39,7 @@ func runPromote(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("instance %q not found for project %q", ctx.Instance, cfg.Name)
 	}
 
-	useHTTPS := certmanager.IsCAInstalled()
+	useHTTPS = certmanager.IsCAInstalled()
 	var demotedTo string
 
 	// If a "main" instance exists, demote it
@@ -60,7 +60,7 @@ func runPromote(cmd *cobra.Command, args []string) error {
 		reg.Set(cfg.Name, demotedTo, demotedAlloc)
 
 		// Re-merge .env files for the demoted instance
-		if err := mergeEnvFiles(mainAlloc.ProjectDir, cfg, mainAlloc.Ports, demotedAlloc.Hostnames, useHTTPS); err != nil {
+		if err := mergeEnvFiles(mainAlloc.ProjectDir, cfg, mainAlloc.Ports, demotedAlloc.Hostnames); err != nil {
 			return fmt.Errorf("updating .env files for demoted instance: %w", err)
 		}
 	}
@@ -72,7 +72,7 @@ func runPromote(cmd *cobra.Command, args []string) error {
 	reg.Set(cfg.Name, "main", promotedAlloc)
 
 	// Re-merge .env files for the promoted instance
-	if err := mergeEnvFiles(ctx.Dir, cfg, currentAlloc.Ports, promotedAlloc.Hostnames, useHTTPS); err != nil {
+	if err := mergeEnvFiles(ctx.Dir, cfg, currentAlloc.Ports, promotedAlloc.Hostnames); err != nil {
 		return fmt.Errorf("updating .env files for promoted instance: %w", err)
 	}
 

@@ -70,11 +70,7 @@ func runSetup(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	caCertPath, err := certmanager.CACertPath()
-	if err != nil {
-		return err
-	}
-	caKeyPath, err := certmanager.CAKeyPath()
+	caCertPath, caKeyPath, err := certmanager.CAPaths()
 	if err != nil {
 		return err
 	}
@@ -133,11 +129,7 @@ func runTeardown(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	caCertPath, err := certmanager.CACertPath()
-	if err != nil {
-		return err
-	}
-	caKeyPath, err := certmanager.CAKeyPath()
+	caCertPath, caKeyPath, err := certmanager.CAPaths()
 	if err != nil {
 		return err
 	}

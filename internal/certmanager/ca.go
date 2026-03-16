@@ -57,25 +57,11 @@ func GenerateCA(certPath, keyPath string) error {
 		return fmt.Errorf("creating cert directory: %w", err)
 	}
 
-	certFile, err := os.Create(certPath)
-	if err != nil {
-		return fmt.Errorf("creating cert file: %w", err)
-	}
-	defer certFile.Close()
-	if err := pem.Encode(certFile, &pem.Block{Type: "CERTIFICATE", Bytes: certDER}); err != nil {
+	if err := writeCertPEM(certPath, certDER); err != nil {
 		return fmt.Errorf("encoding cert PEM: %w", err)
 	}
 
-	keyDER, err := x509.MarshalECPrivateKey(key)
-	if err != nil {
-		return fmt.Errorf("marshaling CA key: %w", err)
-	}
-	keyFile, err := os.OpenFile(keyPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
-	if err != nil {
-		return fmt.Errorf("creating key file: %w", err)
-	}
-	defer keyFile.Close()
-	if err := pem.Encode(keyFile, &pem.Block{Type: "EC PRIVATE KEY", Bytes: keyDER}); err != nil {
+	if err := writeKeyPEM(keyPath, key); err != nil {
 		return fmt.Errorf("encoding key PEM: %w", err)
 	}
 

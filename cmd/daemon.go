@@ -53,13 +53,9 @@ func runDaemon(cmd *cobra.Command, args []string) error {
 
 	// Wire TLS if the CA is installed
 	if certmanager.IsCAInstalled() {
-		caCertPath, err := certmanager.CACertPath()
+		caCertPath, caKeyPath, err := certmanager.CAPaths()
 		if err != nil {
-			return fmt.Errorf("resolving CA cert path: %w", err)
-		}
-		caKeyPath, err := certmanager.CAKeyPath()
-		if err != nil {
-			return fmt.Errorf("resolving CA key path: %w", err)
+			return fmt.Errorf("resolving CA paths: %w", err)
 		}
 		cacheDir, err := certmanager.CertCacheDir()
 		if err != nil {
