@@ -100,15 +100,21 @@ Outport preserves your existing `.env` variables. It only updates variables decl
 
 ```
 outport init              Create .outport.yml for this project
-outport apply          Register project, allocate ports, write .env
+outport apply             Register project, allocate ports, write .env
 outport a                 Short alias for apply
-outport apply --force  Clear and re-allocate all ports
+outport apply --force     Clear and re-allocate all ports
 outport unapply           Remove ports, clean .env files
 outport ports             Show ports for the current project
 outport open              Open HTTP services in the browser
 outport status            Show all registered projects
 outport status --check    Show with health checks (up/down)
 outport gc                Remove stale registry entries
+outport setup             Install DNS resolver and daemon for .test domains
+outport teardown          Remove DNS resolver and daemon
+outport up                Start the daemon manually
+outport down              Stop the daemon manually
+outport rename <old> <new>  Rename an instance of the current project
+outport promote           Promote the current instance to main
 ```
 
 All commands support `--json` for machine-readable output.
