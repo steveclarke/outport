@@ -114,12 +114,19 @@ func GeneratePlist(outportBinary string) string {
     <true/>
     <key>Sockets</key>
     <dict>
-        <key>Socket</key>
+        <key>HTTPSocket</key>
         <dict>
             <key>SockNodeName</key>
             <string>127.0.0.1</string>
             <key>SockServiceName</key>
             <string>80</string>
+        </dict>
+        <key>HTTPSSocket</key>
+        <dict>
+            <key>SockNodeName</key>
+            <string>127.0.0.1</string>
+            <key>SockServiceName</key>
+            <string>443</string>
         </dict>
     </dict>
     <key>StandardOutPath</key>
@@ -156,6 +163,32 @@ func UnloadAgent() error {
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("unloading LaunchAgent: %w", err)
+	}
+	return nil
+}
+
+// TrustCA adds the CA certificate to the macOS login keychain trust store.
+// This triggers a macOS GUI dialog prompting for the login keychain password.
+func TrustCA(certPath string) error {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return fmt.Errorf("finding home directory: %w", err)
+	}
+	keychainPath := filepath.Join(home, "Library", "Keychains", "login.keychain-db")
+	cmd := exec.Command("security", "add-trusted-cert", "-r", "trustRoot", "-k", keychainPath, certPath)
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("adding CA to trust store (did you cancel the dialog?): %w", err)
+	}
+	return nil
+}
+
+// UntrustCA removes the CA certificate from the macOS trust store.
+func UntrustCA(certPath string) error {
+	cmd := exec.Command("security", "remove-trusted-cert", certPath)
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("removing CA from trust store: %w", err)
 	}
 	return nil
 }

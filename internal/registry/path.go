@@ -11,5 +11,5 @@ func DefaultPath() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("finding home directory: %w", err)
 	}
-	return filepath.Join(home, ".config", "outport", "registry.json"), nil
+	return filepath.Join(home, ".local", "share", "outport", "registry.json"), nil
 }

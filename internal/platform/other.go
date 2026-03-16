@@ -16,3 +16,5 @@ func RemovePlist() error                { return errUnsupported }
 func LoadAgent() error                  { return errUnsupported }
 func UnloadAgent() error                { return errUnsupported }
 func GeneratePlist(_ string) string     { return "" }
+func TrustCA(_ string) error            { return errUnsupported }
+func UntrustCA(_ string) error          { return errUnsupported }

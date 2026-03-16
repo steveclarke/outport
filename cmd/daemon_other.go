@@ -7,6 +7,10 @@ import (
 	"net"
 )
 
-func activateLaunchdSocket() (net.Listener, error) {
+func activateLaunchdHTTPSocket() (net.Listener, error) {
+	return nil, fmt.Errorf("launchd not available on this platform")
+}
+
+func activateLaunchdHTTPSSocket() (net.Listener, error) {
 	return nil, fmt.Errorf("launchd not available on this platform")
 }
