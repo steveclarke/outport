@@ -3,10 +3,10 @@
     <!-- HERO -->
     <section class="hero">
       <h1>Stop fighting <span class="accent">port conflicts</span></h1>
-      <p class="tagline">Port orchestration for multi-project development.</p>
       <p class="subtitle">
-        Deterministic ports, <code>.test</code> hostnames,
-        <code>.env</code> integration, and multi-instance support.
+        Port orchestration for multi-project development. Deterministic ports,
+        <code>.test</code> hostnames, <code>.env</code> integration, and
+        multi-instance support — all from a single config file.
       </p>
       <div class="hero-ctas">
         <a href="/guide/getting-started" class="btn-primary">Get Started</a>
@@ -164,14 +164,6 @@ MYAPP_URL=<span class="success">http://myapp.test</span></pre>
   margin-bottom: 1rem;
 }
 .hero h1 .accent { color: #2E86AB; }
-.hero .tagline {
-  color: #2E86AB;
-  font-size: 1.05rem;
-  font-weight: 500;
-  margin-top: 0.5rem;
-  margin-bottom: 1rem;
-  letter-spacing: 0.01em;
-}
 .hero .subtitle {
   font-size: 1.2rem;
   color: var(--vp-c-text-3);
