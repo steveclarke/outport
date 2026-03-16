@@ -154,7 +154,7 @@ func runTeardown(cmd *cobra.Command, args []string) error {
 }
 
 func isPortInUse(port int) bool {
-	out, err := exec.Command("lsof", "-i", fmt.Sprintf(":%d", port), "-sTCP:LISTEN", "-t").Output()
+	out, err := exec.Command("lsof", "-iTCP:"+fmt.Sprintf("%d", port), "-sTCP:LISTEN", "-t").Output()
 	if err != nil {
 		return false
 	}
