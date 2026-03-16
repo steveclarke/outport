@@ -271,6 +271,9 @@ func serviceURL(protocol, hostname string, port int) string {
 		if host == "" {
 			host = "localhost"
 		}
+		if strings.HasSuffix(host, ".test") {
+			return fmt.Sprintf("%s://%s", protocol, host)
+		}
 		return fmt.Sprintf("%s://%s:%d", protocol, host, port)
 	}
 	return ""
