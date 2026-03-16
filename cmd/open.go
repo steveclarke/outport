@@ -5,6 +5,7 @@ import (
 	"os/exec"
 	"runtime"
 
+	"github.com/outport-app/outport/internal/certmanager"
 	"github.com/outport-app/outport/internal/config"
 	"github.com/outport-app/outport/internal/registry"
 	"github.com/spf13/cobra"
@@ -33,8 +34,10 @@ func runOpen(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("No ports allocated. Run 'outport apply' first.")
 	}
 
+	useHTTPS := certmanager.IsCAInstalled()
+
 	if len(args) == 1 {
-		return openService(cmd, ctx.Cfg, alloc, args[0])
+		return openService(cmd, ctx.Cfg, alloc, args[0], useHTTPS)
 	}
 
 	opened := 0
@@ -46,9 +49,12 @@ func runOpen(cmd *cobra.Command, args []string) error {
 			if protocol == "" {
 				continue
 			}
+			if useHTTPS {
+				protocol = "https"
+			}
 			url = fmt.Sprintf("%s://%s", protocol, h)
 		} else {
-			url = serviceURL(svc.Protocol, svc.Hostname, alloc.Ports[svcName], false)
+			url = serviceURL(svc.Protocol, svc.Hostname, alloc.Ports[svcName], useHTTPS)
 		}
 		if url == "" {
 			continue
@@ -68,7 +74,7 @@ func runOpen(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func openService(cmd *cobra.Command, cfg *config.Config, alloc registry.Allocation, name string) error {
+func openService(cmd *cobra.Command, cfg *config.Config, alloc registry.Allocation, name string, useHTTPS bool) error {
 	svc, ok := cfg.Services[name]
 	if !ok {
 		return fmt.Errorf("Service %q not found in .outport.yml.", name)
@@ -84,9 +90,13 @@ func openService(cmd *cobra.Command, cfg *config.Config, alloc registry.Allocati
 		if svc.Protocol == "" {
 			return fmt.Errorf("Service %q has no protocol set. Add 'protocol: http' to open it in the browser.", name)
 		}
-		url = fmt.Sprintf("%s://%s", svc.Protocol, h)
+		protocol := svc.Protocol
+		if useHTTPS {
+			protocol = "https"
+		}
+		url = fmt.Sprintf("%s://%s", protocol, h)
 	} else {
-		url = serviceURL(svc.Protocol, svc.Hostname, port, false)
+		url = serviceURL(svc.Protocol, svc.Hostname, port, useHTTPS)
 	}
 	if url == "" {
 		return fmt.Errorf("Service %q has no protocol set. Add 'protocol: http' to open it in the browser.", name)
