@@ -123,7 +123,7 @@ MYAPP_URL=<span class="success">http://myapp.test</span></pre>
 
     <!-- INSTALL -->
     <section class="install">
-      <h2>Install</h2>
+      <h2>Get started in seconds</h2>
       <div class="install-cmd">
         <span class="dollar">$</span> brew install steveclarke/tap/outport
       </div>
