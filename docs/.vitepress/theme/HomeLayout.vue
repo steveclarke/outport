@@ -331,15 +331,18 @@ MYAPP_URL=<span class="success">http://myapp.test</span></pre>
 .steps {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 1.5rem;
+  grid-template-rows: auto auto auto 1fr;
+  gap: 0 1.5rem;
 }
 .step {
   background: #ffffff;
   border: 1px solid var(--vp-c-divider);
   border-radius: 10px;
   padding: 1.75rem;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-row: span 4;
+  grid-template-rows: subgrid;
+  row-gap: 0;
 }
 .step-number {
   display: inline-flex;
@@ -377,11 +380,11 @@ MYAPP_URL=<span class="success">http://myapp.test</span></pre>
   padding: 0.75rem 1rem;
   border-radius: 6px;
   font-size: 0.8rem;
-  margin-top: auto;
-  padding-top: 1rem;
+  margin-top: 0.75rem;
   font-family: var(--vp-font-family-mono);
   white-space: pre;
   overflow-x: auto;
+  align-self: stretch;
 }
 .step-code .prompt { color: #7aa2f7; }
 .step-code .cmd { color: #c0caf5; }
