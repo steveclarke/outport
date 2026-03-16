@@ -45,18 +45,17 @@ func (p *ProxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	port, ok := p.routes.Lookup(hostname)
 	if !ok {
-		w.WriteHeader(http.StatusBadGateway)
-		fmt.Fprintf(w, "No project is configured for %s.\nRun `outport apply` with a matching hostname.\n", hostname)
+		writeErrorPage(w, http.StatusBadGateway, hostname,
+			"No project is configured for this hostname.",
+			"outport apply")
 		return
 	}
 
 	proxy := p.getOrCreateProxy(port)
-	// Set a per-request error handler that includes the hostname.
-	// ReverseProxy.ErrorHandler is safe to set before ServeHTTP because
-	// it is read (not written) during request processing.
 	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
-		w.WriteHeader(http.StatusBadGateway)
-		fmt.Fprintf(w, "%s is not running.\nStart your app and try again.\n", hostname)
+		writeErrorPage(w, http.StatusBadGateway, hostname,
+			"This app isn't running yet.",
+			"Start your app, then refresh this page.")
 	}
 	proxy.ServeHTTP(w, r)
 }
