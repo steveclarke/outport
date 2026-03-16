@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 )
 
 const (
@@ -38,12 +37,32 @@ func isPlistInstalled() bool {
 // Requires sudo — the caller should inform the user that a password prompt may appear.
 func WriteResolverFile() error {
 	content := "nameserver 127.0.0.1\nport 15353\n"
-	cmd := exec.Command("sudo", "tee", resolverPath)
-	cmd.Stdin = strings.NewReader(content)
-	cmd.Stdout = nil // suppress tee's stdout echo
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("writing resolver file: %w", err)
+
+	// Skip if file already has the correct content.
+	existing, err := os.ReadFile(resolverPath)
+	if err == nil && string(existing) == content {
+		return nil
+	}
+
+	// Ensure /etc/resolver/ exists (not present by default on fresh macOS installs).
+	resolverDir := filepath.Dir(resolverPath)
+	mkdirCmd := exec.Command("sudo", "mkdir", "-p", resolverDir)
+	mkdirCmd.Stderr = os.Stderr
+	if err := mkdirCmd.Run(); err != nil {
+		return fmt.Errorf("creating resolver directory: %w", err)
+	}
+
+	// Write to a temp file, then sudo cp into place.
+	tmpFile := fmt.Sprintf("/tmp/outport-resolver-%d", os.Getpid())
+	if err := os.WriteFile(tmpFile, []byte(content), 0644); err != nil {
+		return fmt.Errorf("writing temp resolver file: %w", err)
+	}
+	defer os.Remove(tmpFile)
+
+	cpCmd := exec.Command("sudo", "cp", tmpFile, resolverPath)
+	cpCmd.Stderr = os.Stderr
+	if err := cpCmd.Run(); err != nil {
+		return fmt.Errorf("copying resolver file: %w", err)
 	}
 	return nil
 }
