@@ -1,13 +1,8 @@
-import { h } from 'vue'
 import DefaultTheme from 'vitepress/theme'
-import HomeLayout from './HomeLayout.vue'
+import Layout from './Layout.vue'
 import './custom.css'
 
 export default {
   extends: DefaultTheme,
-  Layout() {
-    return h(DefaultTheme.Layout, null, {
-      'home-hero-before': () => h(HomeLayout),
-    })
-  },
+  Layout,
 }
