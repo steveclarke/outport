@@ -15,6 +15,10 @@ test-short:
 install:
     go install .
 
+# Remove the GOPATH/bin binary (use Homebrew version instead)
+uninstall:
+    rm -f $(go env GOPATH)/bin/outport
+
 # Run linter (requires: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest)
 lint:
     golangci-lint run
