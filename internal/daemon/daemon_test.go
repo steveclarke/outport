@@ -108,8 +108,10 @@ func TestDaemonHTTPS(t *testing.T) {
 		t.Fatalf("NewCertStore: %v", err)
 	}
 
-	// Start a backend HTTP server
+	// Start a backend HTTP server that echoes the X-Forwarded-Proto header
 	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		proto := r.Header.Get("X-Forwarded-Proto")
+		w.Header().Set("X-Got-Proto", proto)
 		w.Write([]byte("hello from backend"))
 	}))
 	defer backend.Close()
@@ -178,6 +180,11 @@ func TestDaemonHTTPS(t *testing.T) {
 		t.Errorf("body = %q, want %q", body, "hello from backend")
 	}
 
+	// Verify X-Forwarded-Proto was set by the TLS proxy
+	if got := resp.Header.Get("X-Got-Proto"); got != "https" {
+		t.Errorf("X-Forwarded-Proto = %q, want %q", got, "https")
+	}
+
 	cancel()
 }
 
@@ -242,6 +249,8 @@ func TestDaemonHTTPProxyWithoutTLS(t *testing.T) {
 	regPath := filepath.Join(dir, "registry.json")
 
 	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		proto := r.Header.Get("X-Forwarded-Proto")
+		w.Header().Set("X-Got-Proto", proto)
 		w.Write([]byte("plain http"))
 	}))
 	defer backend.Close()
@@ -285,6 +294,11 @@ func TestDaemonHTTPProxyWithoutTLS(t *testing.T) {
 	body, _ := io.ReadAll(resp.Body)
 	if string(body) != "plain http" {
 		t.Errorf("body = %q, want %q", body, "plain http")
+	}
+
+	// Verify X-Forwarded-Proto is NOT set on plain HTTP path
+	if got := resp.Header.Get("X-Got-Proto"); got != "" {
+		t.Errorf("X-Forwarded-Proto on plain HTTP = %q, want empty", got)
 	}
 
 	cancel()

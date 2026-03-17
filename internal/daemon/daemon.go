@@ -58,12 +58,21 @@ func New(cfg *DaemonConfig) (*Daemon, error) {
 
 	if cfg.TLSConfig != nil {
 		d.tlsProxy = &http.Server{
-			Handler:   proxyHandler,
+			Handler:   withForwardedProto(proxyHandler),
 			TLSConfig: cfg.TLSConfig,
 		}
 	}
 
 	return d, nil
+}
+
+// withForwardedProto wraps a handler to set X-Forwarded-Proto: https on all
+// requests, so backends behind the TLS proxy can detect the original scheme.
+func withForwardedProto(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		r.Header.Set("X-Forwarded-Proto", "https")
+		h.ServeHTTP(w, r)
+	})
 }
 
 func redirectToHTTPS(w http.ResponseWriter, r *http.Request) {
