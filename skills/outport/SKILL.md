@@ -210,6 +210,30 @@ derived:
   backend fetches, WebSocket connections from a Node server). Always uses
   `localhost` — no proxy hop.
 
+### The `${instance}` variable and bash-style parameter expansion
+
+Derived values support bash-style parameter expansion for instance-aware
+configuration:
+
+| Variable | Main instance | Worktree instance (e.g., `bxcf`) |
+|----------|--------------|----------------------------------|
+| `${instance}` | *(empty string)* | `bxcf` |
+| `${instance:-default}` | `default` | `bxcf` |
+| `${instance:+replacement}` | *(empty string)* | `replacement` |
+| `${instance:+-${instance}}` | *(empty string)* | `-bxcf` |
+
+**Common pattern — Docker Compose project name:**
+
+```yaml
+derived:
+  COMPOSE_PROJECT_NAME:
+    value: "myapp${instance:+-${instance}}"
+    env_file: .env
+```
+
+This produces `myapp` for the main instance and `myapp-bxcf` for worktrees,
+giving each instance isolated Docker containers.
+
 ### Per-file value overrides
 
 When the same env var needs different values in different files (common in
