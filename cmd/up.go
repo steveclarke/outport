@@ -227,7 +227,11 @@ func effectiveScheme(protocol, hostname string) string {
 // When useHTTPS is true, .url uses https:// for .test hostnames.
 func buildTemplateVars(cfg *config.Config, instanceName string, ports map[string]int, hostnames map[string]string) map[string]string {
 	vars := make(map[string]string)
-	vars["instance"] = instanceName
+	if instanceName == "main" {
+		vars["instance"] = ""
+	} else {
+		vars["instance"] = instanceName
+	}
 	for name, svc := range cfg.Services {
 		portStr := fmt.Sprintf("%d", ports[name])
 		vars[name+".port"] = portStr

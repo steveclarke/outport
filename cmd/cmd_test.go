@@ -1490,8 +1490,8 @@ func TestBuildTemplateVarsInstance(t *testing.T) {
 	hostnames := map[string]string{}
 
 	vars := buildTemplateVars(cfg, "main", ports, hostnames)
-	if vars["instance"] != "main" {
-		t.Errorf("instance = %q, want %q", vars["instance"], "main")
+	if vars["instance"] != "" {
+		t.Errorf("instance for main = %q, want empty string", vars["instance"])
 	}
 
 	vars = buildTemplateVars(cfg, "xbjf", ports, hostnames)

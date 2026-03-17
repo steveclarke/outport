@@ -69,10 +69,7 @@ func ResolveDerived(derived map[string]DerivedValue, templateVars map[string]str
 			if pf, ok := dv.PerFile[file]; ok {
 				template = pf
 			}
-			value := template
-			for varName, varValue := range templateVars {
-				value = strings.ReplaceAll(value, "${"+varName+"}", varValue)
-			}
+			value := ExpandVars(template, templateVars)
 			fileValues[file] = value
 		}
 		resolved[name] = fileValues
