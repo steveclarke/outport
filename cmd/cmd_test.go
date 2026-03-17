@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/outport-app/outport/internal/certmanager"
@@ -45,6 +46,23 @@ services:
   web:
     preferred_port: 3000
     env_var: PORT
+  postgres:
+    preferred_port: 5432
+    env_var: DATABASE_PORT
+`
+
+const testConfigWithHTTP = `name: testapp
+services:
+  web:
+    preferred_port: 3000
+    env_var: PORT
+    protocol: http
+    hostname: testapp.test
+  vite:
+    preferred_port: 5173
+    env_var: VITE_PORT
+    protocol: http
+    hostname: testapp-vite.test
   postgres:
     preferred_port: 5432
     env_var: DATABASE_PORT
@@ -1493,5 +1511,114 @@ func TestBuildTemplateVarsInstance(t *testing.T) {
 	vars = buildTemplateVars(cfg, "xbjf", ports, hostnames, false)
 	if vars["instance"] != "xbjf" {
 		t.Errorf("instance = %q, want %q", vars["instance"], "xbjf")
+	}
+}
+
+// --- share ---
+
+func TestShare_NoConfig(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Chdir(t.TempDir())
+	jsonFlag = false
+
+	rootCmd.SetOut(new(bytes.Buffer))
+	rootCmd.SetErr(new(bytes.Buffer))
+	rootCmd.SetArgs([]string{"share"})
+
+	err := rootCmd.Execute()
+	if err == nil {
+		t.Fatal("expected error when no .outport.yml exists")
+	}
+}
+
+func TestShare_NoAllocation(t *testing.T) {
+	setupProject(t, testConfigWithHTTP)
+
+	rootCmd.SetOut(new(bytes.Buffer))
+	rootCmd.SetErr(new(bytes.Buffer))
+	rootCmd.SetArgs([]string{"share"})
+
+	err := rootCmd.Execute()
+	if err == nil {
+		t.Fatal("expected error when no ports allocated")
+	}
+	want := "No ports allocated"
+	if got := err.Error(); !strings.Contains(got, want) {
+		t.Errorf("error = %q, want containing %q", got, want)
+	}
+}
+
+func TestShare_UnknownService(t *testing.T) {
+	setupProject(t, testConfigWithHTTP)
+	executeCmd(t, "up") // allocate ports first
+
+	rootCmd.SetOut(new(bytes.Buffer))
+	rootCmd.SetErr(new(bytes.Buffer))
+	rootCmd.SetArgs([]string{"share", "nonexistent"})
+
+	err := rootCmd.Execute()
+	if err == nil {
+		t.Fatal("expected error for unknown service")
+	}
+	if !IsFlagError(err) {
+		t.Errorf("expected FlagError, got %T", err)
+	}
+}
+
+func TestShare_ServiceWithoutProtocol(t *testing.T) {
+	setupProject(t, testConfigWithHTTP)
+	executeCmd(t, "up")
+
+	rootCmd.SetOut(new(bytes.Buffer))
+	rootCmd.SetErr(new(bytes.Buffer))
+	rootCmd.SetArgs([]string{"share", "postgres"})
+
+	err := rootCmd.Execute()
+	if err == nil {
+		t.Fatal("expected error for service without protocol")
+	}
+	want := "has no protocol"
+	if got := err.Error(); !strings.Contains(got, want) {
+		t.Errorf("error = %q, want containing %q", got, want)
+	}
+}
+
+func TestShare_NoHTTPServices(t *testing.T) {
+	setupProject(t, testConfig) // testConfig has no protocol on any service
+	executeCmd(t, "up")
+
+	rootCmd.SetOut(new(bytes.Buffer))
+	rootCmd.SetErr(new(bytes.Buffer))
+	rootCmd.SetArgs([]string{"share"})
+
+	err := rootCmd.Execute()
+	if err == nil {
+		t.Fatal("expected error when no HTTP services")
+	}
+	want := "no shareable services"
+	if got := err.Error(); !strings.Contains(got, want) {
+		t.Errorf("error = %q, want containing %q", got, want)
+	}
+}
+
+func TestShare_CloudflaredNotInstalled(t *testing.T) {
+	setupProject(t, testConfigWithHTTP)
+	executeCmd(t, "up")
+
+	// Set PATH to empty dir so cloudflared can't be found
+	t.Setenv("PATH", t.TempDir())
+
+	rootCmd.SetOut(new(bytes.Buffer))
+	rootCmd.SetErr(new(bytes.Buffer))
+	rootCmd.SetArgs([]string{"share"})
+
+	err := rootCmd.Execute()
+	if err == nil {
+		t.Fatal("expected error when cloudflared not installed")
+	}
+	want := "cloudflared not found"
+	if got := err.Error(); !strings.Contains(got, want) {
+		t.Errorf("error = %q, want containing %q", got, want)
 	}
 }
