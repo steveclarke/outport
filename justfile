@@ -28,6 +28,7 @@ install:
 # Remove dev build (switch back to Homebrew)
 uninstall:
     rm -f ~/.local/bin/outport
+    rm -f $(go env GOPATH)/bin/outport
     @echo "Removed dev build. Using Homebrew version:"
     @outport --version 2>/dev/null || echo "  (not installed via Homebrew)"
 
