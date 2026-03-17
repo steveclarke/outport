@@ -147,6 +147,12 @@ func RemovePlist() error {
 	return nil
 }
 
+// IsAgentLoaded returns true if the LaunchAgent is currently loaded.
+func IsAgentLoaded() bool {
+	err := exec.Command("launchctl", "list", plistLabel).Run()
+	return err == nil
+}
+
 // LoadAgent loads the LaunchAgent via launchctl.
 func LoadAgent() error {
 	cmd := exec.Command("launchctl", "load", plistPath())

@@ -13,6 +13,7 @@ func WriteResolverFile() error          { return errUnsupported }
 func RemoveResolverFile() error         { return errUnsupported }
 func WritePlist(_ string) error         { return errUnsupported }
 func RemovePlist() error                { return errUnsupported }
+func IsAgentLoaded() bool               { return false }
 func LoadAgent() error                  { return errUnsupported }
 func UnloadAgent() error                { return errUnsupported }
 func GeneratePlist(_ string) string     { return "" }

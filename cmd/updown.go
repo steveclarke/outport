@@ -34,6 +34,11 @@ func runUp(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("outport is not set up. Run 'outport setup' first")
 	}
 
+	if platform.IsAgentLoaded() {
+		fmt.Fprintln(cmd.OutOrStdout(), "Daemon is already running.")
+		return nil
+	}
+
 	if err := platform.LoadAgent(); err != nil {
 		return err
 	}
@@ -43,6 +48,11 @@ func runUp(cmd *cobra.Command, args []string) error {
 }
 
 func runDown(cmd *cobra.Command, args []string) error {
+	if !platform.IsAgentLoaded() {
+		fmt.Fprintln(cmd.OutOrStdout(), "Daemon is not running.")
+		return nil
+	}
+
 	if err := platform.UnloadAgent(); err != nil {
 		return err
 	}
