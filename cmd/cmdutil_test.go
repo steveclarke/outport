@@ -186,7 +186,7 @@ func TestSystemCommandHasSubcommands(t *testing.T) {
 }
 
 func TestSystemSubcommandsRejectArguments(t *testing.T) {
-	subCmds := []string{"start", "stop", "restart", "uninstall"}
+	subCmds := []string{"start", "stop", "restart", "status", "gc", "uninstall"}
 
 	for _, name := range subCmds {
 		cmd, _, err := rootCmd.Find([]string{"system", name})

@@ -7,7 +7,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var gcCmd = &cobra.Command{
+var systemGCCmd = &cobra.Command{
 	Use:   "gc",
 	Short: "Remove stale entries from the registry",
 	Long:  "Scans the registry and removes entries whose project directories or config files no longer exist.",
@@ -16,7 +16,7 @@ var gcCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(gcCmd)
+	systemCmd.AddCommand(systemGCCmd)
 }
 
 func runGC(cmd *cobra.Command, args []string) error {
