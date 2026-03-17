@@ -33,7 +33,9 @@ func (p *Provider) CheckAvailable() error {
 }
 
 func (p *Provider) Start(ctx context.Context, port int) (*tunnel.Tunnel, error) {
-	cmd := exec.CommandContext(ctx, "cloudflared", "tunnel", "--url", fmt.Sprintf("http://localhost:%d", port))
+	// Use exec.Command (not CommandContext) so the process isn't killed when
+	// the manager's timeout context expires. Lifecycle is managed by stopFunc.
+	cmd := exec.Command("cloudflared", "tunnel", "--url", fmt.Sprintf("http://localhost:%d", port))
 	cmd.Stdout = nil // cloudflared writes nothing to stdout
 
 	stderr, err := cmd.StderrPipe()
