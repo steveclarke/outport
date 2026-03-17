@@ -5,7 +5,7 @@ setup:
     go install github.com/goreleaser/goreleaser/v2@latest
     npm install
 
-# Build the binary
+# Build the binary to dist/
 build:
     @mkdir -p dist
     go build -o dist/outport .
@@ -18,13 +18,23 @@ test:
 test-short:
     gotestsum --format dots ./...
 
-# Build and install to GOPATH/bin
+# Install dev build to ~/.local/bin (overrides Homebrew)
 install:
-    go install .
+    @mkdir -p ~/.local/bin
+    go build -ldflags "-X github.com/outport-app/outport/cmd.version=dev" -o ~/.local/bin/outport .
+    @echo "Installed dev build to ~/.local/bin/outport"
+    @echo "Run 'just uninstall' to switch back to Homebrew"
 
-# Remove the GOPATH/bin binary (use Homebrew version instead)
+# Remove dev build (switch back to Homebrew)
 uninstall:
-    rm -f $(go env GOPATH)/bin/outport
+    rm -f ~/.local/bin/outport
+    @echo "Removed dev build. Using Homebrew version:"
+    @outport --version 2>/dev/null || echo "  (not installed via Homebrew)"
+
+# Show which outport binary is active
+which:
+    @which outport
+    @outport --version
 
 # Run linter (requires: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest)
 lint:
