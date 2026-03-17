@@ -72,7 +72,7 @@ func TestApply_AllocatesPortsAndWritesEnv(t *testing.T) {
 
 	output := executeCmd(t, "apply", "--json")
 
-	var result applyJSON
+	var result upJSON
 	if err := json.Unmarshal([]byte(output), &result); err != nil {
 		t.Fatalf("invalid JSON output: %v\nOutput: %s", err, output)
 	}
@@ -126,7 +126,7 @@ func TestApply_IsIdempotent(t *testing.T) {
 	out1 := executeCmd(t, "apply", "--json")
 	out2 := executeCmd(t, "apply", "--json")
 
-	var r1, r2 applyJSON
+	var r1, r2 upJSON
 	json.Unmarshal([]byte(out1), &r1)
 	json.Unmarshal([]byte(out2), &r2)
 
@@ -200,7 +200,7 @@ func TestApply_WithDerivedValues(t *testing.T) {
 
 	output := executeCmd(t, "apply", "--json")
 
-	var result applyJSON
+	var result upJSON
 	if err := json.Unmarshal([]byte(output), &result); err != nil {
 		t.Fatalf("invalid JSON: %v\nOutput: %s", err, output)
 	}
@@ -278,7 +278,7 @@ derived:
 
 	output := executeCmd(t, "apply", "--json")
 
-	var result applyJSON
+	var result upJSON
 	if err := json.Unmarshal([]byte(output), &result); err != nil {
 		t.Fatalf("invalid JSON: %v\nOutput: %s", err, output)
 	}
@@ -590,7 +590,7 @@ func TestApply_ForceReallocatesWithPreferredPorts(t *testing.T) {
 
 	// First allocation
 	out1 := executeCmd(t, "apply", "--json")
-	var r1 applyJSON
+	var r1 upJSON
 	json.Unmarshal([]byte(out1), &r1)
 
 	// Ports should be preferred (3000, 5432) since nothing else is registered
@@ -600,7 +600,7 @@ func TestApply_ForceReallocatesWithPreferredPorts(t *testing.T) {
 
 	// Force re-allocation should produce the same preferred ports
 	out2 := executeCmd(t, "apply", "--force", "--json")
-	var r2 applyJSON
+	var r2 upJSON
 	json.Unmarshal([]byte(out2), &r2)
 
 	if r2.Services["web"].Port != 3000 {
@@ -956,7 +956,7 @@ func TestRename_CollisionFails(t *testing.T) {
 	// Apply from dir2 to create a code-based instance
 	t.Chdir(dir2)
 	out2 := executeCmd(t, "apply", "--json")
-	var r2 applyJSON
+	var r2 upJSON
 	json.Unmarshal([]byte(out2), &r2)
 	codeName := r2.Instance
 
@@ -1009,7 +1009,7 @@ func TestPromote_Success(t *testing.T) {
 	// Apply from dir2 to create a code-based instance
 	t.Chdir(dir2)
 	out2 := executeCmd(t, "apply", "--json")
-	var r2 applyJSON
+	var r2 upJSON
 	json.Unmarshal([]byte(out2), &r2)
 	codeName := r2.Instance
 
@@ -1114,7 +1114,7 @@ func TestApply_WithHostnames(t *testing.T) {
 
 	output := executeCmd(t, "apply", "--json")
 
-	var result applyJSON
+	var result upJSON
 	if err := json.Unmarshal([]byte(output), &result); err != nil {
 		t.Fatalf("invalid JSON output: %v\nOutput: %s", err, output)
 	}
@@ -1343,7 +1343,7 @@ derived:
 
 	output := executeCmd(t, "apply", "--json")
 
-	var result applyJSON
+	var result upJSON
 	if err := json.Unmarshal([]byte(output), &result); err != nil {
 		t.Fatalf("invalid JSON: %v\nOutput: %s", err, output)
 	}

@@ -39,7 +39,7 @@ func TestAllCommandsHaveArgsValidation(t *testing.T) {
 // accept arguments return a FlagError when given unexpected args.
 func TestNoArgsCommandsRejectArguments(t *testing.T) {
 	noArgsCmds := []string{
-		"apply", "init", "ports", "promote", "unapply",
+		"up", "init", "ports", "promote", "unapply",
 	}
 
 	for _, name := range noArgsCmds {

@@ -11,6 +11,7 @@ import (
 	"github.com/outport-app/outport/internal/allocator"
 	"github.com/outport-app/outport/internal/certmanager"
 	"github.com/outport-app/outport/internal/config"
+	"github.com/outport-app/outport/internal/platform"
 	"github.com/outport-app/outport/internal/portcheck"
 	"github.com/outport-app/outport/internal/registry"
 	"github.com/outport-app/outport/internal/ui"
@@ -20,22 +21,21 @@ import (
 var forceFlag bool
 var useHTTPS bool
 
-var applyCmd = &cobra.Command{
-	Use:     "apply",
-	Aliases: []string{"a"},
-	Short:   "Apply port configuration and write .env files",
-	Long:    "Reads .outport.yml, allocates deterministic ports, saves to the central registry, and writes them to .env files.",
+var upCmd = &cobra.Command{
+	Use:     "up",
+	Short:   "Bring this project into outport",
+	Long:    "Registers this project, allocates deterministic ports, saves to the central registry, and writes them to .env files.",
 	GroupID: "project",
 	Args:    NoArgs,
-	RunE:    runApply,
+	RunE:    runUp,
 }
 
 func init() {
-	applyCmd.Flags().BoolVar(&forceFlag, "force", false, "ignore existing allocations and re-allocate all ports")
-	rootCmd.AddCommand(applyCmd)
+	upCmd.Flags().BoolVar(&forceFlag, "force", false, "ignore existing allocations and re-allocate all ports")
+	rootCmd.AddCommand(upCmd)
 }
 
-func runApply(cmd *cobra.Command, args []string) error {
+func runUp(cmd *cobra.Command, args []string) error {
 	ctx, err := loadProjectContext()
 	if err != nil {
 		return err
@@ -124,9 +124,20 @@ func runApply(cmd *cobra.Command, args []string) error {
 	envFiles := mergedEnvFileList(cfg, resolvedDerived)
 
 	if jsonFlag {
-		return printApplyJSON(cmd, cfg, ctx.Instance, ports, alloc.Hostnames, resolvedDerived, envFiles)
+		return printUpJSON(cmd, cfg, ctx.Instance, ports, alloc.Hostnames, resolvedDerived, envFiles)
 	}
-	return printApplyStyled(cmd, cfg, ctx.Instance, serviceNames, ports, alloc.Hostnames, resolvedDerived, envFiles)
+
+	if err := printUpStyled(cmd, cfg, ctx.Instance, serviceNames, ports, alloc.Hostnames, resolvedDerived, envFiles); err != nil {
+		return err
+	}
+
+	if !platform.IsAgentLoaded() {
+		w := cmd.OutOrStdout()
+		fmt.Fprintln(w)
+		fmt.Fprintln(w, ui.DimStyle.Render("Hint: The outport daemon is not running. Run 'outport system start' to enable .test domains."))
+	}
+
+	return nil
 }
 
 // mergedEnvFileList returns the sorted list of env files that would be written
@@ -275,7 +286,7 @@ type derivedJSON struct {
 	Values   map[string]string `json:"values,omitempty"`    // file → value when per-file
 }
 
-type applyJSON struct {
+type upJSON struct {
 	Project  string                 `json:"project"`
 	Instance string                 `json:"instance"`
 	Services map[string]svcJSON     `json:"services"`
@@ -346,8 +357,8 @@ func buildDerivedMap(derived map[string]config.DerivedValue, resolved map[string
 	return m
 }
 
-func printApplyJSON(cmd *cobra.Command, cfg *config.Config, instanceName string, ports map[string]int, hostnames map[string]string, resolvedDerived map[string]map[string]string, envFiles []string) error {
-	out := applyJSON{
+func printUpJSON(cmd *cobra.Command, cfg *config.Config, instanceName string, ports map[string]int, hostnames map[string]string, resolvedDerived map[string]map[string]string, envFiles []string) error {
+	out := upJSON{
 		Project:  cfg.Name,
 		Instance: instanceName,
 		Services: buildServiceMap(cfg, ports, hostnames),
@@ -368,7 +379,7 @@ func printHeader(w io.Writer, projectName, instanceName string) {
 	lipgloss.Fprintln(w)
 }
 
-func printApplyStyled(cmd *cobra.Command, cfg *config.Config, instanceName string, serviceNames []string, ports map[string]int, hostnames map[string]string, resolvedDerived map[string]map[string]string, envFiles []string) error {
+func printUpStyled(cmd *cobra.Command, cfg *config.Config, instanceName string, serviceNames []string, ports map[string]int, hostnames map[string]string, resolvedDerived map[string]map[string]string, envFiles []string) error {
 	w := cmd.OutOrStdout()
 
 	printHeader(w, cfg.Name, instanceName)

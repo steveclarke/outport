@@ -59,7 +59,7 @@ func printPortsJSON(cmd *cobra.Command, cfg *config.Config, instanceName string,
 		}
 	}
 
-	out := applyJSON{
+	out := upJSON{
 		Project:  cfg.Name,
 		Instance: instanceName,
 		Services: services,
