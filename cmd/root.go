@@ -18,10 +18,20 @@ var rootCmd = &cobra.Command{
 }
 
 func Execute() error {
-	return rootCmd.Execute()
+	cmd, err := rootCmd.ExecuteC()
+	if err != nil && IsFlagError(err) {
+		cmd.Println()
+		cmd.Println(cmd.UsageString())
+	}
+	return err
 }
 
 func init() {
 	rootCmd.Version = version
 	rootCmd.PersistentFlags().BoolVar(&jsonFlag, "json", false, "output in JSON format")
+
+	// Wrap Cobra's flag errors so they trigger usage display
+	rootCmd.SetFlagErrorFunc(func(cmd *cobra.Command, err error) error {
+		return &FlagError{err: err}
+	})
 }
