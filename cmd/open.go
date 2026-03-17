@@ -35,10 +35,10 @@ func runOpen(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("No ports allocated. Run 'outport up' first.")
 	}
 
-	useHTTPS = certmanager.IsCAInstalled()
+	httpsEnabled := certmanager.IsCAInstalled()
 
 	if len(args) == 1 {
-		return openService(cmd, ctx.Cfg, alloc, args[0])
+		return openService(cmd, ctx.Cfg, alloc, args[0], httpsEnabled)
 	}
 
 	opened := 0
@@ -50,9 +50,9 @@ func runOpen(cmd *cobra.Command, args []string) error {
 			if protocol == "" {
 				continue
 			}
-			url = fmt.Sprintf("%s://%s", effectiveScheme(protocol, h), h)
+			url = fmt.Sprintf("%s://%s", effectiveScheme(protocol, h, httpsEnabled), h)
 		} else {
-			url = serviceURL(svc.Protocol, svc.Hostname, alloc.Ports[svcName])
+			url = serviceURL(svc.Protocol, svc.Hostname, alloc.Ports[svcName], httpsEnabled)
 		}
 		if url == "" {
 			continue
@@ -72,7 +72,7 @@ func runOpen(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func openService(cmd *cobra.Command, cfg *config.Config, alloc registry.Allocation, name string) error {
+func openService(cmd *cobra.Command, cfg *config.Config, alloc registry.Allocation, name string, httpsEnabled bool) error {
 	svc, ok := cfg.Services[name]
 	if !ok {
 		return fmt.Errorf("Service %q not found in .outport.yml.", name)
@@ -88,9 +88,9 @@ func openService(cmd *cobra.Command, cfg *config.Config, alloc registry.Allocati
 		if svc.Protocol == "" {
 			return fmt.Errorf("Service %q has no protocol set. Add 'protocol: http' to open it in the browser.", name)
 		}
-		url = fmt.Sprintf("%s://%s", effectiveScheme(svc.Protocol, h), h)
+		url = fmt.Sprintf("%s://%s", effectiveScheme(svc.Protocol, h, httpsEnabled), h)
 	} else {
-		url = serviceURL(svc.Protocol, svc.Hostname, port)
+		url = serviceURL(svc.Protocol, svc.Hostname, port, httpsEnabled)
 	}
 	if url == "" {
 		return fmt.Errorf("Service %q has no protocol set. Add 'protocol: http' to open it in the browser.", name)
@@ -99,7 +99,6 @@ func openService(cmd *cobra.Command, cfg *config.Config, alloc registry.Allocati
 	if err := openBrowser(url); err != nil {
 		return fmt.Errorf("Could not open browser: %w.", err)
 	}
-
 	fmt.Fprintf(cmd.OutOrStdout(), "Opened %s → %s\n", name, url)
 	return nil
 }

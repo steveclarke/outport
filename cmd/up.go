@@ -19,7 +19,6 @@ import (
 )
 
 var forceFlag bool
-var useHTTPS bool
 
 // isPortBusy checks if a port is in use on the system. Tests can override this
 // to avoid flaky failures when common ports (e.g., 5432) are bound locally.
@@ -118,20 +117,19 @@ func runUp(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	useHTTPS = certmanager.IsCAInstalled()
+	httpsEnabled := certmanager.IsCAInstalled()
 
-	if err := mergeEnvFiles(dir, cfg, ctx.Instance, ports, alloc.Hostnames); err != nil {
+	resolvedDerived, err := mergeEnvFiles(dir, cfg, ctx.Instance, ports, alloc.Hostnames, httpsEnabled)
+	if err != nil {
 		return err
 	}
-
-	resolvedDerived := resolveDerivedFromAlloc(cfg, ctx.Instance, ports, alloc.Hostnames)
 	envFiles := mergedEnvFileList(cfg, resolvedDerived)
 
 	if jsonFlag {
-		return printUpJSON(cmd, cfg, ctx.Instance, ports, alloc.Hostnames, resolvedDerived, envFiles)
+		return printUpJSON(cmd, cfg, ctx.Instance, ports, alloc.Hostnames, resolvedDerived, envFiles, httpsEnabled)
 	}
 
-	if err := printUpStyled(cmd, cfg, ctx.Instance, serviceNames, ports, alloc.Hostnames, resolvedDerived, envFiles); err != nil {
+	if err := printUpStyled(cmd, cfg, ctx.Instance, serviceNames, ports, alloc.Hostnames, resolvedDerived, envFiles, httpsEnabled); err != nil {
 		return err
 	}
 
@@ -213,10 +211,10 @@ func computeProtocols(cfg *config.Config) map[string]string {
 }
 
 // effectiveScheme returns the scheme to use for a given protocol and hostname.
-// When useHTTPS is true and the hostname is a .test domain with an HTTP protocol,
+// When httpsEnabled is true and the hostname is a .test domain with an HTTP protocol,
 // the scheme is upgraded to "https".
-func effectiveScheme(protocol, hostname string) string {
-	if useHTTPS && strings.HasSuffix(hostname, ".test") && (protocol == "http" || protocol == "https") {
+func effectiveScheme(protocol, hostname string, httpsEnabled bool) string {
+	if httpsEnabled && strings.HasSuffix(hostname, ".test") && (protocol == "http" || protocol == "https") {
 		return "https"
 	}
 	return protocol
@@ -225,7 +223,7 @@ func effectiveScheme(protocol, hostname string) string {
 // buildTemplateVars builds the template variable map from services and allocated ports.
 // Keys are "service.field" (e.g., "rails.port", "rails.hostname", "rails.url").
 // When useHTTPS is true, .url uses https:// for .test hostnames.
-func buildTemplateVars(cfg *config.Config, instanceName string, ports map[string]int, hostnames map[string]string) map[string]string {
+func buildTemplateVars(cfg *config.Config, instanceName string, ports map[string]int, hostnames map[string]string, httpsEnabled bool) map[string]string {
 	vars := make(map[string]string)
 	if instanceName == "main" {
 		vars["instance"] = ""
@@ -242,7 +240,7 @@ func buildTemplateVars(cfg *config.Config, instanceName string, ports map[string
 			if protocol == "" {
 				protocol = "http"
 			}
-			vars[name+".url"] = fmt.Sprintf("%s://%s", effectiveScheme(protocol, h), h)
+			vars[name+".url"] = fmt.Sprintf("%s://%s", effectiveScheme(protocol, h, httpsEnabled), h)
 			vars[name+".url:direct"] = fmt.Sprintf("http://localhost:%s", portStr)
 		} else {
 			hostname := svc.Hostname
@@ -257,11 +255,11 @@ func buildTemplateVars(cfg *config.Config, instanceName string, ports map[string
 
 // resolveDerivedFromAlloc resolves derived value templates using allocated ports.
 // Returns name → file → resolved value.
-func resolveDerivedFromAlloc(cfg *config.Config, instanceName string, ports map[string]int, hostnames map[string]string) map[string]map[string]string {
+func resolveDerivedFromAlloc(cfg *config.Config, instanceName string, ports map[string]int, hostnames map[string]string, httpsEnabled bool) map[string]map[string]string {
 	if len(cfg.Derived) == 0 {
 		return nil
 	}
-	templateVars := buildTemplateVars(cfg, instanceName, ports, hostnames)
+	templateVars := buildTemplateVars(cfg, instanceName, ports, hostnames, httpsEnabled)
 	return config.ResolveDerived(cfg.Derived, templateVars)
 }
 
@@ -303,21 +301,21 @@ type upJSON struct {
 	EnvFiles []string               `json:"env_files"`
 }
 
-func serviceURL(protocol, hostname string, port int) string {
+func serviceURL(protocol, hostname string, port int, httpsEnabled bool) string {
 	if protocol == "http" || protocol == "https" {
 		host := hostname
 		if host == "" {
 			host = "localhost"
 		}
 		if strings.HasSuffix(host, ".test") {
-			return fmt.Sprintf("%s://%s", effectiveScheme(protocol, host), host)
+			return fmt.Sprintf("%s://%s", effectiveScheme(protocol, host, httpsEnabled), host)
 		}
 		return fmt.Sprintf("%s://%s:%d", protocol, host, port)
 	}
 	return ""
 }
 
-func buildServiceMap(cfg *config.Config, ports map[string]int, hostnames map[string]string) map[string]svcJSON {
+func buildServiceMap(cfg *config.Config, ports map[string]int, hostnames map[string]string, httpsEnabled bool) map[string]svcJSON {
 	services := make(map[string]svcJSON)
 	for name, svc := range cfg.Services {
 		hostname := resolvedHostname(svc, hostnames, name)
@@ -327,7 +325,7 @@ func buildServiceMap(cfg *config.Config, ports map[string]int, hostnames map[str
 			EnvVar:        svc.EnvVar,
 			Protocol:      svc.Protocol,
 			Hostname:      hostname,
-			URL:           serviceURL(svc.Protocol, hostname, ports[name]),
+			URL:           serviceURL(svc.Protocol, hostname, ports[name], httpsEnabled),
 			EnvFiles:      svc.EnvFiles,
 		}
 	}
@@ -369,11 +367,11 @@ func buildDerivedMap(derived map[string]config.DerivedValue, resolved map[string
 	return m
 }
 
-func printUpJSON(cmd *cobra.Command, cfg *config.Config, instanceName string, ports map[string]int, hostnames map[string]string, resolvedDerived map[string]map[string]string, envFiles []string) error {
+func printUpJSON(cmd *cobra.Command, cfg *config.Config, instanceName string, ports map[string]int, hostnames map[string]string, resolvedDerived map[string]map[string]string, envFiles []string, httpsEnabled bool) error {
 	out := upJSON{
 		Project:  cfg.Name,
 		Instance: instanceName,
-		Services: buildServiceMap(cfg, ports, hostnames),
+		Services: buildServiceMap(cfg, ports, hostnames, httpsEnabled),
 		Derived:  buildDerivedMap(cfg.Derived, resolvedDerived),
 		EnvFiles: envFiles,
 	}
@@ -391,12 +389,12 @@ func printHeader(w io.Writer, projectName, instanceName string) {
 	lipgloss.Fprintln(w)
 }
 
-func printUpStyled(cmd *cobra.Command, cfg *config.Config, instanceName string, serviceNames []string, ports map[string]int, hostnames map[string]string, resolvedDerived map[string]map[string]string, envFiles []string) error {
+func printUpStyled(cmd *cobra.Command, cfg *config.Config, instanceName string, serviceNames []string, ports map[string]int, hostnames map[string]string, resolvedDerived map[string]map[string]string, envFiles []string, httpsEnabled bool) error {
 	w := cmd.OutOrStdout()
 
 	printHeader(w, cfg.Name, instanceName)
 
-	printFlatServices(w, cfg, serviceNames, ports, hostnames, nil)
+	printFlatServices(w, cfg, serviceNames, ports, hostnames, nil, httpsEnabled)
 
 	if len(resolvedDerived) > 0 {
 		printDerivedValues(w, resolvedDerived)
@@ -450,13 +448,13 @@ func printDerivedValues(w io.Writer, resolved map[string]map[string]string) {
 	}
 }
 
-func printFlatServices(w io.Writer, cfg *config.Config, serviceNames []string, ports map[string]int, hostnames map[string]string, portStatus map[int]bool) {
+func printFlatServices(w io.Writer, cfg *config.Config, serviceNames []string, ports map[string]int, hostnames map[string]string, portStatus map[int]bool, httpsEnabled bool) {
 	for _, svcName := range serviceNames {
-		printServiceLine(w, cfg, svcName, ports[svcName], hostnames, portStatus)
+		printServiceLine(w, cfg, svcName, ports[svcName], hostnames, portStatus, httpsEnabled)
 	}
 }
 
-func printServiceLine(w io.Writer, cfg *config.Config, svcName string, port int, hostnames map[string]string, portStatus map[int]bool) {
+func printServiceLine(w io.Writer, cfg *config.Config, svcName string, port int, hostnames map[string]string, portStatus map[int]bool, httpsEnabled bool) {
 	svc := cfg.Services[svcName]
 
 	status := ""
@@ -471,7 +469,7 @@ func printServiceLine(w io.Writer, cfg *config.Config, svcName string, port int,
 	hostname := resolvedHostname(svc, hostnames, svcName)
 
 	extra := ""
-	if u := serviceURL(svc.Protocol, hostname, port); u != "" {
+	if u := serviceURL(svc.Protocol, hostname, port, httpsEnabled); u != "" {
 		extra = "  " + ui.UrlStyle.Render(u)
 	} else if hostname != "" {
 		extra = "  " + ui.HostnameStyle.Render(hostname)

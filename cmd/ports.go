@@ -40,16 +40,16 @@ func runPorts(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	useHTTPS = certmanager.IsCAInstalled()
+	httpsEnabled := certmanager.IsCAInstalled()
 
 	if jsonFlag {
-		return printPortsJSON(cmd, ctx.Cfg, ctx.Instance, alloc)
+		return printPortsJSON(cmd, ctx.Cfg, ctx.Instance, alloc, httpsEnabled)
 	}
-	return printPortsStyled(cmd, ctx.Cfg, ctx.Instance, alloc)
+	return printPortsStyled(cmd, ctx.Cfg, ctx.Instance, alloc, httpsEnabled)
 }
 
-func printPortsJSON(cmd *cobra.Command, cfg *config.Config, instanceName string, alloc registry.Allocation) error {
-	services := buildServiceMap(cfg, alloc.Ports, alloc.Hostnames)
+func printPortsJSON(cmd *cobra.Command, cfg *config.Config, instanceName string, alloc registry.Allocation, httpsEnabled bool) error {
+	services := buildServiceMap(cfg, alloc.Ports, alloc.Hostnames, httpsEnabled)
 
 	if portsCheckFlag {
 		portStatus := checkPorts(alloc.Ports)
@@ -65,7 +65,7 @@ func printPortsJSON(cmd *cobra.Command, cfg *config.Config, instanceName string,
 		Services: services,
 	}
 	if portsDerivedFlag {
-		out.Derived = buildDerivedMap(cfg.Derived, resolveDerivedFromAlloc(cfg, instanceName, alloc.Ports, alloc.Hostnames))
+		out.Derived = buildDerivedMap(cfg.Derived, resolveDerivedFromAlloc(cfg, instanceName, alloc.Ports, alloc.Hostnames, httpsEnabled))
 	}
 	data, err := json.MarshalIndent(out, "", "  ")
 	if err != nil {
@@ -75,7 +75,7 @@ func printPortsJSON(cmd *cobra.Command, cfg *config.Config, instanceName string,
 	return nil
 }
 
-func printPortsStyled(cmd *cobra.Command, cfg *config.Config, instanceName string, alloc registry.Allocation) error {
+func printPortsStyled(cmd *cobra.Command, cfg *config.Config, instanceName string, alloc registry.Allocation, httpsEnabled bool) error {
 	w := cmd.OutOrStdout()
 	printHeader(w, cfg.Name, instanceName)
 
@@ -86,10 +86,10 @@ func printPortsStyled(cmd *cobra.Command, cfg *config.Config, instanceName strin
 		portStatus = checkPorts(alloc.Ports)
 	}
 
-	printFlatServices(w, cfg, serviceNames, alloc.Ports, alloc.Hostnames, portStatus)
+	printFlatServices(w, cfg, serviceNames, alloc.Ports, alloc.Hostnames, portStatus, httpsEnabled)
 
 	if portsDerivedFlag {
-		if resolved := resolveDerivedFromAlloc(cfg, instanceName, alloc.Ports, alloc.Hostnames); len(resolved) > 0 {
+		if resolved := resolveDerivedFromAlloc(cfg, instanceName, alloc.Ports, alloc.Hostnames, httpsEnabled); len(resolved) > 0 {
 			printDerivedValues(w, resolved)
 		}
 	}

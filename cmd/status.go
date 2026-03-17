@@ -99,12 +99,12 @@ func runStatus(cmd *cobra.Command, args []string) error {
 		portStatus = portcheck.CheckAll(allPorts)
 	}
 
-	useHTTPS = certmanager.IsCAInstalled()
+	httpsEnabled := certmanager.IsCAInstalled()
 
 	if jsonFlag {
-		return printStatusJSON(cmd, reg, portStatus)
+		return printStatusJSON(cmd, reg, portStatus, httpsEnabled)
 	}
-	return printStatusStyled(cmd, reg, portStatus)
+	return printStatusStyled(cmd, reg, portStatus, httpsEnabled)
 }
 
 type statusEntryJSON struct {
@@ -115,7 +115,7 @@ type statusEntryJSON struct {
 	Derived    map[string]derivedJSON `json:"derived,omitempty"`
 }
 
-func printStatusJSON(cmd *cobra.Command, reg *registry.Registry, portStatus map[int]bool) error {
+func printStatusJSON(cmd *cobra.Command, reg *registry.Registry, portStatus map[int]bool, httpsEnabled bool) error {
 	currentKey := currentProjectKey(reg)
 	var entries []statusEntryJSON
 
@@ -131,7 +131,7 @@ func printStatusJSON(cmd *cobra.Command, reg *registry.Registry, portStatus map[
 			if cfg != nil {
 				if svc, ok := cfg.Services[svcName]; ok {
 					s.Protocol = svc.Protocol
-					s.URL = serviceURL(svc.Protocol, resolvedHostname(svc, alloc.Hostnames, svcName), port)
+					s.URL = serviceURL(svc.Protocol, resolvedHostname(svc, alloc.Hostnames, svcName), port, httpsEnabled)
 				}
 			}
 			if portStatus != nil {
@@ -142,7 +142,7 @@ func printStatusJSON(cmd *cobra.Command, reg *registry.Registry, portStatus map[
 
 		var derived map[string]derivedJSON
 		if cfg != nil && statusDerivedFlag {
-			derived = buildDerivedMap(cfg.Derived, resolveDerivedFromAlloc(cfg, instanceName, alloc.Ports, alloc.Hostnames))
+			derived = buildDerivedMap(cfg.Derived, resolveDerivedFromAlloc(cfg, instanceName, alloc.Ports, alloc.Hostnames, httpsEnabled))
 		}
 
 		entries = append(entries, statusEntryJSON{
@@ -164,7 +164,7 @@ func printStatusJSON(cmd *cobra.Command, reg *registry.Registry, portStatus map[
 
 var currentMarker = lipgloss.NewStyle().Foreground(ui.Green).Bold(true)
 
-func printStatusStyled(cmd *cobra.Command, reg *registry.Registry, portStatus map[int]bool) error {
+func printStatusStyled(cmd *cobra.Command, reg *registry.Registry, portStatus map[int]bool, httpsEnabled bool) error {
 	w := cmd.OutOrStdout()
 	currentKey := currentProjectKey(reg)
 
@@ -206,7 +206,7 @@ func printStatusStyled(cmd *cobra.Command, reg *registry.Registry, portStatus ma
 			if cfg != nil {
 				if svc, ok := cfg.Services[svcName]; ok {
 					hostname := resolvedHostname(svc, alloc.Hostnames, svcName)
-					if u := serviceURL(svc.Protocol, hostname, port); u != "" {
+					if u := serviceURL(svc.Protocol, hostname, port, httpsEnabled); u != "" {
 						extra = "  " + ui.UrlStyle.Render(u)
 					} else if hostname != "" {
 						extra = "  " + ui.HostnameStyle.Render(hostname)
@@ -225,7 +225,7 @@ func printStatusStyled(cmd *cobra.Command, reg *registry.Registry, portStatus ma
 		}
 
 		if cfg != nil && statusDerivedFlag {
-			if resolved := resolveDerivedFromAlloc(cfg, instanceName, alloc.Ports, alloc.Hostnames); len(resolved) > 0 {
+			if resolved := resolveDerivedFromAlloc(cfg, instanceName, alloc.Ports, alloc.Hostnames, httpsEnabled); len(resolved) > 0 {
 				printDerivedValues(w, resolved)
 			}
 		}
