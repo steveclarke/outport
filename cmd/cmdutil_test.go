@@ -10,14 +10,22 @@ import (
 // has an Args validator set. Without this, commands silently ignore
 // unexpected arguments, which is a poor user experience.
 func TestAllCommandsHaveArgsValidation(t *testing.T) {
-	// Skip hidden commands and Cobra's auto-generated help command
+	// Skip hidden commands, Cobra's auto-generated help command, and parent commands
 	skip := map[string]bool{
 		"daemon":     true,
 		"help":       true,
 		"completion": true,
+		"system":     true,
 	}
 
+	var allCmds []*cobra.Command
 	for _, cmd := range rootCmd.Commands() {
+		allCmds = append(allCmds, cmd)
+		for _, sub := range cmd.Commands() {
+			allCmds = append(allCmds, sub)
+		}
+	}
+	for _, cmd := range allCmds {
 		if skip[cmd.Name()] {
 			continue
 		}

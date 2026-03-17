@@ -15,10 +15,11 @@ var portsCheckFlag bool
 var portsDerivedFlag bool
 
 var portsCmd = &cobra.Command{
-	Use:   "ports",
-	Short: "Show ports for the current project",
-	Args:  NoArgs,
-	RunE:  runPorts,
+	Use:     "ports",
+	Short:   "Show ports for the current project",
+	GroupID: "project",
+	Args:    NoArgs,
+	RunE:    runPorts,
 }
 
 func init() {
