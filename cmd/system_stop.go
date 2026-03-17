@@ -2,7 +2,8 @@ package cmd
 
 import (
 	"fmt"
-	"os/exec"
+	"os"
+	"path/filepath"
 
 	"github.com/outport-app/outport/internal/platform"
 	"github.com/outport-app/outport/internal/ui"
@@ -38,9 +39,17 @@ func requireSetup() error {
 }
 
 func resolveAndWritePlist() error {
-	outportBin, err := exec.LookPath("outport")
+	// Use the currently running binary, not whatever "outport" resolves to
+	// in PATH. exec.LookPath can resolve to shims (e.g., mise) that become
+	// stale when the underlying tool is uninstalled, leaving the daemon
+	// pointing at a dead path.
+	exe, err := os.Executable()
 	if err != nil {
-		return fmt.Errorf("could not find outport binary in PATH: %w", err)
+		return fmt.Errorf("could not determine outport binary path: %w", err)
+	}
+	outportBin, err := filepath.EvalSymlinks(exe)
+	if err != nil {
+		return fmt.Errorf("could not resolve outport binary path: %w", err)
 	}
 	return platform.WritePlist(outportBin)
 }

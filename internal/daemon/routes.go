@@ -84,7 +84,7 @@ func WatchAndRebuild(ctx context.Context, regPath string, rt *RouteTable) error 
 			}
 			if filepath.Base(event.Name) == base &&
 				(event.Has(fsnotify.Write) || event.Has(fsnotify.Create)) {
-				rebuildFromFile(regPath, rt) // best-effort
+				_ = rebuildFromFile(regPath, rt) // best-effort
 			}
 		case err, ok := <-watcher.Errors:
 			if !ok {

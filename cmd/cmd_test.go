@@ -128,8 +128,12 @@ func TestUp_IsIdempotent(t *testing.T) {
 	out2 := executeCmd(t, "up", "--json")
 
 	var r1, r2 upJSON
-	json.Unmarshal([]byte(out1), &r1)
-	json.Unmarshal([]byte(out2), &r2)
+	if err := json.Unmarshal([]byte(out1), &r1); err != nil {
+		t.Fatalf("unmarshal out1: %v", err)
+	}
+	if err := json.Unmarshal([]byte(out2), &r2); err != nil {
+		t.Fatalf("unmarshal out2: %v", err)
+	}
 
 	if r1.Services["web"].Port != r2.Services["web"].Port {
 		t.Errorf("web port changed: %d -> %d", r1.Services["web"].Port, r2.Services["web"].Port)
@@ -196,8 +200,12 @@ derived:
 
 func TestUp_WithDerivedValues(t *testing.T) {
 	dir := setupProject(t, testConfigWithDerived)
-	os.MkdirAll(filepath.Join(dir, "backend"), 0755)
-	os.MkdirAll(filepath.Join(dir, "frontend"), 0755)
+	if err := os.MkdirAll(filepath.Join(dir, "backend"), 0755); err != nil {
+		t.Fatalf("mkdir backend: %v", err)
+	}
+	if err := os.MkdirAll(filepath.Join(dir, "frontend"), 0755); err != nil {
+		t.Fatalf("mkdir frontend: %v", err)
+	}
 
 	output := executeCmd(t, "up", "--json")
 
@@ -243,8 +251,12 @@ func TestUp_WithDerivedValues(t *testing.T) {
 
 func TestUp_DerivedStyledOutput(t *testing.T) {
 	dir := setupProject(t, testConfigWithDerived)
-	os.MkdirAll(filepath.Join(dir, "backend"), 0755)
-	os.MkdirAll(filepath.Join(dir, "frontend"), 0755)
+	if err := os.MkdirAll(filepath.Join(dir, "backend"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(dir, "frontend"), 0755); err != nil {
+		t.Fatal(err)
+	}
 
 	output := executeCmd(t, "up")
 
@@ -273,9 +285,9 @@ derived:
       - file: frontend/portal/.env
         value: "http://localhost:${rails.port}/portal/api/v1"
 `)
-	os.MkdirAll(filepath.Join(dir, "backend"), 0755)
-	os.MkdirAll(filepath.Join(dir, "frontend/main"), 0755)
-	os.MkdirAll(filepath.Join(dir, "frontend/portal"), 0755)
+	_ = os.MkdirAll(filepath.Join(dir, "backend"), 0755)
+	_ = os.MkdirAll(filepath.Join(dir, "frontend/main"), 0755)
+	_ = os.MkdirAll(filepath.Join(dir, "frontend/portal"), 0755)
 
 	output := executeCmd(t, "up", "--json")
 
@@ -525,7 +537,7 @@ func TestSystemGC_NoStaleEntries(t *testing.T) {
 
 	projectDir := t.TempDir()
 	// Add a config file so gc doesn't consider it stale
-	os.WriteFile(filepath.Join(projectDir, ".outport.yml"), []byte("name: validapp\nservices:\n  web:\n    env_var: PORT\n"), 0644)
+	_ = os.WriteFile(filepath.Join(projectDir, ".outport.yml"), []byte("name: validapp\nservices:\n  web:\n    env_var: PORT\n"), 0644)
 	t.Chdir(projectDir)
 	jsonFlag = false
 
@@ -592,7 +604,9 @@ func TestUp_ForceReallocatesWithPreferredPorts(t *testing.T) {
 	// First allocation
 	out1 := executeCmd(t, "up", "--json")
 	var r1 upJSON
-	json.Unmarshal([]byte(out1), &r1)
+	if err := json.Unmarshal([]byte(out1), &r1); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
 
 	// Ports should be preferred (3000, 5432) since nothing else is registered
 	if r1.Services["web"].Port != 3000 {
@@ -602,7 +616,7 @@ func TestUp_ForceReallocatesWithPreferredPorts(t *testing.T) {
 	// Force re-allocation should produce the same preferred ports
 	out2 := executeCmd(t, "up", "--force", "--json")
 	var r2 upJSON
-	json.Unmarshal([]byte(out2), &r2)
+	_ = json.Unmarshal([]byte(out2), &r2)
 
 	if r2.Services["web"].Port != 3000 {
 		t.Errorf("apply --force: web port = %d, want 3000", r2.Services["web"].Port)
@@ -662,7 +676,7 @@ func TestInit_ErrorWhenConfigExists(t *testing.T) {
 	t.Setenv("HOME", home)
 
 	dir := t.TempDir()
-	os.WriteFile(filepath.Join(dir, ".outport.yml"), []byte("name: existing\n"), 0644)
+	_ = os.WriteFile(filepath.Join(dir, ".outport.yml"), []byte("name: existing\n"), 0644)
 	t.Chdir(dir)
 	jsonFlag = false
 
@@ -710,8 +724,8 @@ func TestDown_RemovesFromRegistry(t *testing.T) {
 
 func TestDown_CleansEnvFiles(t *testing.T) {
 	dir := setupProject(t, testConfigWithDerived)
-	os.MkdirAll(filepath.Join(dir, "backend"), 0755)
-	os.MkdirAll(filepath.Join(dir, "frontend"), 0755)
+	_ = os.MkdirAll(filepath.Join(dir, "backend"), 0755)
+	_ = os.MkdirAll(filepath.Join(dir, "frontend"), 0755)
 
 	// Apply to write .env files with fenced blocks
 	executeCmd(t, "up")
@@ -738,8 +752,8 @@ func TestDown_CleansEnvFiles(t *testing.T) {
 
 func TestDown_JSONShowsCleanedFiles(t *testing.T) {
 	dir := setupProject(t, testConfigWithDerived)
-	os.MkdirAll(filepath.Join(dir, "backend"), 0755)
-	os.MkdirAll(filepath.Join(dir, "frontend"), 0755)
+	_ = os.MkdirAll(filepath.Join(dir, "backend"), 0755)
+	_ = os.MkdirAll(filepath.Join(dir, "frontend"), 0755)
 
 	executeCmd(t, "up")
 	output := executeCmd(t, "down", "--json")
@@ -942,8 +956,10 @@ func TestRename_CollisionFails(t *testing.T) {
 
 	// Create main project directory
 	dir1 := t.TempDir()
-	os.WriteFile(filepath.Join(dir1, ".outport.yml"), []byte(testConfig), 0644)
-	os.Mkdir(filepath.Join(dir1, ".git"), 0755)
+	_ = os.WriteFile(filepath.Join(dir1, ".outport.yml"), []byte(testConfig), 0644)
+	if err := os.Mkdir(filepath.Join(dir1, ".git"), 0755); err != nil {
+		t.Fatalf("mkdir .git: %v", err)
+	}
 
 	// Apply from dir1 to create "main" instance
 	t.Chdir(dir1)
@@ -951,14 +967,16 @@ func TestRename_CollisionFails(t *testing.T) {
 
 	// Create a second directory for the same project
 	dir2 := t.TempDir()
-	os.WriteFile(filepath.Join(dir2, ".outport.yml"), []byte(testConfig), 0644)
-	os.Mkdir(filepath.Join(dir2, ".git"), 0755)
+	_ = os.WriteFile(filepath.Join(dir2, ".outport.yml"), []byte(testConfig), 0644)
+	if err := os.Mkdir(filepath.Join(dir2, ".git"), 0755); err != nil {
+		t.Fatalf("mkdir .git: %v", err)
+	}
 
 	// Apply from dir2 to create a code-based instance
 	t.Chdir(dir2)
 	out2 := executeCmd(t, "up", "--json")
 	var r2 upJSON
-	json.Unmarshal([]byte(out2), &r2)
+	_ = json.Unmarshal([]byte(out2), &r2)
 	codeName := r2.Instance
 
 	// Try to rename code instance to "main" — should collide
@@ -995,8 +1013,8 @@ func TestPromote_Success(t *testing.T) {
 
 	// Create main project directory
 	dir1 := t.TempDir()
-	os.WriteFile(filepath.Join(dir1, ".outport.yml"), []byte(testConfigWithHostnames), 0644)
-	os.Mkdir(filepath.Join(dir1, ".git"), 0755)
+	_ = os.WriteFile(filepath.Join(dir1, ".outport.yml"), []byte(testConfigWithHostnames), 0644)
+	_ = os.Mkdir(filepath.Join(dir1, ".git"), 0755)
 
 	// Apply from dir1 to create "main" instance
 	t.Chdir(dir1)
@@ -1004,14 +1022,14 @@ func TestPromote_Success(t *testing.T) {
 
 	// Create a second directory for the same project
 	dir2 := t.TempDir()
-	os.WriteFile(filepath.Join(dir2, ".outport.yml"), []byte(testConfigWithHostnames), 0644)
-	os.Mkdir(filepath.Join(dir2, ".git"), 0755)
+	_ = os.WriteFile(filepath.Join(dir2, ".outport.yml"), []byte(testConfigWithHostnames), 0644)
+	_ = os.Mkdir(filepath.Join(dir2, ".git"), 0755)
 
 	// Apply from dir2 to create a code-based instance
 	t.Chdir(dir2)
 	out2 := executeCmd(t, "up", "--json")
 	var r2 upJSON
-	json.Unmarshal([]byte(out2), &r2)
+	_ = json.Unmarshal([]byte(out2), &r2)
 	codeName := r2.Instance
 
 	// Promote the code instance to main
@@ -1201,14 +1219,14 @@ func TestUp_HostnameUniquenessConflict(t *testing.T) {
 
 	// Project 1: "myapp" with hostname "myapp"
 	dir1 := t.TempDir()
-	os.WriteFile(filepath.Join(dir1, ".outport.yml"), []byte(`name: myapp
+	_ = os.WriteFile(filepath.Join(dir1, ".outport.yml"), []byte(`name: myapp
 services:
   web:
     env_var: PORT
     protocol: http
     hostname: myapp
 `), 0644)
-	os.Mkdir(filepath.Join(dir1, ".git"), 0755)
+	_ = os.Mkdir(filepath.Join(dir1, ".git"), 0755)
 
 	// Apply project 1 — should succeed
 	t.Chdir(dir1)
@@ -1216,14 +1234,14 @@ services:
 
 	// Project 2: different project name but same hostname stem
 	dir2 := t.TempDir()
-	os.WriteFile(filepath.Join(dir2, ".outport.yml"), []byte(`name: myapp2
+	_ = os.WriteFile(filepath.Join(dir2, ".outport.yml"), []byte(`name: myapp2
 services:
   web:
     env_var: PORT
     protocol: http
     hostname: myapp2
 `), 0644)
-	os.Mkdir(filepath.Join(dir2, ".git"), 0755)
+	_ = os.Mkdir(filepath.Join(dir2, ".git"), 0755)
 
 	// Apply project 2 — should succeed (different hostname)
 	t.Chdir(dir2)
@@ -1231,18 +1249,18 @@ services:
 
 	// Project 3: a different project that conflicts with project 1's hostname
 	dir3 := t.TempDir()
-	os.WriteFile(filepath.Join(dir3, ".outport.yml"), []byte(`name: otherapp
+	_ = os.WriteFile(filepath.Join(dir3, ".outport.yml"), []byte(`name: otherapp
 services:
   web:
     env_var: PORT
     protocol: http
     hostname: myapp.otherapp
 `), 0644)
-	os.Mkdir(filepath.Join(dir3, ".git"), 0755)
+	_ = os.Mkdir(filepath.Join(dir3, ".git"), 0755)
 
 	// This one won't conflict because "myapp.otherapp.test" != "myapp.test".
 	// Now make a real conflict by matching project 1's exact hostname.
-	os.WriteFile(filepath.Join(dir3, ".outport.yml"), []byte(`name: clash
+	_ = os.WriteFile(filepath.Join(dir3, ".outport.yml"), []byte(`name: clash
 services:
   web:
     env_var: PORT
@@ -1265,8 +1283,8 @@ services:
     protocol: http
     hostname: myapp.fakeapp
 `
-	os.WriteFile(filepath.Join(dir4, ".outport.yml"), []byte(configWithConflict), 0644)
-	os.Mkdir(filepath.Join(dir4, ".git"), 0755)
+	_ = os.WriteFile(filepath.Join(dir4, ".outport.yml"), []byte(configWithConflict), 0644)
+	_ = os.Mkdir(filepath.Join(dir4, ".git"), 0755)
 
 	// Directly set up a registry entry that will cause a conflict
 	regPath := filepath.Join(home, ".local", "share", "outport", "registry.json")
@@ -1286,14 +1304,14 @@ services:
 
 	// Create project that tries to use the same hostname "collider"
 	dir5 := t.TempDir()
-	os.WriteFile(filepath.Join(dir5, ".outport.yml"), []byte(`name: collider
+	_ = os.WriteFile(filepath.Join(dir5, ".outport.yml"), []byte(`name: collider
 services:
   web:
     env_var: PORT
     protocol: http
     hostname: collider
 `), 0644)
-	os.Mkdir(filepath.Join(dir5, ".git"), 0755)
+	_ = os.Mkdir(filepath.Join(dir5, ".git"), 0755)
 
 	t.Chdir(dir5)
 
@@ -1428,8 +1446,8 @@ func TestBuildTemplateVarsHTTPS(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	dataDir := filepath.Join(home, ".local", "share", "outport")
-	os.MkdirAll(dataDir, 0755)
-	certmanager.GenerateCA(
+	_ = os.MkdirAll(dataDir, 0755)
+	_ = certmanager.GenerateCA(
 		filepath.Join(dataDir, "ca-cert.pem"),
 		filepath.Join(dataDir, "ca-key.pem"),
 	)

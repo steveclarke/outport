@@ -22,7 +22,7 @@ func backendPort(t *testing.T, srv *httptest.Server) int {
 
 func TestProxyRoutesToBackend(t *testing.T) {
 	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("hello from backend"))
+		_, _ = w.Write([]byte("hello from backend"))
 	}))
 	defer backend.Close()
 
@@ -52,7 +52,7 @@ func TestProxyPreservesPath(t *testing.T) {
 	var gotPath string
 	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
-		w.Write([]byte("ok"))
+		_, _ = w.Write([]byte("ok"))
 	}))
 	defer backend.Close()
 
@@ -131,7 +131,7 @@ func TestProxyBackendDownReturnsError(t *testing.T) {
 
 func TestProxyStripsPortFromHost(t *testing.T) {
 	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("ok"))
+		_, _ = w.Write([]byte("ok"))
 	}))
 	defer backend.Close()
 
@@ -164,7 +164,7 @@ func TestProxyWebSocketUpgrade(t *testing.T) {
 		if err := websocket.Message.Receive(ws, &msg); err != nil {
 			return
 		}
-		websocket.Message.Send(ws, "echo: "+msg)
+		_ = websocket.Message.Send(ws, "echo: "+msg)
 	}))
 	defer backend.Close()
 

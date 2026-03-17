@@ -21,9 +21,7 @@ func TestAllCommandsHaveArgsValidation(t *testing.T) {
 	var allCmds []*cobra.Command
 	for _, cmd := range rootCmd.Commands() {
 		allCmds = append(allCmds, cmd)
-		for _, sub := range cmd.Commands() {
-			allCmds = append(allCmds, sub)
-		}
+		allCmds = append(allCmds, cmd.Commands()...)
 	}
 	for _, cmd := range allCmds {
 		if skip[cmd.Name()] {

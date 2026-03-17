@@ -12,7 +12,7 @@ func TestCertStoreGetCertificate(t *testing.T) {
 	dir := t.TempDir()
 	caCertPath := filepath.Join(dir, "ca-cert.pem")
 	caKeyPath := filepath.Join(dir, "ca-key.pem")
-	GenerateCA(caCertPath, caKeyPath)
+	_ = GenerateCA(caCertPath, caKeyPath)
 	cacheDir := filepath.Join(dir, "certs")
 
 	store, err := NewCertStore(caCertPath, caKeyPath, cacheDir)
@@ -43,13 +43,15 @@ func TestCertStoreLoadFromDiskCache(t *testing.T) {
 	dir := t.TempDir()
 	caCertPath := filepath.Join(dir, "ca-cert.pem")
 	caKeyPath := filepath.Join(dir, "ca-key.pem")
-	GenerateCA(caCertPath, caKeyPath)
+	_ = GenerateCA(caCertPath, caKeyPath)
 	cacheDir := filepath.Join(dir, "certs")
 
 	// First store generates and caches to disk
 	store1, _ := NewCertStore(caCertPath, caKeyPath, cacheDir)
 	hello := &tls.ClientHelloInfo{ServerName: "app.test"}
-	store1.GetCertificate(hello)
+	if _, err := store1.GetCertificate(hello); err != nil {
+		t.Fatalf("GetCertificate: %v", err)
+	}
 
 	// Second store (fresh memory, same disk cache) should load from disk
 	store2, _ := NewCertStore(caCertPath, caKeyPath, cacheDir)

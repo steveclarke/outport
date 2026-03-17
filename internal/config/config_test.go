@@ -41,7 +41,9 @@ services:
     env_var: PORT
 `)
 	subdir := filepath.Join(dir, "backend", "app")
-	os.MkdirAll(subdir, 0755)
+	if err := os.MkdirAll(subdir, 0755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
 
 	found, err := FindDir(subdir)
 	if err != nil {
@@ -551,7 +553,7 @@ services:
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if cfg.Derived != nil && len(cfg.Derived) != 0 {
+	if len(cfg.Derived) != 0 {
 		t.Errorf("expected nil or empty derived, got %v", cfg.Derived)
 	}
 }
@@ -726,7 +728,9 @@ services:
     hostname: myapp
 `
 	dir := t.TempDir()
-	os.WriteFile(filepath.Join(dir, ".outport.yml"), []byte(yaml), 0644)
+	if err := os.WriteFile(filepath.Join(dir, ".outport.yml"), []byte(yaml), 0644); err != nil {
+		t.Fatal(err)
+	}
 	_, err := Load(dir)
 	if err == nil {
 		t.Fatal("expected error for hostname without http protocol")
@@ -759,7 +763,9 @@ services:
     hostname: %s
 `, tt.hostname)
 		dir := t.TempDir()
-		os.WriteFile(filepath.Join(dir, ".outport.yml"), []byte(yaml), 0644)
+		if err := os.WriteFile(filepath.Join(dir, ".outport.yml"), []byte(yaml), 0644); err != nil {
+			t.Fatal(err)
+		}
 		_, err := Load(dir)
 		if (err != nil) != tt.wantErr {
 			t.Errorf("hostname %q: err=%v, wantErr=%v", tt.hostname, err, tt.wantErr)
@@ -783,7 +789,9 @@ derived:
     env_file: .env
 `
 	dir := t.TempDir()
-	os.WriteFile(filepath.Join(dir, ".outport.yml"), []byte(yaml), 0644)
+	if err := os.WriteFile(filepath.Join(dir, ".outport.yml"), []byte(yaml), 0644); err != nil {
+		t.Fatal(err)
+	}
 	cfg, err := Load(dir)
 	if err != nil {
 		t.Fatalf("Load: %v", err)
@@ -816,7 +824,9 @@ derived:
     env_file: .env
 `
 	dir := t.TempDir()
-	os.WriteFile(filepath.Join(dir, ".outport.yml"), []byte(yaml), 0644)
+	if err := os.WriteFile(filepath.Join(dir, ".outport.yml"), []byte(yaml), 0644); err != nil {
+		t.Fatal(err)
+	}
 	_, err := Load(dir)
 	if err == nil {
 		t.Fatal("expected error for unrecognized modifier")
@@ -837,7 +847,9 @@ derived:
     env_file: .env
 `
 	dir := t.TempDir()
-	os.WriteFile(filepath.Join(dir, ".outport.yml"), []byte(yaml), 0644)
+	if err := os.WriteFile(filepath.Join(dir, ".outport.yml"), []byte(yaml), 0644); err != nil {
+		t.Fatal(err)
+	}
 	_, err := Load(dir)
 	if err != nil {
 		t.Fatalf("expected no error for url field, got: %v", err)
