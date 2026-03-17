@@ -55,7 +55,7 @@ System commands (under `outport system`):
 - **system start** — Install the `.test` DNS resolver, LaunchAgent daemon, and local CA for HTTPS. Auto-runs setup on first use. Requires sudo for `/etc/resolver/test`. Generates a CA certificate and adds it to the macOS login keychain trust store (GUI password prompt). Listens on ports 80 (HTTP->HTTPS redirect) and 443 (TLS proxy).
 - **system stop** — Stop the daemon (unload the LaunchAgent).
 - **system restart** — Re-write plist and restart the daemon.
-- **system status** — Show all registered projects across the system. Prompts to remove stale entries interactively.
+- **system status** — Show all registered projects across the system. Marks stale entries with a hint to run `system gc`.
 - **system gc** — Remove stale registry entries where the project directory no longer exists.
 - **system uninstall** — Remove the DNS resolver, daemon, CA certificate, and cached server certs. Reverse of start.
 

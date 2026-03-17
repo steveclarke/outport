@@ -45,6 +45,13 @@ func runSystemStart(cmd *cobra.Command, args []string) error {
 			return nil
 		}
 
+		if isPortInUse(80) {
+			return fmt.Errorf("port 80 is already in use — stop the other server first")
+		}
+		if isPortInUse(443) {
+			return fmt.Errorf("port 443 is already in use — stop the other server first")
+		}
+
 		if err := platform.LoadAgent(); err != nil {
 			return err
 		}
