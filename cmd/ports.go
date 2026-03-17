@@ -36,7 +36,7 @@ func runPorts(cmd *cobra.Command, args []string) error {
 
 	alloc, ok := ctx.Reg.Get(ctx.Cfg.Name, ctx.Instance)
 	if !ok {
-		fmt.Fprintln(cmd.OutOrStdout(), "No ports allocated. Run 'outport apply' first.")
+		fmt.Fprintln(cmd.OutOrStdout(), "No ports allocated. Run 'outport up' first.")
 		return nil
 	}
 

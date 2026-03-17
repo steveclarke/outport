@@ -4,7 +4,7 @@ package platform
 
 import "fmt"
 
-var errUnsupported = fmt.Errorf("outport setup is only supported on macOS")
+var errUnsupported = fmt.Errorf("outport system start is only supported on macOS")
 
 func isResolverInstalled() bool { return false }
 func isPlistInstalled() bool    { return false }

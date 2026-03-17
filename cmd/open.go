@@ -32,7 +32,7 @@ func runOpen(cmd *cobra.Command, args []string) error {
 
 	alloc, ok := ctx.Reg.Get(ctx.Cfg.Name, ctx.Instance)
 	if !ok {
-		return fmt.Errorf("No ports allocated. Run 'outport apply' first.")
+		return fmt.Errorf("No ports allocated. Run 'outport up' first.")
 	}
 
 	useHTTPS = certmanager.IsCAInstalled()
@@ -80,7 +80,7 @@ func openService(cmd *cobra.Command, cfg *config.Config, alloc registry.Allocati
 
 	port, ok := alloc.Ports[name]
 	if !ok {
-		return fmt.Errorf("No port allocated for %q. Run 'outport apply' first.", name)
+		return fmt.Errorf("No port allocated for %q. Run 'outport up' first.", name)
 	}
 
 	var url string
