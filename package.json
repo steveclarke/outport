@@ -7,6 +7,7 @@
     "docs:preview": "vitepress preview docs"
   },
   "devDependencies": {
-    "vitepress": "^1.6"
+    "vitepress": "^1.6",
+    "wrangler": "^4.74.0"
   }
 }
