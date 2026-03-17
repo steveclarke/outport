@@ -120,11 +120,11 @@ func runUp(cmd *cobra.Command, args []string) error {
 
 	useHTTPS = certmanager.IsCAInstalled()
 
-	if err := mergeEnvFiles(dir, cfg, ports, alloc.Hostnames); err != nil {
+	if err := mergeEnvFiles(dir, cfg, ctx.Instance, ports, alloc.Hostnames); err != nil {
 		return err
 	}
 
-	resolvedDerived := resolveDerivedFromAlloc(cfg, ports, alloc.Hostnames)
+	resolvedDerived := resolveDerivedFromAlloc(cfg, ctx.Instance, ports, alloc.Hostnames)
 	envFiles := mergedEnvFileList(cfg, resolvedDerived)
 
 	if jsonFlag {
@@ -225,8 +225,9 @@ func effectiveScheme(protocol, hostname string) string {
 // buildTemplateVars builds the template variable map from services and allocated ports.
 // Keys are "service.field" (e.g., "rails.port", "rails.hostname", "rails.url").
 // When useHTTPS is true, .url uses https:// for .test hostnames.
-func buildTemplateVars(cfg *config.Config, ports map[string]int, hostnames map[string]string) map[string]string {
+func buildTemplateVars(cfg *config.Config, instanceName string, ports map[string]int, hostnames map[string]string) map[string]string {
 	vars := make(map[string]string)
+	vars["instance"] = instanceName
 	for name, svc := range cfg.Services {
 		portStr := fmt.Sprintf("%d", ports[name])
 		vars[name+".port"] = portStr
@@ -252,11 +253,11 @@ func buildTemplateVars(cfg *config.Config, ports map[string]int, hostnames map[s
 
 // resolveDerivedFromAlloc resolves derived value templates using allocated ports.
 // Returns name → file → resolved value.
-func resolveDerivedFromAlloc(cfg *config.Config, ports map[string]int, hostnames map[string]string) map[string]map[string]string {
+func resolveDerivedFromAlloc(cfg *config.Config, instanceName string, ports map[string]int, hostnames map[string]string) map[string]map[string]string {
 	if len(cfg.Derived) == 0 {
 		return nil
 	}
-	templateVars := buildTemplateVars(cfg, ports, hostnames)
+	templateVars := buildTemplateVars(cfg, instanceName, ports, hostnames)
 	return config.ResolveDerived(cfg.Derived, templateVars)
 }
 

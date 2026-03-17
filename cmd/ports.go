@@ -65,7 +65,7 @@ func printPortsJSON(cmd *cobra.Command, cfg *config.Config, instanceName string,
 		Services: services,
 	}
 	if portsDerivedFlag {
-		out.Derived = buildDerivedMap(cfg.Derived, resolveDerivedFromAlloc(cfg, alloc.Ports, alloc.Hostnames))
+		out.Derived = buildDerivedMap(cfg.Derived, resolveDerivedFromAlloc(cfg, instanceName, alloc.Ports, alloc.Hostnames))
 	}
 	data, err := json.MarshalIndent(out, "", "  ")
 	if err != nil {
@@ -89,7 +89,7 @@ func printPortsStyled(cmd *cobra.Command, cfg *config.Config, instanceName strin
 	printFlatServices(w, cfg, serviceNames, alloc.Ports, alloc.Hostnames, portStatus)
 
 	if portsDerivedFlag {
-		if resolved := resolveDerivedFromAlloc(cfg, alloc.Ports, alloc.Hostnames); len(resolved) > 0 {
+		if resolved := resolveDerivedFromAlloc(cfg, instanceName, alloc.Ports, alloc.Hostnames); len(resolved) > 0 {
 			printDerivedValues(w, resolved)
 		}
 	}

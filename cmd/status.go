@@ -67,6 +67,15 @@ func isStale(projectDir string) (bool, string) {
 	return false, ""
 }
 
+// instanceFromKey extracts the instance name from a "project/instance" registry key.
+func instanceFromKey(key string) string {
+	parts := strings.SplitN(key, "/", 2)
+	if len(parts) == 2 {
+		return parts[1]
+	}
+	return "main"
+}
+
 // formatProjectKey returns just the project name for main instances,
 // or "project/instance" for non-main instances.
 func formatProjectKey(key string) string {
@@ -124,6 +133,7 @@ func printStatusJSON(cmd *cobra.Command, reg *registry.Registry, portStatus map[
 	for _, key := range keys {
 		alloc := reg.Projects[key]
 		cfg := loadProjectConfig(alloc.ProjectDir)
+		instanceName := instanceFromKey(key)
 
 		services := make(map[string]svcJSON)
 		for svcName, port := range alloc.Ports {
@@ -142,7 +152,7 @@ func printStatusJSON(cmd *cobra.Command, reg *registry.Registry, portStatus map[
 
 		var derived map[string]derivedJSON
 		if cfg != nil && statusDerivedFlag {
-			derived = buildDerivedMap(cfg.Derived, resolveDerivedFromAlloc(cfg, alloc.Ports, alloc.Hostnames))
+			derived = buildDerivedMap(cfg.Derived, resolveDerivedFromAlloc(cfg, instanceName, alloc.Ports, alloc.Hostnames))
 		}
 
 		entries = append(entries, statusEntryJSON{
@@ -173,6 +183,7 @@ func printStatusStyled(cmd *cobra.Command, reg *registry.Registry, portStatus ma
 	for i, key := range keys {
 		alloc := reg.Projects[key]
 		cfg := loadProjectConfig(alloc.ProjectDir)
+		instanceName := instanceFromKey(key)
 
 		stale, staleReason := isStale(alloc.ProjectDir)
 
@@ -224,7 +235,7 @@ func printStatusStyled(cmd *cobra.Command, reg *registry.Registry, portStatus ma
 		}
 
 		if cfg != nil && statusDerivedFlag {
-			if resolved := resolveDerivedFromAlloc(cfg, alloc.Ports, alloc.Hostnames); len(resolved) > 0 {
+			if resolved := resolveDerivedFromAlloc(cfg, instanceName, alloc.Ports, alloc.Hostnames); len(resolved) > 0 {
 				printDerivedValues(w, resolved)
 			}
 		}

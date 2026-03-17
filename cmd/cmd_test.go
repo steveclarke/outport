@@ -1448,7 +1448,7 @@ func TestBuildTemplateVarsHTTPS(t *testing.T) {
 	hostnames := map[string]string{"rails": "myapp.test"}
 
 	useHTTPS = certmanager.IsCAInstalled()
-	vars := buildTemplateVars(cfg, ports, hostnames)
+	vars := buildTemplateVars(cfg, "main", ports, hostnames)
 
 	if vars["rails.url"] != "https://myapp.test" {
 		t.Errorf("rails.url = %q, want %q", vars["rails.url"], "https://myapp.test")
@@ -1472,9 +1472,30 @@ func TestBuildTemplateVarsHTTP(t *testing.T) {
 	hostnames := map[string]string{"rails": "myapp.test"}
 
 	useHTTPS = certmanager.IsCAInstalled()
-	vars := buildTemplateVars(cfg, ports, hostnames)
+	vars := buildTemplateVars(cfg, "main", ports, hostnames)
 
 	if vars["rails.url"] != "http://myapp.test" {
 		t.Errorf("rails.url = %q, want %q", vars["rails.url"], "http://myapp.test")
+	}
+}
+
+func TestBuildTemplateVarsInstance(t *testing.T) {
+	cfg := &config.Config{
+		Name: "myapp",
+		Services: map[string]config.Service{
+			"web": {EnvVar: "PORT"},
+		},
+	}
+	ports := map[string]int{"web": 3000}
+	hostnames := map[string]string{}
+
+	vars := buildTemplateVars(cfg, "main", ports, hostnames)
+	if vars["instance"] != "main" {
+		t.Errorf("instance = %q, want %q", vars["instance"], "main")
+	}
+
+	vars = buildTemplateVars(cfg, "xbjf", ports, hostnames)
+	if vars["instance"] != "xbjf" {
+		t.Errorf("instance = %q, want %q", vars["instance"], "xbjf")
 	}
 }
