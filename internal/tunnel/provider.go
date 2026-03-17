@@ -32,3 +32,12 @@ func (t *Tunnel) Stop() error {
 	}
 	return nil
 }
+
+// NewTunnel creates a Tunnel with the given parameters.
+func NewTunnel(url string, port int, stop func() error) *Tunnel {
+	return &Tunnel{
+		URL:  url,
+		Port: port,
+		stop: stop,
+	}
+}
