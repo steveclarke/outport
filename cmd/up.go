@@ -222,7 +222,7 @@ func effectiveScheme(protocol, hostname string, httpsEnabled bool) string {
 
 // buildTemplateVars builds the template variable map from services and allocated ports.
 // Keys are "service.field" (e.g., "rails.port", "rails.hostname", "rails.url").
-// When useHTTPS is true, .url uses https:// for .test hostnames.
+// When httpsEnabled is true, .url uses https:// for .test hostnames.
 func buildTemplateVars(cfg *config.Config, instanceName string, ports map[string]int, hostnames map[string]string, httpsEnabled bool) map[string]string {
 	vars := make(map[string]string)
 	if instanceName == "main" {
