@@ -56,7 +56,9 @@ func TestMerge_PreservesUnrelatedVars(t *testing.T) {
 	envPath := filepath.Join(dir, ".env")
 
 	existing := "SECRET_KEY=abc123\nRAILS_ENV=development\n"
-	os.WriteFile(envPath, []byte(existing), 0644)
+	if err := os.WriteFile(envPath, []byte(existing), 0644); err != nil {
+		t.Fatalf("write env: %v", err)
+	}
 
 	ports := map[string]string{"PORT": "31653"}
 	if err := Merge(envPath, ports); err != nil {
@@ -88,7 +90,9 @@ func TestMerge_RemovesManagedVarFromUserSection(t *testing.T) {
 
 	// PORT exists in the user section — should be removed and placed in the block
 	existing := "PORT=4000\nSECRET_KEY=abc123\n"
-	os.WriteFile(envPath, []byte(existing), 0644)
+	if err := os.WriteFile(envPath, []byte(existing), 0644); err != nil {
+		t.Fatalf("write env: %v", err)
+	}
 
 	ports := map[string]string{"PORT": "31653"}
 	if err := Merge(envPath, ports); err != nil {
@@ -113,7 +117,9 @@ func TestMerge_PreservesComments(t *testing.T) {
 	envPath := filepath.Join(dir, ".env")
 
 	existing := "# Database config\nDB_PORT=5432\n\n# Redis\nREDIS_PORT=6379\n"
-	os.WriteFile(envPath, []byte(existing), 0644)
+	if err := os.WriteFile(envPath, []byte(existing), 0644); err != nil {
+		t.Fatalf("write env: %v", err)
+	}
 
 	ports := map[string]string{"DB_PORT": "21536"}
 	if err := Merge(envPath, ports); err != nil {
@@ -142,7 +148,9 @@ func TestMerge_PreservesBlankLinesInUserSection(t *testing.T) {
 	envPath := filepath.Join(dir, ".env")
 
 	existing := "ALPHA=1\n\nBETA=2\n"
-	os.WriteFile(envPath, []byte(existing), 0644)
+	if err := os.WriteFile(envPath, []byte(existing), 0644); err != nil {
+		t.Fatalf("write env: %v", err)
+	}
 
 	ports := map[string]string{"PORT": "31653"}
 	if err := Merge(envPath, ports); err != nil {
@@ -163,7 +171,9 @@ func TestMerge_HandlesExportPrefix(t *testing.T) {
 	envPath := filepath.Join(dir, ".env")
 
 	existing := "export PORT=4000\n"
-	os.WriteFile(envPath, []byte(existing), 0644)
+	if err := os.WriteFile(envPath, []byte(existing), 0644); err != nil {
+		t.Fatalf("write env: %v", err)
+	}
 
 	ports := map[string]string{"PORT": "31653"}
 	if err := Merge(envPath, ports); err != nil {
@@ -185,7 +195,9 @@ func TestMerge_HandlesQuotedValues(t *testing.T) {
 	envPath := filepath.Join(dir, ".env")
 
 	existing := "SECRET=\"my secret\"\nPORT=4000\n"
-	os.WriteFile(envPath, []byte(existing), 0644)
+	if err := os.WriteFile(envPath, []byte(existing), 0644); err != nil {
+		t.Fatalf("write env: %v", err)
+	}
 
 	ports := map[string]string{"PORT": "31653"}
 	if err := Merge(envPath, ports); err != nil {
@@ -208,10 +220,14 @@ func TestMerge_IsIdempotent(t *testing.T) {
 
 	ports := map[string]string{"PORT": "31653", "DB_PORT": "17842"}
 
-	Merge(envPath, ports)
+	if err := Merge(envPath, ports); err != nil {
+		t.Fatalf("first merge: %v", err)
+	}
 	data1, _ := os.ReadFile(envPath)
 
-	Merge(envPath, ports)
+	if err := Merge(envPath, ports); err != nil {
+		t.Fatalf("second merge: %v", err)
+	}
 	data2, _ := os.ReadFile(envPath)
 
 	if string(data1) != string(data2) {
@@ -224,7 +240,9 @@ func TestMerge_CommentedOutVarIsNotRemoved(t *testing.T) {
 	envPath := filepath.Join(dir, ".env")
 
 	existing := "# PORT=4000\n"
-	os.WriteFile(envPath, []byte(existing), 0644)
+	if err := os.WriteFile(envPath, []byte(existing), 0644); err != nil {
+		t.Fatalf("write env: %v", err)
+	}
 
 	ports := map[string]string{"PORT": "31653"}
 	if err := Merge(envPath, ports); err != nil {
@@ -247,7 +265,9 @@ func TestMerge_UpdatesExistingBlock(t *testing.T) {
 
 	// File already has a managed block from a previous apply
 	existing := "SECRET=abc\n\n" + beginMarker + "\nPORT=31653\n" + endMarker + "\n"
-	os.WriteFile(envPath, []byte(existing), 0644)
+	if err := os.WriteFile(envPath, []byte(existing), 0644); err != nil {
+		t.Fatalf("write env: %v", err)
+	}
 
 	// Apply with different ports
 	ports := map[string]string{"PORT": "9999", "DB_PORT": "5432"}
@@ -284,7 +304,9 @@ func TestMerge_MigratesInlineComments(t *testing.T) {
 
 	// Old format: inline comments from previous outport versions
 	existing := "SECRET=abc\nPORT=31653 # managed by outport\nDB_PORT=17842 # managed by outport\n"
-	os.WriteFile(envPath, []byte(existing), 0644)
+	if err := os.WriteFile(envPath, []byte(existing), 0644); err != nil {
+		t.Fatalf("write env: %v", err)
+	}
 
 	ports := map[string]string{"PORT": "31653", "DB_PORT": "17842"}
 	if err := Merge(envPath, ports); err != nil {
@@ -354,7 +376,9 @@ func TestMerge_PreservesContentAfterBlock(t *testing.T) {
 
 	// Someone added content after the block
 	existing := "SECRET=abc\n\n" + beginMarker + "\nPORT=3000\n" + endMarker + "\n\n# My custom stuff\nFOO=bar\n"
-	os.WriteFile(envPath, []byte(existing), 0644)
+	if err := os.WriteFile(envPath, []byte(existing), 0644); err != nil {
+		t.Fatalf("write env: %v", err)
+	}
 
 	ports := map[string]string{"PORT": "9999"}
 	if err := Merge(envPath, ports); err != nil {
@@ -382,10 +406,14 @@ func TestMerge_RemovedVarsDisappearFromBlock(t *testing.T) {
 	envPath := filepath.Join(dir, ".env")
 
 	// First apply with two vars
-	Merge(envPath, map[string]string{"PORT": "3000", "DB_PORT": "5432"})
+	if err := Merge(envPath, map[string]string{"PORT": "3000", "DB_PORT": "5432"}); err != nil {
+		t.Fatalf("first merge: %v", err)
+	}
 
 	// Second apply with one var removed
-	Merge(envPath, map[string]string{"PORT": "3000"})
+	if err := Merge(envPath, map[string]string{"PORT": "3000"}); err != nil {
+		t.Fatalf("second merge: %v", err)
+	}
 
 	content := readEnv(t, envPath)
 
@@ -402,7 +430,9 @@ func TestMerge_EmptyPortsWritesEmptyBlock(t *testing.T) {
 	envPath := filepath.Join(dir, ".env")
 
 	existing := "SECRET=abc\n"
-	os.WriteFile(envPath, []byte(existing), 0644)
+	if err := os.WriteFile(envPath, []byte(existing), 0644); err != nil {
+		t.Fatalf("write env: %v", err)
+	}
 
 	ports := map[string]string{}
 	if err := Merge(envPath, ports); err != nil {

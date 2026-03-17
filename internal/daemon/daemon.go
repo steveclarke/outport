@@ -141,7 +141,7 @@ func (d *Daemon) Run(ctx context.Context) error {
 
 // shutdown gracefully stops all daemon servers.
 func (d *Daemon) shutdown() {
-	d.dns.Shutdown()
+	_ = d.dns.Shutdown()
 	d.proxy.Close()
 	if d.tlsProxy != nil {
 		d.tlsProxy.Close()

@@ -27,14 +27,13 @@ func startTestDNS(t *testing.T) string {
 	srv.NotifyStartedFunc = func() { close(started) }
 
 	go func() {
-		if err := srv.ActivateAndServe(); err != nil {
-			// Server.Shutdown causes ActivateAndServe to return; ignore that.
-		}
+		// Server.Shutdown causes ActivateAndServe to return; ignore that.
+		_ = srv.ActivateAndServe()
 	}()
 
 	<-started
 
-	t.Cleanup(func() { srv.Shutdown() })
+	t.Cleanup(func() { _ = srv.Shutdown() })
 
 	return addr
 }

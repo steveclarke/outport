@@ -64,7 +64,9 @@ func TestGetOrCreateCertCached(t *testing.T) {
 	dir := t.TempDir()
 	caCertPath := filepath.Join(dir, "ca-cert.pem")
 	caKeyPath := filepath.Join(dir, "ca-key.pem")
-	GenerateCA(caCertPath, caKeyPath)
+	if err := GenerateCA(caCertPath, caKeyPath); err != nil {
+		t.Fatalf("GenerateCA: %v", err)
+	}
 	caCert, caKey, _ := LoadCA(caCertPath, caKeyPath)
 	cacheDir := filepath.Join(dir, "certs")
 
@@ -80,7 +82,9 @@ func TestCertExpiringSoon(t *testing.T) {
 	dir := t.TempDir()
 	caCertPath := filepath.Join(dir, "ca-cert.pem")
 	caKeyPath := filepath.Join(dir, "ca-key.pem")
-	GenerateCA(caCertPath, caKeyPath)
+	if err := GenerateCA(caCertPath, caKeyPath); err != nil {
+		t.Fatalf("GenerateCA: %v", err)
+	}
 	caCert, caKey, _ := LoadCA(caCertPath, caKeyPath)
 	cacheDir := filepath.Join(dir, "certs")
 
@@ -108,8 +112,12 @@ func TestDeleteCertCache(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	cacheDir := filepath.Join(home, ".cache", "outport", "certs")
-	os.MkdirAll(cacheDir, 0755)
-	os.WriteFile(filepath.Join(cacheDir, "test.pem"), []byte("test"), 0644)
+	if err := os.MkdirAll(cacheDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(cacheDir, "test.pem"), []byte("test"), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	if err := DeleteCertCache(); err != nil {
 		t.Fatalf("DeleteCertCache: %v", err)

@@ -36,7 +36,7 @@ func NewDNSServer(addr string) *dns.Server {
 			m.Rcode = dns.RcodeNameError
 		}
 
-		w.WriteMsg(m)
+		_ = w.WriteMsg(m)
 	})
 
 	return &dns.Server{

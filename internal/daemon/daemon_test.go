@@ -112,7 +112,7 @@ func TestDaemonHTTPS(t *testing.T) {
 	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		proto := r.Header.Get("X-Forwarded-Proto")
 		w.Header().Set("X-Got-Proto", proto)
-		w.Write([]byte("hello from backend"))
+		_, _ = w.Write([]byte("hello from backend"))
 	}))
 	defer backend.Close()
 	backendPort := backend.Listener.Addr().(*net.TCPAddr).Port
@@ -126,7 +126,9 @@ func TestDaemonHTTPS(t *testing.T) {
 		Protocols:  map[string]string{"web": "https"},
 	})
 	data, _ := json.MarshalIndent(reg, "", "  ")
-	os.WriteFile(regPath, data, 0644)
+	if err := os.WriteFile(regPath, data, 0644); err != nil {
+		t.Fatalf("write registry: %v", err)
+	}
 
 	// Bind listeners
 	httpLn, _ := net.Listen("tcp", "127.0.0.1:0")
@@ -150,7 +152,7 @@ func TestDaemonHTTPS(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	go d.Run(ctx)
+	go func() { _ = d.Run(ctx) }()
 	time.Sleep(100 * time.Millisecond)
 
 	// Load CA into client trust pool
@@ -195,12 +197,16 @@ func TestDaemonHTTPRedirect(t *testing.T) {
 	caKeyPath := filepath.Join(dir, "ca-key.pem")
 	cacheDir := filepath.Join(dir, "certs")
 
-	certmanager.GenerateCA(caCertPath, caKeyPath)
+	if err := certmanager.GenerateCA(caCertPath, caKeyPath); err != nil {
+		t.Fatalf("GenerateCA: %v", err)
+	}
 	store, _ := certmanager.NewCertStore(caCertPath, caKeyPath, cacheDir)
 
 	reg := &registry.Registry{Projects: make(map[string]registry.Allocation)}
 	data, _ := json.MarshalIndent(reg, "", "  ")
-	os.WriteFile(regPath, data, 0644)
+	if err := os.WriteFile(regPath, data, 0644); err != nil {
+		t.Fatalf("write registry: %v", err)
+	}
 
 	httpLn, _ := net.Listen("tcp", "127.0.0.1:0")
 	httpsLn, _ := net.Listen("tcp", "127.0.0.1:0")
@@ -219,7 +225,7 @@ func TestDaemonHTTPRedirect(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	go d.Run(ctx)
+	go func() { _ = d.Run(ctx) }()
 	time.Sleep(100 * time.Millisecond)
 
 	client := &http.Client{CheckRedirect: func(req *http.Request, via []*http.Request) error {
@@ -251,7 +257,7 @@ func TestDaemonHTTPProxyWithoutTLS(t *testing.T) {
 	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		proto := r.Header.Get("X-Forwarded-Proto")
 		w.Header().Set("X-Got-Proto", proto)
-		w.Write([]byte("plain http"))
+		_, _ = w.Write([]byte("plain http"))
 	}))
 	defer backend.Close()
 	backendPort := backend.Listener.Addr().(*net.TCPAddr).Port
@@ -264,7 +270,9 @@ func TestDaemonHTTPProxyWithoutTLS(t *testing.T) {
 		Protocols:  map[string]string{"web": "http"},
 	})
 	data, _ := json.MarshalIndent(reg, "", "  ")
-	os.WriteFile(regPath, data, 0644)
+	if err := os.WriteFile(regPath, data, 0644); err != nil {
+		t.Fatalf("write registry: %v", err)
+	}
 
 	httpLn, _ := net.Listen("tcp", "127.0.0.1:0")
 	dnsPC, _ := net.ListenPacket("udp", "127.0.0.1:0")
@@ -281,7 +289,7 @@ func TestDaemonHTTPProxyWithoutTLS(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	go d.Run(ctx)
+	go func() { _ = d.Run(ctx) }()
 	time.Sleep(100 * time.Millisecond)
 
 	req, _ := http.NewRequest("GET", "http://"+httpLn.Addr().String()+"/", nil)

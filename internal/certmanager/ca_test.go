@@ -80,17 +80,19 @@ func TestLoadCA(t *testing.T) {
 	certPath := filepath.Join(dir, "ca-cert.pem")
 	keyPath := filepath.Join(dir, "ca-key.pem")
 
-	GenerateCA(certPath, keyPath)
+	if err := GenerateCA(certPath, keyPath); err != nil {
+		t.Fatalf("GenerateCA: %v", err)
+	}
 
 	cert, key, err := LoadCA(certPath, keyPath)
 	if err != nil {
 		t.Fatalf("LoadCA: %v", err)
 	}
 	if cert == nil {
-		t.Error("cert is nil")
+		t.Fatal("cert is nil")
 	}
 	if key == nil {
-		t.Error("key is nil")
+		t.Fatal("key is nil")
 	}
 	if !cert.IsCA {
 		t.Error("loaded cert is not a CA")
@@ -113,8 +115,12 @@ func TestIsCAInstalled(t *testing.T) {
 	}
 
 	dataDir := filepath.Join(home, ".local", "share", "outport")
-	os.MkdirAll(dataDir, 0755)
-	GenerateCA(filepath.Join(dataDir, "ca-cert.pem"), filepath.Join(dataDir, "ca-key.pem"))
+	if err := os.MkdirAll(dataDir, 0755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	if err := GenerateCA(filepath.Join(dataDir, "ca-cert.pem"), filepath.Join(dataDir, "ca-key.pem")); err != nil {
+		t.Fatalf("GenerateCA: %v", err)
+	}
 
 	if !IsCAInstalled() {
 		t.Error("expected true when CA exists")
@@ -126,7 +132,9 @@ func TestDeleteCA(t *testing.T) {
 	certPath := filepath.Join(dir, "ca-cert.pem")
 	keyPath := filepath.Join(dir, "ca-key.pem")
 
-	GenerateCA(certPath, keyPath)
+	if err := GenerateCA(certPath, keyPath); err != nil {
+		t.Fatalf("GenerateCA: %v", err)
+	}
 	DeleteCA(certPath, keyPath)
 
 	if _, err := os.Stat(certPath); !os.IsNotExist(err) {
