@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os/exec"
+	"sync"
 	"syscall"
 	"time"
 
@@ -49,20 +50,13 @@ func (p *Provider) Start(ctx context.Context, port int) (*tunnel.Tunnel, error) 
 
 	urlCh := make(chan string, 1)
 	errCh := make(chan error, 1)
-	var lastLines []string
 
 	// Scan stderr for the tunnel URL
 	go func() {
 		scanner := bufio.NewScanner(stderr)
 		for scanner.Scan() {
 			line := scanner.Text()
-			// Keep last 5 lines for error diagnostics
-			if len(lastLines) >= 5 {
-				lastLines = lastLines[1:]
-			}
-			lastLines = append(lastLines, line)
-
-			if url := parseURL([]string{line}); url != "" {
+			if url := parseURL(line); url != "" {
 				urlCh <- url
 				// Keep draining stderr so cloudflared doesn't block on writes
 				io.Copy(io.Discard, stderr) //nolint:errcheck
@@ -91,29 +85,33 @@ func (p *Provider) Start(ctx context.Context, port int) (*tunnel.Tunnel, error) 
 }
 
 // stopFunc returns a function that gracefully stops the cloudflared process.
+// Safe to call multiple times via sync.Once.
 func stopFunc(cmd *exec.Cmd) func() error {
+	var once sync.Once
+	var stopErr error
 	return func() error {
-		if cmd.Process == nil {
-			return nil
-		}
-		// Send SIGTERM for graceful shutdown
-		if err := cmd.Process.Signal(syscall.SIGTERM); err != nil {
-			// Process already exited
-			if cmd.ProcessState != nil {
-				return nil
+		once.Do(func() {
+			if cmd.Process == nil {
+				return
 			}
-			return err
-		}
-		// Wait up to 3 seconds for graceful exit
-		done := make(chan error, 1)
-		go func() { done <- cmd.Wait() }()
-		select {
-		case <-done:
-			return nil
-		case <-time.After(3 * time.Second):
-			_ = cmd.Process.Kill()
-			<-done
-			return nil
-		}
+			// Send SIGTERM for graceful shutdown. Ignore error — if the
+			// process is already dead, Wait() will return immediately.
+			_ = cmd.Process.Signal(syscall.SIGTERM)
+
+			// Wait up to 3 seconds for graceful exit
+			done := make(chan error, 1)
+			go func() { done <- cmd.Wait() }()
+
+			timer := time.NewTimer(3 * time.Second)
+			defer timer.Stop()
+
+			select {
+			case <-done:
+			case <-timer.C:
+				_ = cmd.Process.Kill()
+				<-done
+			}
+		})
+		return stopErr
 	}
 }

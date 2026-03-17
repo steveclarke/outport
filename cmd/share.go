@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os/signal"
 	"sort"
@@ -66,6 +65,11 @@ func runShare(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("starting tunnels: %w", err)
 	}
 	defer mgr.StopAll()
+
+	// Sort once for deterministic output in both modes
+	sort.Slice(tunnels, func(i, j int) bool {
+		return tunnels[i].Service < tunnels[j].Service
+	})
 
 	if jsonFlag {
 		if err := printShareJSON(cmd, tunnels); err != nil {
@@ -132,25 +136,11 @@ func printShareJSON(cmd *cobra.Command, tunnels []*tunnel.Tunnel) error {
 			Port:    tun.Port,
 		})
 	}
-	// Sort for deterministic output
-	sort.Slice(out.Tunnels, func(i, j int) bool {
-		return out.Tunnels[i].Service < out.Tunnels[j].Service
-	})
-	data, err := json.MarshalIndent(out, "", "  ")
-	if err != nil {
-		return err
-	}
-	fmt.Fprintln(cmd.OutOrStdout(), string(data))
-	return nil
+	return writeJSON(cmd, out)
 }
 
 func printShareStyled(cmd *cobra.Command, tunnels []*tunnel.Tunnel) {
 	w := cmd.OutOrStdout()
-
-	// Sort tunnels by service name
-	sort.Slice(tunnels, func(i, j int) bool {
-		return tunnels[i].Service < tunnels[j].Service
-	})
 
 	lipgloss.Fprintln(w, fmt.Sprintf("Sharing %d %s:",
 		len(tunnels), pluralize(len(tunnels), "service", "services")))

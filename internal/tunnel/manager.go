@@ -45,7 +45,7 @@ func (m *Manager) StartAll(ctx context.Context, services map[string]int) ([]*Tun
 		go func(name string, port int) {
 			tun, err := m.provider.Start(ctx, port)
 			if err != nil {
-				results <- result{err: fmt.Errorf("service %q: %w", name, err)}
+				results <- result{err: fmt.Errorf("%s: service %q: %w", m.provider.Name(), name, err)}
 				return
 			}
 			tun.Service = name
