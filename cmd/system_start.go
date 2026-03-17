@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"os/exec"
 
 	"github.com/outport-app/outport/internal/certmanager"
 	"github.com/outport-app/outport/internal/platform"
+	"github.com/outport-app/outport/internal/portcheck"
 	"github.com/outport-app/outport/internal/registry"
 	"github.com/outport-app/outport/internal/ui"
 	"github.com/spf13/cobra"
@@ -47,10 +47,10 @@ func runSystemStart(cmd *cobra.Command, args []string) error {
 			return nil
 		}
 
-		if isPortInUse(80) {
+		if portcheck.IsListening(80) {
 			return fmt.Errorf("port 80 is already in use — stop the other server first")
 		}
-		if isPortInUse(443) {
+		if portcheck.IsListening(443) {
 			return fmt.Errorf("port 443 is already in use — stop the other server first")
 		}
 
@@ -67,10 +67,10 @@ func runSystemStart(cmd *cobra.Command, args []string) error {
 	}
 
 	// First-time setup
-	if isPortInUse(80) {
+	if portcheck.IsListening(80) {
 		return fmt.Errorf("port 80 is already in use — stop the other server first")
 	}
-	if isPortInUse(443) {
+	if portcheck.IsListening(443) {
 		return fmt.Errorf("port 443 is already in use — stop the other server first")
 	}
 
@@ -191,13 +191,6 @@ func runSystemUninstall(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func isPortInUse(port int) bool {
-	out, err := exec.Command("lsof", "-iTCP:"+fmt.Sprintf("%d", port), "-sTCP:LISTEN", "-t").Output()
-	if err != nil {
-		return false
-	}
-	return len(out) > 0
-}
 
 type systemStartJSON struct {
 	CAGenerated bool `json:"ca_generated"`

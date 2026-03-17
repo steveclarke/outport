@@ -450,12 +450,15 @@ func printDerivedValues(w io.Writer, resolved map[string]map[string]string) {
 
 func printFlatServices(w io.Writer, cfg *config.Config, serviceNames []string, ports map[string]int, hostnames map[string]string, portStatus map[int]bool, httpsEnabled bool) {
 	for _, svcName := range serviceNames {
-		printServiceLine(w, cfg, svcName, ports[svcName], hostnames, portStatus, httpsEnabled)
+		printServiceLine(w, cfg, svcName, ports[svcName], hostnames, portStatus, httpsEnabled, true)
 	}
 }
 
-func printServiceLine(w io.Writer, cfg *config.Config, svcName string, port int, hostnames map[string]string, portStatus map[int]bool, httpsEnabled bool) {
-	svc := cfg.Services[svcName]
+// printServiceLine renders a single service line. When showEnvVar is true,
+// the env var column is included with a 4-space indent (used by up/ports).
+// When false, the line uses a 2-space indent without the env var (used by status).
+func printServiceLine(w io.Writer, cfg *config.Config, svcName string, port int, hostnames map[string]string, portStatus map[int]bool, httpsEnabled bool, showEnvVar bool) {
+	svc, ok := cfg.Services[svcName]
 
 	status := ""
 	if portStatus != nil {
@@ -466,22 +469,38 @@ func printServiceLine(w io.Writer, cfg *config.Config, svcName string, port int,
 		}
 	}
 
-	hostname := resolvedHostname(svc, hostnames, svcName)
-
 	extra := ""
-	if u := serviceURL(svc.Protocol, hostname, port, httpsEnabled); u != "" {
-		extra = "  " + ui.UrlStyle.Render(u)
-	} else if hostname != "" {
-		extra = "  " + ui.HostnameStyle.Render(hostname)
+	if ok {
+		hostname := resolvedHostname(svc, hostnames, svcName)
+		if u := serviceURL(svc.Protocol, hostname, port, httpsEnabled); u != "" {
+			extra = "  " + ui.UrlStyle.Render(u)
+		} else if hostname != "" {
+			extra = "  " + ui.HostnameStyle.Render(hostname)
+		}
 	}
 
-	line := fmt.Sprintf("    %s  %s  %s %-5s%s%s",
-		ui.ServiceStyle.Render(fmt.Sprintf("%-16s", svcName)),
-		ui.EnvVarStyle.Render(fmt.Sprintf("%-20s", svc.EnvVar)),
-		ui.Arrow,
-		ui.PortStyle.Render(fmt.Sprintf("%d", port)),
-		status,
-		extra,
-	)
+	var line string
+	if showEnvVar {
+		envVar := ""
+		if ok {
+			envVar = svc.EnvVar
+		}
+		line = fmt.Sprintf("    %s  %s  %s %-5s%s%s",
+			ui.ServiceStyle.Render(fmt.Sprintf("%-16s", svcName)),
+			ui.EnvVarStyle.Render(fmt.Sprintf("%-20s", envVar)),
+			ui.Arrow,
+			ui.PortStyle.Render(fmt.Sprintf("%d", port)),
+			status,
+			extra,
+		)
+	} else {
+		line = fmt.Sprintf("  %s  %s %-5s%s%s",
+			ui.ServiceStyle.Render(fmt.Sprintf("%-16s", svcName)),
+			ui.Arrow,
+			ui.PortStyle.Render(fmt.Sprintf("%d", port)),
+			status,
+			extra,
+		)
+	}
 	lipgloss.Fprintln(w, line)
 }

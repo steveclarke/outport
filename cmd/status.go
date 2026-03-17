@@ -190,38 +190,13 @@ func printStatusStyled(cmd *cobra.Command, reg *registry.Registry, portStatus ma
 
 		svcNames := sortedMapKeys(alloc.Ports)
 
+		// Use a minimal config for rendering if the real one is missing
+		renderCfg := cfg
+		if renderCfg == nil {
+			renderCfg = &config.Config{Services: make(map[string]config.Service)}
+		}
 		for _, svcName := range svcNames {
-			port := alloc.Ports[svcName]
-
-			status := ""
-			if portStatus != nil {
-				if portStatus[port] {
-					status = "  " + ui.StatusUp
-				} else {
-					status = "  " + ui.StatusDown
-				}
-			}
-
-			extra := ""
-			if cfg != nil {
-				if svc, ok := cfg.Services[svcName]; ok {
-					hostname := resolvedHostname(svc, alloc.Hostnames, svcName)
-					if u := serviceURL(svc.Protocol, hostname, port, httpsEnabled); u != "" {
-						extra = "  " + ui.UrlStyle.Render(u)
-					} else if hostname != "" {
-						extra = "  " + ui.HostnameStyle.Render(hostname)
-					}
-				}
-			}
-
-			line := fmt.Sprintf("  %s  %s %-5s%s%s",
-				ui.ServiceStyle.Render(fmt.Sprintf("%-16s", svcName)),
-				ui.Arrow,
-				ui.PortStyle.Render(fmt.Sprintf("%d", port)),
-				status,
-				extra,
-			)
-			lipgloss.Fprintln(w, line)
+			printServiceLine(w, renderCfg, svcName, alloc.Ports[svcName], alloc.Hostnames, portStatus, httpsEnabled, false)
 		}
 
 		if cfg != nil && statusDerivedFlag {
