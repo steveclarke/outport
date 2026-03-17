@@ -45,6 +45,12 @@ h1, h2, h3, h4, h5, h6,
   letter-spacing: -0.01em;
 }
 
+/* Constrain logo width so nav items don't overflow */
+.VPNavBarTitle .logo {
+  height: 28px;
+  width: auto;
+}
+
 /* Prevent search from filling entire nav */
 .VPNavBarSearch.search {
   flex-grow: 0 !important;

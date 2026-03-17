@@ -128,6 +128,10 @@ derived:
 
 #### Template Syntax
 
+Derived values use bash-style parameter expansion:
+
+**Service variables:**
+
 | Template | Resolves to | Use case |
 |----------|------------|----------|
 | `${service.port}` | `24920` | Raw port number |
@@ -136,6 +140,32 @@ derived:
 | `${service.url:direct}` | `http://localhost:24920` | Server-to-server (API calls, WebSocket) |
 
 Use `${service.url}` for URLs the browser sees — it produces `https://` URLs when the local CA is installed (via `outport system start`). Use `${service.url:direct}` for server-to-server communication that bypasses the proxy (always `http://localhost:{port}`).
+
+**Standalone variables:**
+
+| Template | Resolves to | Use case |
+|----------|------------|----------|
+| `${instance}` | `""` (main) or `xbjf` (worktree) | Instance-aware values |
+
+The `${instance}` variable is empty for main instances and set to the instance code for worktrees.
+
+**Operators:**
+
+| Syntax | Meaning | Example |
+|--------|---------|---------|
+| `${var:-default}` | Use default if var is empty | `${instance:-main}` → `main` for main instances |
+| `${var:+replacement}` | Use replacement if var is non-empty | `${instance:+-${instance}}` → `-xbjf` for worktrees, empty for main |
+
+**Real-world example** — unique Docker Compose project names per instance:
+
+```yaml
+derived:
+  COMPOSE_PROJECT_NAME:
+    value: "myapp${instance:+-${instance}}"
+    env_file: .env
+```
+
+This produces `myapp` for the main instance and `myapp-xbjf` for worktrees, so `docker compose up` from each checkout creates separate container stacks.
 
 #### Per-File Overrides
 
