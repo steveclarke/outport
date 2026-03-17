@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
 )
@@ -27,13 +26,7 @@ func runGC(cmd *cobra.Command, args []string) error {
 
 	var removed []string
 	for key, alloc := range reg.Projects {
-		stale := false
-		if _, err := os.Stat(alloc.ProjectDir); os.IsNotExist(err) {
-			stale = true
-		} else if loadProjectConfig(alloc.ProjectDir) == nil {
-			stale = true
-		}
-		if stale {
+		if stale, _ := isStale(alloc.ProjectDir); stale {
 			removed = append(removed, key)
 			delete(reg.Projects, key)
 		}

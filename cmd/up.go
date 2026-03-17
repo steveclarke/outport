@@ -325,6 +325,20 @@ func buildServiceMap(cfg *config.Config, ports map[string]int, hostnames map[str
 	return services
 }
 
+// uniformValue returns the common value if all entries share the same value,
+// or ("", false) if values differ across files.
+func uniformValue(fileValues map[string]string) (string, bool) {
+	var first string
+	for _, v := range fileValues {
+		if first == "" {
+			first = v
+		} else if v != first {
+			return "", false
+		}
+	}
+	return first, true
+}
+
 func buildDerivedMap(derived map[string]config.DerivedValue, resolved map[string]map[string]string) map[string]derivedJSON {
 	if len(resolved) == 0 {
 		return nil
@@ -332,20 +346,9 @@ func buildDerivedMap(derived map[string]config.DerivedValue, resolved map[string
 	m := make(map[string]derivedJSON)
 	for name, fileValues := range resolved {
 		dv := derived[name]
-		// If all files have the same resolved value, use the simple format
-		allSame := true
-		var commonValue string
-		for _, v := range fileValues {
-			if commonValue == "" {
-				commonValue = v
-			} else if v != commonValue {
-				allSame = false
-				break
-			}
-		}
-		if allSame {
+		if val, ok := uniformValue(fileValues); ok {
 			m[name] = derivedJSON{
-				Value:    commonValue,
+				Value:    val,
 				EnvFiles: dv.EnvFiles,
 			}
 		} else {
@@ -415,18 +418,7 @@ func printDerivedValues(w io.Writer, resolved map[string]map[string]string) {
 	names := sortedMapKeys(resolved)
 	for _, name := range names {
 		fileValues := resolved[name]
-		// Check if all files have the same value
-		allSame := true
-		var commonValue string
-		for _, v := range fileValues {
-			if commonValue == "" {
-				commonValue = v
-			} else if v != commonValue {
-				allSame = false
-				break
-			}
-		}
-		if allSame {
+		if commonValue, allSame := uniformValue(fileValues); allSame {
 			line := fmt.Sprintf("    %s  %s %s",
 				ui.EnvVarStyle.Render(fmt.Sprintf("%-36s", name)),
 				ui.Arrow,

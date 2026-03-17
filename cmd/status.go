@@ -55,6 +55,18 @@ func loadProjectConfig(projectDir string) *config.Config {
 	return cfg
 }
 
+// isStale checks whether a registry entry's project directory or config
+// no longer exists, returning a reason string if stale.
+func isStale(projectDir string) (bool, string) {
+	if _, err := os.Stat(projectDir); os.IsNotExist(err) {
+		return true, "(not found)"
+	}
+	if loadProjectConfig(projectDir) == nil {
+		return true, "(config missing)"
+	}
+	return false, ""
+}
+
 // formatProjectKey returns just the project name for main instances,
 // or "project/instance" for non-main instances.
 func formatProjectKey(key string) string {
@@ -162,16 +174,7 @@ func printStatusStyled(cmd *cobra.Command, reg *registry.Registry, portStatus ma
 		alloc := reg.Projects[key]
 		cfg := loadProjectConfig(alloc.ProjectDir)
 
-		// Detect stale: directory missing or config missing
-		stale := false
-		staleReason := ""
-		if _, err := os.Stat(alloc.ProjectDir); os.IsNotExist(err) {
-			stale = true
-			staleReason = "(not found)"
-		} else if cfg == nil {
-			stale = true
-			staleReason = "(config missing)"
-		}
+		stale, staleReason := isStale(alloc.ProjectDir)
 
 		marker := ""
 		if key == currentKey {

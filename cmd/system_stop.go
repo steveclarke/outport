@@ -30,17 +30,31 @@ func init() {
 	systemCmd.AddCommand(systemRestartCmd)
 }
 
+func requireSetup() error {
+	if !platform.IsSetup() {
+		return fmt.Errorf("outport is not set up. Run 'outport system start' first")
+	}
+	return nil
+}
+
+func resolveAndWritePlist() error {
+	outportBin, err := exec.LookPath("outport")
+	if err != nil {
+		return fmt.Errorf("could not find outport binary in PATH: %w", err)
+	}
+	return platform.WritePlist(outportBin)
+}
+
 func runSystemStop(cmd *cobra.Command, args []string) error {
 	w := cmd.OutOrStdout()
 
-	if !platform.IsSetup() {
-		return fmt.Errorf("outport is not set up. Run 'outport system start' first")
+	if err := requireSetup(); err != nil {
+		return err
 	}
 
 	if !platform.IsAgentLoaded() {
 		if jsonFlag {
-			fmt.Fprintln(w, `{"status": "already_stopped"}`)
-			return nil
+			return printSystemStatusJSON(w, "already_stopped")
 		}
 		fmt.Fprintln(w, "Outport system is not running.")
 		return nil
@@ -51,8 +65,7 @@ func runSystemStop(cmd *cobra.Command, args []string) error {
 	}
 
 	if jsonFlag {
-		fmt.Fprintln(w, `{"status": "stopped"}`)
-		return nil
+		return printSystemStatusJSON(w, "stopped")
 	}
 
 	fmt.Fprintln(w, ui.SuccessStyle.Render("Outport system stopped."))
@@ -62,16 +75,12 @@ func runSystemStop(cmd *cobra.Command, args []string) error {
 func runSystemRestart(cmd *cobra.Command, args []string) error {
 	w := cmd.OutOrStdout()
 
-	if !platform.IsSetup() {
-		return fmt.Errorf("outport is not set up. Run 'outport system start' to install")
+	if err := requireSetup(); err != nil {
+		return err
 	}
 
 	// Re-write plist to pick up new binary path after upgrades
-	outportBin, err := exec.LookPath("outport")
-	if err != nil {
-		return fmt.Errorf("could not find outport binary in PATH: %w", err)
-	}
-	if err := platform.WritePlist(outportBin); err != nil {
+	if err := resolveAndWritePlist(); err != nil {
 		return err
 	}
 
@@ -88,8 +97,7 @@ func runSystemRestart(cmd *cobra.Command, args []string) error {
 	}
 
 	if jsonFlag {
-		fmt.Fprintln(w, `{"status": "restarted"}`)
-		return nil
+		return printSystemStatusJSON(w, "restarted")
 	}
 
 	fmt.Fprintln(w, ui.SuccessStyle.Render("Outport system restarted."))

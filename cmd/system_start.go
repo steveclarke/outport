@@ -39,8 +39,7 @@ func runSystemStart(cmd *cobra.Command, args []string) error {
 	if platform.IsSetup() {
 		if platform.IsAgentLoaded() {
 			if jsonFlag {
-				fmt.Fprintln(w, `{"status": "already_running"}`)
-				return nil
+				return printSystemStatusJSON(w, "already_running")
 			}
 			fmt.Fprintln(w, "Outport system is already running.")
 			return nil
@@ -51,8 +50,7 @@ func runSystemStart(cmd *cobra.Command, args []string) error {
 		}
 
 		if jsonFlag {
-			fmt.Fprintln(w, `{"status": "started"}`)
-			return nil
+			return printSystemStatusJSON(w, "started")
 		}
 
 		fmt.Fprintln(w, ui.SuccessStyle.Render("Outport system started."))
@@ -67,11 +65,6 @@ func runSystemStart(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("port 443 is already in use — stop the other server first")
 	}
 
-	outportBin, err := exec.LookPath("outport")
-	if err != nil {
-		return fmt.Errorf("could not find outport binary in PATH: %w", err)
-	}
-
 	caGenerated := false
 	caTrusted := false
 
@@ -80,7 +73,7 @@ func runSystemStart(cmd *cobra.Command, args []string) error {
 		fmt.Fprintln(w)
 	}
 
-	if err := platform.WritePlist(outportBin); err != nil {
+	if err := resolveAndWritePlist(); err != nil {
 		return err
 	}
 
