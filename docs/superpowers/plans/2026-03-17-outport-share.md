@@ -680,11 +680,12 @@ import (
 )
 
 var shareCmd = &cobra.Command{
-	Use:   "share [service...]",
-	Short: "Tunnel HTTP services to public URLs",
-	Long:  "Creates public tunnel URLs for HTTP services using Cloudflare quick tunnels. Shares all HTTP services by default, or specify service names to share specific ones.",
-	Args:  cobra.ArbitraryArgs,
-	RunE:  runShare,
+	Use:     "share [service...]",
+	Short:   "Tunnel HTTP services to public URLs",
+	Long:    "Creates public tunnel URLs for HTTP services using Cloudflare quick tunnels. Shares all HTTP services by default, or specify service names to share specific ones.",
+	GroupID: "project",
+	Args:    cobra.ArbitraryArgs,
+	RunE:    runShare,
 }
 
 func init() {
@@ -699,7 +700,7 @@ func runShare(cmd *cobra.Command, args []string) error {
 
 	alloc, ok := ctx.Reg.Get(ctx.Cfg.Name, ctx.Instance)
 	if !ok {
-		return fmt.Errorf("No ports allocated. Run 'outport apply' first.")
+		return fmt.Errorf("No ports allocated. Run 'outport up' first.")
 	}
 
 	services, err := resolveShareServices(ctx, args)
@@ -905,7 +906,6 @@ func TestShare_NoConfig(t *testing.T) {
 	t.Setenv("HOME", home)
 	t.Chdir(t.TempDir())
 	jsonFlag = false
-	useHTTPS = false
 
 	rootCmd.SetOut(new(bytes.Buffer))
 	rootCmd.SetErr(new(bytes.Buffer))
@@ -936,7 +936,7 @@ func TestShare_NoAllocation(t *testing.T) {
 
 func TestShare_UnknownService(t *testing.T) {
 	setupProject(t, testConfigWithHTTP)
-	executeCmd(t, "apply") // allocate ports first
+	executeCmd(t, "up") // allocate ports first
 
 	rootCmd.SetOut(new(bytes.Buffer))
 	rootCmd.SetErr(new(bytes.Buffer))
@@ -953,7 +953,7 @@ func TestShare_UnknownService(t *testing.T) {
 
 func TestShare_ServiceWithoutProtocol(t *testing.T) {
 	setupProject(t, testConfigWithHTTP)
-	executeCmd(t, "apply")
+	executeCmd(t, "up")
 
 	rootCmd.SetOut(new(bytes.Buffer))
 	rootCmd.SetErr(new(bytes.Buffer))
@@ -971,7 +971,7 @@ func TestShare_ServiceWithoutProtocol(t *testing.T) {
 
 func TestShare_NoHTTPServices(t *testing.T) {
 	setupProject(t, testConfig) // testConfig has no protocol on any service
-	executeCmd(t, "apply")
+	executeCmd(t, "up")
 
 	rootCmd.SetOut(new(bytes.Buffer))
 	rootCmd.SetErr(new(bytes.Buffer))
@@ -989,7 +989,7 @@ func TestShare_NoHTTPServices(t *testing.T) {
 
 func TestShare_CloudflaredNotInstalled(t *testing.T) {
 	setupProject(t, testConfigWithHTTP)
-	executeCmd(t, "apply")
+	executeCmd(t, "up")
 
 	// Set PATH to empty dir so cloudflared can't be found
 	t.Setenv("PATH", t.TempDir())
