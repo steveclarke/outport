@@ -17,6 +17,7 @@ import (
 )
 
 var statusCheckFlag bool
+var statusDerivedFlag bool
 
 var statusCmd = &cobra.Command{
 	Use:   "status",
@@ -26,6 +27,7 @@ var statusCmd = &cobra.Command{
 
 func init() {
 	statusCmd.Flags().BoolVar(&statusCheckFlag, "check", false, "check if ports are accepting connections")
+	statusCmd.Flags().BoolVar(&statusDerivedFlag, "derived", false, "show derived values")
 	rootCmd.AddCommand(statusCmd)
 }
 
@@ -127,7 +129,7 @@ func printStatusJSON(cmd *cobra.Command, reg *registry.Registry, portStatus map[
 		}
 
 		var derived map[string]derivedJSON
-		if cfg != nil {
+		if cfg != nil && statusDerivedFlag {
 			derived = buildDerivedMap(cfg.Derived, resolveDerivedFromAlloc(cfg, alloc.Ports, alloc.Hostnames))
 		}
 
@@ -222,7 +224,7 @@ func printStatusStyled(cmd *cobra.Command, reg *registry.Registry, portStatus ma
 			lipgloss.Fprintln(w, line)
 		}
 
-		if cfg != nil {
+		if cfg != nil && statusDerivedFlag {
 			if resolved := resolveDerivedFromAlloc(cfg, alloc.Ports, alloc.Hostnames); len(resolved) > 0 {
 				printDerivedValues(w, resolved)
 			}
