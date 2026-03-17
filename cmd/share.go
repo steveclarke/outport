@@ -68,9 +68,12 @@ func runShare(cmd *cobra.Command, args []string) error {
 	defer mgr.StopAll()
 
 	if jsonFlag {
-		return printShareJSON(cmd, tunnels)
+		if err := printShareJSON(cmd, tunnels); err != nil {
+			return err
+		}
+	} else {
+		printShareStyled(cmd, tunnels)
 	}
-	printShareStyled(cmd, tunnels)
 
 	// Block until signal
 	<-sigCtx.Done()
