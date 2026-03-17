@@ -11,19 +11,20 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var unapplyCmd = &cobra.Command{
-	Use:   "unapply",
-	Short: "Remove ports and clean .env files",
-	Long:  "Removes the managed block from all .env files and removes the project from the central registry.",
-	Args:  NoArgs,
-	RunE:  runUnapply,
+var downCmd = &cobra.Command{
+	Use:     "down",
+	Short:   "Remove this project from outport",
+	Long:    "Removes the managed block from all .env files and removes the project from the central registry.",
+	GroupID: "project",
+	Args:    NoArgs,
+	RunE:    runDown,
 }
 
 func init() {
-	rootCmd.AddCommand(unapplyCmd)
+	rootCmd.AddCommand(downCmd)
 }
 
-func runUnapply(cmd *cobra.Command, args []string) error {
+func runDown(cmd *cobra.Command, args []string) error {
 	ctx, err := loadProjectContext()
 	if err != nil {
 		return err
@@ -44,9 +45,9 @@ func runUnapply(cmd *cobra.Command, args []string) error {
 	}
 
 	if jsonFlag {
-		return printUnapplyJSON(cmd, cfg.Name, ctx.Instance, cleanedFiles)
+		return printDownJSON(cmd, cfg.Name, ctx.Instance, cleanedFiles)
 	}
-	return printUnapplyStyled(cmd, cfg.Name, ctx.Instance, cleanedFiles)
+	return printDownStyled(cmd, cfg.Name, ctx.Instance, cleanedFiles)
 }
 
 // cleanEnvFiles removes the outport fenced block from all .env files
@@ -74,7 +75,7 @@ func cleanEnvFiles(dir string, cfg *config.Config) []string {
 	return cleaned
 }
 
-func printUnapplyJSON(cmd *cobra.Command, project, instance string, cleanedFiles []string) error {
+func printDownJSON(cmd *cobra.Command, project, instance string, cleanedFiles []string) error {
 	out := struct {
 		Project      string   `json:"project"`
 		Instance     string   `json:"instance"`
@@ -83,7 +84,7 @@ func printUnapplyJSON(cmd *cobra.Command, project, instance string, cleanedFiles
 	}{
 		Project:      project,
 		Instance:     instance,
-		Status:       "unapplied",
+		Status:       "removed",
 		CleanedFiles: cleanedFiles,
 	}
 	data, err := json.MarshalIndent(out, "", "  ")
@@ -94,10 +95,10 @@ func printUnapplyJSON(cmd *cobra.Command, project, instance string, cleanedFiles
 	return nil
 }
 
-func printUnapplyStyled(cmd *cobra.Command, project, instanceName string, cleanedFiles []string) error {
+func printDownStyled(cmd *cobra.Command, project, instanceName string, cleanedFiles []string) error {
 	w := cmd.OutOrStdout()
 	printHeader(w, project, instanceName)
-	fmt.Fprintln(w, ui.SuccessStyle.Render("Unapplied. All ports freed."))
+	fmt.Fprintln(w, ui.SuccessStyle.Render("Done. All ports freed."))
 	if len(cleanedFiles) > 0 {
 		fmt.Fprintln(w, ui.SuccessStyle.Render("Cleaned managed variables from:"))
 		for _, f := range cleanedFiles {

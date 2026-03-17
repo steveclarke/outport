@@ -6,7 +6,6 @@ import (
 	"os"
 	"strings"
 
-	"charm.land/huh/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/outport-app/outport/internal/certmanager"
 	"github.com/outport-app/outport/internal/config"
@@ -19,17 +18,17 @@ import (
 var statusCheckFlag bool
 var statusDerivedFlag bool
 
-var statusCmd = &cobra.Command{
+var systemStatusCmd = &cobra.Command{
 	Use:   "status",
-	Short: "Show all registered projects and their ports",
+	Short: "Show all registered projects",
 	Args:  NoArgs,
 	RunE:  runStatus,
 }
 
 func init() {
-	statusCmd.Flags().BoolVar(&statusCheckFlag, "check", false, "check if ports are accepting connections")
-	statusCmd.Flags().BoolVar(&statusDerivedFlag, "derived", false, "show derived values")
-	rootCmd.AddCommand(statusCmd)
+	systemStatusCmd.Flags().BoolVar(&statusCheckFlag, "check", false, "check if ports are accepting connections")
+	systemStatusCmd.Flags().BoolVar(&statusDerivedFlag, "derived", false, "show derived values")
+	systemCmd.AddCommand(systemStatusCmd)
 }
 
 func currentProjectKey(reg *registry.Registry) string {
@@ -56,6 +55,18 @@ func loadProjectConfig(projectDir string) *config.Config {
 	return cfg
 }
 
+// isStale checks whether a registry entry's project directory or config
+// no longer exists, returning a reason string if stale.
+func isStale(projectDir string) (bool, string) {
+	if _, err := os.Stat(projectDir); os.IsNotExist(err) {
+		return true, "(not found)"
+	}
+	if loadProjectConfig(projectDir) == nil {
+		return true, "(config missing)"
+	}
+	return false, ""
+}
+
 // formatProjectKey returns just the project name for main instances,
 // or "project/instance" for non-main instances.
 func formatProjectKey(key string) string {
@@ -73,7 +84,7 @@ func runStatus(cmd *cobra.Command, args []string) error {
 	}
 
 	if len(reg.Projects) == 0 {
-		fmt.Fprintln(cmd.OutOrStdout(), "No projects registered. Run 'outport apply' in a project directory.")
+		fmt.Fprintln(cmd.OutOrStdout(), "No projects registered. Run 'outport up' in a project directory.")
 		return nil
 	}
 
@@ -158,25 +169,12 @@ func printStatusStyled(cmd *cobra.Command, reg *registry.Registry, portStatus ma
 	currentKey := currentProjectKey(reg)
 
 	keys := sortedMapKeys(reg.Projects)
-	var staleKeys []string
 
 	for i, key := range keys {
 		alloc := reg.Projects[key]
 		cfg := loadProjectConfig(alloc.ProjectDir)
 
-		// Detect stale: directory missing or config missing
-		stale := false
-		staleReason := ""
-		if _, err := os.Stat(alloc.ProjectDir); os.IsNotExist(err) {
-			stale = true
-			staleReason = "(not found)"
-		} else if cfg == nil {
-			stale = true
-			staleReason = "(config missing)"
-		}
-		if stale {
-			staleKeys = append(staleKeys, key)
-		}
+		stale, staleReason := isStale(alloc.ProjectDir)
 
 		marker := ""
 		if key == currentKey {
@@ -231,40 +229,13 @@ func printStatusStyled(cmd *cobra.Command, reg *registry.Registry, portStatus ma
 			}
 		}
 
+		// Show stale hint
+		if stale {
+			fmt.Fprintf(w, "  %s\n", ui.DimStyle.Render("(stale — run 'outport system gc' to remove)"))
+		}
+
 		if i < len(keys)-1 {
 			lipgloss.Fprintln(w)
-		}
-	}
-
-	// Prompt to remove stale entries
-	if len(staleKeys) > 0 {
-		lipgloss.Fprintln(w)
-		removed := false
-		for _, key := range staleKeys {
-			var confirm bool
-			err := huh.NewConfirm().
-				Title(fmt.Sprintf("Remove stale project %s from registry?", key)).
-				Affirmative("Yes").
-				Negative("No").
-				Value(&confirm).
-				Run()
-			if err != nil {
-				break
-			}
-
-			if confirm {
-				parts := strings.SplitN(key, "/", 2)
-				if len(parts) == 2 {
-					reg.Remove(parts[0], parts[1])
-				}
-				fmt.Fprintf(w, "  Removed %s.\n", key)
-				removed = true
-			}
-		}
-		if removed {
-			if err := reg.Save(); err != nil {
-				return fmt.Errorf("Could not save registry: %w.", err)
-			}
 		}
 	}
 

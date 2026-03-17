@@ -14,11 +14,12 @@ import (
 )
 
 var renameCmd = &cobra.Command{
-	Use:   "rename <old> <new>",
-	Short: "Rename an instance of the current project",
-	Long:  "Renames an instance in the registry and updates hostnames in .env files.",
-	Args: ExactArgs(2, "requires two arguments: outport rename <old-name> <new-name>"),
-	RunE:  runRename,
+	Use:     "rename <old> <new>",
+	Short:   "Rename an instance of the current project",
+	Long:    "Renames an instance in the registry and updates hostnames in .env files.",
+	GroupID: "project",
+	Args:    ExactArgs(2, "requires two arguments: outport rename <old-name> <new-name>"),
+	RunE:    runRename,
 }
 
 func init() {

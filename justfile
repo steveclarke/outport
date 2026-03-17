@@ -1,3 +1,10 @@
+# Install dev tools (gotestsum, golangci-lint, goreleaser)
+setup:
+    go install gotest.tools/gotestsum@latest
+    go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+    go install github.com/goreleaser/goreleaser/v2@latest
+    npm install
+
 # Build the binary
 build:
     @mkdir -p dist

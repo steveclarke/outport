@@ -30,6 +30,11 @@ func init() {
 	rootCmd.Version = version
 	rootCmd.PersistentFlags().BoolVar(&jsonFlag, "json", false, "output in JSON format")
 
+	rootCmd.AddGroup(
+		&cobra.Group{ID: "project", Title: "Project Commands:"},
+		&cobra.Group{ID: "system", Title: "System Commands:"},
+	)
+
 	// Wrap Cobra's flag errors so they trigger usage display
 	rootCmd.SetFlagErrorFunc(func(cmd *cobra.Command, err error) error {
 		return &FlagError{err: err}

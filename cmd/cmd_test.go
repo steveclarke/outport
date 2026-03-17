@@ -32,9 +32,11 @@ func setupProject(t *testing.T, configYAML string) string {
 
 	t.Chdir(dir)
 
-	// Reset flags between tests
+	// Reset flags and disable port-busy checks so tests aren't affected
+	// by locally running services (e.g., postgres on 5432)
 	jsonFlag = false
 	useHTTPS = false
+	isPortBusy = func(int) bool { return false }
 
 	return dir
 }
@@ -65,14 +67,14 @@ func executeCmd(t *testing.T, args ...string) string {
 	return buf.String()
 }
 
-// --- apply ---
+// --- up ---
 
-func TestApply_AllocatesPortsAndWritesEnv(t *testing.T) {
+func TestUp_AllocatesPortsAndWritesEnv(t *testing.T) {
 	dir := setupProject(t, testConfig)
 
-	output := executeCmd(t, "apply", "--json")
+	output := executeCmd(t, "up", "--json")
 
-	var result applyJSON
+	var result upJSON
 	if err := json.Unmarshal([]byte(output), &result); err != nil {
 		t.Fatalf("invalid JSON output: %v\nOutput: %s", err, output)
 	}
@@ -120,13 +122,13 @@ func TestApply_AllocatesPortsAndWritesEnv(t *testing.T) {
 	}
 }
 
-func TestApply_IsIdempotent(t *testing.T) {
+func TestUp_IsIdempotent(t *testing.T) {
 	setupProject(t, testConfig)
 
-	out1 := executeCmd(t, "apply", "--json")
-	out2 := executeCmd(t, "apply", "--json")
+	out1 := executeCmd(t, "up", "--json")
+	out2 := executeCmd(t, "up", "--json")
 
-	var r1, r2 applyJSON
+	var r1, r2 upJSON
 	json.Unmarshal([]byte(out1), &r1)
 	json.Unmarshal([]byte(out2), &r2)
 
@@ -138,10 +140,10 @@ func TestApply_IsIdempotent(t *testing.T) {
 	}
 }
 
-func TestApply_StyledOutput(t *testing.T) {
+func TestUp_StyledOutput(t *testing.T) {
 	setupProject(t, testConfig)
 
-	output := executeCmd(t, "apply")
+	output := executeCmd(t, "up")
 
 	if !bytes.Contains([]byte(output), []byte("testapp")) {
 		t.Errorf("styled output missing project name, got:\n%s", output)
@@ -151,7 +153,7 @@ func TestApply_StyledOutput(t *testing.T) {
 	}
 }
 
-func TestApply_NoConfig(t *testing.T) {
+func TestUp_NoConfig(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 
@@ -161,7 +163,7 @@ func TestApply_NoConfig(t *testing.T) {
 
 	rootCmd.SetOut(new(bytes.Buffer))
 	rootCmd.SetErr(new(bytes.Buffer))
-	rootCmd.SetArgs([]string{"apply"})
+	rootCmd.SetArgs([]string{"up"})
 
 	err := rootCmd.Execute()
 	if err == nil {
@@ -169,7 +171,7 @@ func TestApply_NoConfig(t *testing.T) {
 	}
 }
 
-// --- apply with derived values ---
+// --- up with derived values ---
 
 const testConfigWithDerived = `name: testapp
 services:
@@ -193,14 +195,14 @@ derived:
     env_file: backend/.env
 `
 
-func TestApply_WithDerivedValues(t *testing.T) {
+func TestUp_WithDerivedValues(t *testing.T) {
 	dir := setupProject(t, testConfigWithDerived)
 	os.MkdirAll(filepath.Join(dir, "backend"), 0755)
 	os.MkdirAll(filepath.Join(dir, "frontend"), 0755)
 
-	output := executeCmd(t, "apply", "--json")
+	output := executeCmd(t, "up", "--json")
 
-	var result applyJSON
+	var result upJSON
 	if err := json.Unmarshal([]byte(output), &result); err != nil {
 		t.Fatalf("invalid JSON: %v\nOutput: %s", err, output)
 	}
@@ -240,12 +242,12 @@ func TestApply_WithDerivedValues(t *testing.T) {
 	}
 }
 
-func TestApply_DerivedStyledOutput(t *testing.T) {
+func TestUp_DerivedStyledOutput(t *testing.T) {
 	dir := setupProject(t, testConfigWithDerived)
 	os.MkdirAll(filepath.Join(dir, "backend"), 0755)
 	os.MkdirAll(filepath.Join(dir, "frontend"), 0755)
 
-	output := executeCmd(t, "apply")
+	output := executeCmd(t, "up")
 
 	if !bytes.Contains([]byte(output), []byte("derived:")) {
 		t.Errorf("styled output missing 'derived:' section, got:\n%s", output)
@@ -255,7 +257,7 @@ func TestApply_DerivedStyledOutput(t *testing.T) {
 	}
 }
 
-func TestApply_DerivedPerFileValues(t *testing.T) {
+func TestUp_DerivedPerFileValues(t *testing.T) {
 	dir := setupProject(t, `name: testapp
 services:
   rails:
@@ -276,9 +278,9 @@ derived:
 	os.MkdirAll(filepath.Join(dir, "frontend/main"), 0755)
 	os.MkdirAll(filepath.Join(dir, "frontend/portal"), 0755)
 
-	output := executeCmd(t, "apply", "--json")
+	output := executeCmd(t, "up", "--json")
 
-	var result applyJSON
+	var result upJSON
 	if err := json.Unmarshal([]byte(output), &result); err != nil {
 		t.Fatalf("invalid JSON: %v\nOutput: %s", err, output)
 	}
@@ -306,10 +308,10 @@ derived:
 	}
 }
 
-func TestApply_NoDerived_OmitsFromJSON(t *testing.T) {
+func TestUp_NoDerived_OmitsFromJSON(t *testing.T) {
 	setupProject(t, testConfig)
 
-	output := executeCmd(t, "apply", "--json")
+	output := executeCmd(t, "up", "--json")
 
 	if bytes.Contains([]byte(output), []byte("derived")) {
 		t.Errorf("JSON output should omit derived when empty, got:\n%s", output)
@@ -322,7 +324,7 @@ func TestPorts_ShowsAllocatedPorts(t *testing.T) {
 	setupProject(t, testConfig)
 
 	// First allocate ports
-	executeCmd(t, "apply", "--json")
+	executeCmd(t, "up", "--json")
 
 	// Then query them
 	output := executeCmd(t, "ports", "--json")
@@ -361,28 +363,28 @@ func TestPorts_NoAllocation(t *testing.T) {
 	}
 }
 
-// --- status ---
+// --- system status ---
 
-func TestStatus_EmptyRegistry(t *testing.T) {
+func TestSystemStatus_EmptyRegistry(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	t.Chdir(t.TempDir())
 	jsonFlag = false
 
-	output := executeCmd(t, "status")
+	output := executeCmd(t, "system", "status")
 
 	if !bytes.Contains([]byte(output), []byte("No projects registered")) {
 		t.Errorf("expected 'No projects registered', got:\n%s", output)
 	}
 }
 
-func TestStatus_ShowsProjects(t *testing.T) {
+func TestSystemStatus_ShowsProjects(t *testing.T) {
 	setupProject(t, testConfig)
 
 	// Populate registry via apply
-	executeCmd(t, "apply", "--json")
+	executeCmd(t, "up", "--json")
 
-	output := executeCmd(t, "status", "--json")
+	output := executeCmd(t, "system", "status", "--json")
 
 	var entries []statusEntryJSON
 	if err := json.Unmarshal([]byte(output), &entries); err != nil {
@@ -400,7 +402,7 @@ func TestStatus_ShowsProjects(t *testing.T) {
 	}
 }
 
-func TestStatus_StaleProjectMarkedNotFound(t *testing.T) {
+func TestSystemStatus_StaleProjectMarkedNotFound(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	t.Chdir(t.TempDir())
@@ -421,7 +423,7 @@ func TestStatus_StaleProjectMarkedNotFound(t *testing.T) {
 	}
 
 	// Use JSON mode to avoid the interactive prompt
-	output := executeCmd(t, "status", "--json")
+	output := executeCmd(t, "system", "status", "--json")
 
 	var entries []statusEntryJSON
 	if err := json.Unmarshal([]byte(output), &entries); err != nil {
@@ -440,7 +442,7 @@ func TestStatus_StaleProjectMarkedNotFound(t *testing.T) {
 	}
 }
 
-func TestStatus_StaleProjectInJSON(t *testing.T) {
+func TestSystemStatus_StaleProjectInJSON(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	t.Chdir(t.TempDir())
@@ -461,7 +463,7 @@ func TestStatus_StaleProjectInJSON(t *testing.T) {
 	}
 
 	// JSON mode doesn't prompt — just verifies stale entries show up
-	output := executeCmd(t, "status", "--json")
+	output := executeCmd(t, "system", "status", "--json")
 
 	var entries []statusEntryJSON
 	if err := json.Unmarshal([]byte(output), &entries); err != nil {
@@ -476,9 +478,9 @@ func TestStatus_StaleProjectInJSON(t *testing.T) {
 	// Stale removal is tested via gc command, which doesn't use interactive prompts
 }
 
-// --- gc ---
+// --- system gc ---
 
-func TestGC_RemovesStaleEntries(t *testing.T) {
+func TestSystemGC_RemovesStaleEntries(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	t.Chdir(t.TempDir())
@@ -499,7 +501,7 @@ func TestGC_RemovesStaleEntries(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	output := executeCmd(t, "gc")
+	output := executeCmd(t, "system", "gc")
 
 	if !bytes.Contains([]byte(output), []byte("Removed 1 stale")) {
 		t.Errorf("expected removal message, got:\n%s", output)
@@ -518,7 +520,7 @@ func TestGC_RemovesStaleEntries(t *testing.T) {
 	}
 }
 
-func TestGC_NoStaleEntries(t *testing.T) {
+func TestSystemGC_NoStaleEntries(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 
@@ -542,14 +544,14 @@ func TestGC_NoStaleEntries(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	output := executeCmd(t, "gc")
+	output := executeCmd(t, "system", "gc")
 
 	if !bytes.Contains([]byte(output), []byte("No stale entries")) {
 		t.Errorf("expected 'No stale entries', got:\n%s", output)
 	}
 }
 
-func TestGC_RemovesMissingConfig(t *testing.T) {
+func TestSystemGC_RemovesMissingConfig(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 
@@ -571,7 +573,7 @@ func TestGC_RemovesMissingConfig(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	output := executeCmd(t, "gc")
+	output := executeCmd(t, "system", "gc")
 
 	if !bytes.Contains([]byte(output), []byte("Removed 1 stale")) {
 		t.Errorf("expected removal of config-missing entry, got:\n%s", output)
@@ -583,14 +585,14 @@ func TestGC_RemovesMissingConfig(t *testing.T) {
 	}
 }
 
-// --- apply --force ---
+// --- up --force ---
 
-func TestApply_ForceReallocatesWithPreferredPorts(t *testing.T) {
+func TestUp_ForceReallocatesWithPreferredPorts(t *testing.T) {
 	setupProject(t, testConfig)
 
 	// First allocation
-	out1 := executeCmd(t, "apply", "--json")
-	var r1 applyJSON
+	out1 := executeCmd(t, "up", "--json")
+	var r1 upJSON
 	json.Unmarshal([]byte(out1), &r1)
 
 	// Ports should be preferred (3000, 5432) since nothing else is registered
@@ -599,19 +601,19 @@ func TestApply_ForceReallocatesWithPreferredPorts(t *testing.T) {
 	}
 
 	// Force re-allocation should produce the same preferred ports
-	out2 := executeCmd(t, "apply", "--force", "--json")
-	var r2 applyJSON
+	out2 := executeCmd(t, "up", "--force", "--json")
+	var r2 upJSON
 	json.Unmarshal([]byte(out2), &r2)
 
 	if r2.Services["web"].Port != 3000 {
 		t.Errorf("apply --force: web port = %d, want 3000", r2.Services["web"].Port)
 	}
 	if r2.Services["postgres"].Port != 5432 {
-		t.Errorf("apply --force: postgres port = %d, want 5432", r2.Services["postgres"].Port)
+		t.Errorf("up --force: postgres port = %d, want 5432", r2.Services["postgres"].Port)
 	}
 }
 
-func TestStatus_MissingConfigMarkedStale(t *testing.T) {
+func TestSystemStatus_MissingConfigMarkedStale(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 
@@ -635,7 +637,7 @@ func TestStatus_MissingConfigMarkedStale(t *testing.T) {
 
 	// Use JSON mode to avoid huh interactive prompt which can hang
 	// when stdin is not a real terminal (same reason init tests were removed)
-	output := executeCmd(t, "status", "--json")
+	output := executeCmd(t, "system", "status", "--json")
 
 	var entries []statusEntryJSON
 	if err := json.Unmarshal([]byte(output), &entries); err != nil {
@@ -677,7 +679,7 @@ func TestInit_ErrorWhenConfigExists(t *testing.T) {
 
 func TestPorts_StyledOutput(t *testing.T) {
 	setupProject(t, testConfig)
-	executeCmd(t, "apply")
+	executeCmd(t, "up")
 
 	output := executeCmd(t, "ports")
 
@@ -689,16 +691,16 @@ func TestPorts_StyledOutput(t *testing.T) {
 	}
 }
 
-// --- unregister ---
+// --- down ---
 
-func TestUnapply_RemovesFromRegistry(t *testing.T) {
+func TestDown_RemovesFromRegistry(t *testing.T) {
 	setupProject(t, testConfig)
-	executeCmd(t, "apply")
+	executeCmd(t, "up")
 
-	output := executeCmd(t, "unapply")
+	output := executeCmd(t, "down")
 
-	if !bytes.Contains([]byte(output), []byte("Unapplied")) {
-		t.Errorf("expected 'Unapplied' message, got:\n%s", output)
+	if !bytes.Contains([]byte(output), []byte("Done")) {
+		t.Errorf("expected 'Done' message, got:\n%s", output)
 	}
 
 	portsOutput := executeCmd(t, "ports")
@@ -707,13 +709,13 @@ func TestUnapply_RemovesFromRegistry(t *testing.T) {
 	}
 }
 
-func TestUnapply_CleansEnvFiles(t *testing.T) {
+func TestDown_CleansEnvFiles(t *testing.T) {
 	dir := setupProject(t, testConfigWithDerived)
 	os.MkdirAll(filepath.Join(dir, "backend"), 0755)
 	os.MkdirAll(filepath.Join(dir, "frontend"), 0755)
 
 	// Apply to write .env files with fenced blocks
-	executeCmd(t, "apply")
+	executeCmd(t, "up")
 
 	// Verify blocks exist before unregister
 	backendEnv, _ := os.ReadFile(filepath.Join(dir, "backend", ".env"))
@@ -722,7 +724,7 @@ func TestUnapply_CleansEnvFiles(t *testing.T) {
 	}
 
 	// Unapply should remove the blocks
-	executeCmd(t, "unapply")
+	executeCmd(t, "down")
 
 	// Verify blocks are gone
 	backendEnv, _ = os.ReadFile(filepath.Join(dir, "backend", ".env"))
@@ -735,13 +737,13 @@ func TestUnapply_CleansEnvFiles(t *testing.T) {
 	}
 }
 
-func TestUnapply_JSONShowsCleanedFiles(t *testing.T) {
+func TestDown_JSONShowsCleanedFiles(t *testing.T) {
 	dir := setupProject(t, testConfigWithDerived)
 	os.MkdirAll(filepath.Join(dir, "backend"), 0755)
 	os.MkdirAll(filepath.Join(dir, "frontend"), 0755)
 
-	executeCmd(t, "apply")
-	output := executeCmd(t, "unapply", "--json")
+	executeCmd(t, "up")
+	output := executeCmd(t, "down", "--json")
 
 	var result struct {
 		Project      string   `json:"project"`
@@ -752,7 +754,7 @@ func TestUnapply_JSONShowsCleanedFiles(t *testing.T) {
 	if err := json.Unmarshal([]byte(output), &result); err != nil {
 		t.Fatalf("invalid JSON: %v\nOutput: %s", err, output)
 	}
-	if result.Status != "unapplied" {
+	if result.Status != "removed" {
 		t.Errorf("status = %q, want unregistered", result.Status)
 	}
 	if len(result.CleanedFiles) == 0 {
@@ -760,12 +762,12 @@ func TestUnapply_JSONShowsCleanedFiles(t *testing.T) {
 	}
 }
 
-func TestUnapply_NotRegistered(t *testing.T) {
+func TestDown_NotRegistered(t *testing.T) {
 	setupProject(t, testConfig)
 
 	rootCmd.SetOut(new(bytes.Buffer))
 	rootCmd.SetErr(new(bytes.Buffer))
-	rootCmd.SetArgs([]string{"unapply"})
+	rootCmd.SetArgs([]string{"down"})
 
 	err := rootCmd.Execute()
 	if err == nil {
@@ -773,11 +775,11 @@ func TestUnapply_NotRegistered(t *testing.T) {
 	}
 }
 
-func TestUnapply_JSON(t *testing.T) {
+func TestDown_JSON(t *testing.T) {
 	setupProject(t, testConfig)
-	executeCmd(t, "apply", "--json")
+	executeCmd(t, "up", "--json")
 
-	output := executeCmd(t, "unapply", "--json")
+	output := executeCmd(t, "down", "--json")
 
 	var result struct {
 		Project  string `json:"project"`
@@ -790,8 +792,8 @@ func TestUnapply_JSON(t *testing.T) {
 	if result.Project != "testapp" {
 		t.Errorf("project = %q, want %q", result.Project, "testapp")
 	}
-	if result.Status != "unapplied" {
-		t.Errorf("status = %q, want %q", result.Status, "unapplied")
+	if result.Status != "removed" {
+		t.Errorf("status = %q, want %q", result.Status, "removed")
 	}
 }
 
@@ -828,7 +830,7 @@ func TestOpen_NoAllocation(t *testing.T) {
 
 func TestOpen_UnknownService(t *testing.T) {
 	setupProject(t, testConfig)
-	executeCmd(t, "apply")
+	executeCmd(t, "up")
 
 	rootCmd.SetOut(new(bytes.Buffer))
 	rootCmd.SetErr(new(bytes.Buffer))
@@ -843,7 +845,7 @@ func TestOpen_UnknownService(t *testing.T) {
 func TestOpen_NoProtocol(t *testing.T) {
 	// postgres has no protocol, so open should error
 	setupProject(t, testConfig)
-	executeCmd(t, "apply")
+	executeCmd(t, "up")
 
 	rootCmd.SetOut(new(bytes.Buffer))
 	rootCmd.SetErr(new(bytes.Buffer))
@@ -875,7 +877,7 @@ func TestRename_Success(t *testing.T) {
 	dir := setupProject(t, testConfigWithHostnames)
 
 	// Apply to create the "main" instance
-	executeCmd(t, "apply", "--json")
+	executeCmd(t, "up", "--json")
 
 	// Rename main → staging
 	output := executeCmd(t, "rename", "--json", "main", "staging")
@@ -946,7 +948,7 @@ func TestRename_CollisionFails(t *testing.T) {
 
 	// Apply from dir1 to create "main" instance
 	t.Chdir(dir1)
-	executeCmd(t, "apply", "--json")
+	executeCmd(t, "up", "--json")
 
 	// Create a second directory for the same project
 	dir2 := t.TempDir()
@@ -955,8 +957,8 @@ func TestRename_CollisionFails(t *testing.T) {
 
 	// Apply from dir2 to create a code-based instance
 	t.Chdir(dir2)
-	out2 := executeCmd(t, "apply", "--json")
-	var r2 applyJSON
+	out2 := executeCmd(t, "up", "--json")
+	var r2 upJSON
 	json.Unmarshal([]byte(out2), &r2)
 	codeName := r2.Instance
 
@@ -973,7 +975,7 @@ func TestRename_CollisionFails(t *testing.T) {
 
 func TestRename_InvalidNameFails(t *testing.T) {
 	setupProject(t, testConfig)
-	executeCmd(t, "apply", "--json")
+	executeCmd(t, "up", "--json")
 
 	rootCmd.SetOut(new(bytes.Buffer))
 	rootCmd.SetErr(new(bytes.Buffer))
@@ -999,7 +1001,7 @@ func TestPromote_Success(t *testing.T) {
 
 	// Apply from dir1 to create "main" instance
 	t.Chdir(dir1)
-	executeCmd(t, "apply", "--json")
+	executeCmd(t, "up", "--json")
 
 	// Create a second directory for the same project
 	dir2 := t.TempDir()
@@ -1008,8 +1010,8 @@ func TestPromote_Success(t *testing.T) {
 
 	// Apply from dir2 to create a code-based instance
 	t.Chdir(dir2)
-	out2 := executeCmd(t, "apply", "--json")
-	var r2 applyJSON
+	out2 := executeCmd(t, "up", "--json")
+	var r2 upJSON
 	json.Unmarshal([]byte(out2), &r2)
 	codeName := r2.Instance
 
@@ -1074,7 +1076,7 @@ func TestPromote_Success(t *testing.T) {
 
 func TestPromote_AlreadyMainFails(t *testing.T) {
 	setupProject(t, testConfig)
-	executeCmd(t, "apply", "--json")
+	executeCmd(t, "up", "--json")
 
 	rootCmd.SetOut(new(bytes.Buffer))
 	rootCmd.SetErr(new(bytes.Buffer))
@@ -1109,12 +1111,12 @@ derived:
     env_file: .env
 `
 
-func TestApply_WithHostnames(t *testing.T) {
+func TestUp_WithHostnames(t *testing.T) {
 	dir := setupProject(t, testConfigWithMultipleHostnames)
 
-	output := executeCmd(t, "apply", "--json")
+	output := executeCmd(t, "up", "--json")
 
-	var result applyJSON
+	var result upJSON
 	if err := json.Unmarshal([]byte(output), &result); err != nil {
 		t.Fatalf("invalid JSON output: %v\nOutput: %s", err, output)
 	}
@@ -1193,7 +1195,7 @@ func TestApply_WithHostnames(t *testing.T) {
 	}
 }
 
-func TestApply_HostnameUniquenessConflict(t *testing.T) {
+func TestUp_HostnameUniquenessConflict(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	jsonFlag = false
@@ -1211,7 +1213,7 @@ services:
 
 	// Apply project 1 — should succeed
 	t.Chdir(dir1)
-	executeCmd(t, "apply", "--json")
+	executeCmd(t, "up", "--json")
 
 	// Project 2: different project name but same hostname stem
 	dir2 := t.TempDir()
@@ -1226,7 +1228,7 @@ services:
 
 	// Apply project 2 — should succeed (different hostname)
 	t.Chdir(dir2)
-	executeCmd(t, "apply", "--json")
+	executeCmd(t, "up", "--json")
 
 	// Project 3: a different project that conflicts with project 1's hostname
 	dir3 := t.TempDir()
@@ -1251,7 +1253,7 @@ services:
 
 	// Apply this project — should succeed (unique hostname)
 	t.Chdir(dir3)
-	executeCmd(t, "apply", "--json")
+	executeCmd(t, "up", "--json")
 
 	// Now set up a project that truly conflicts with myapp's hostname
 	dir4 := t.TempDir()
@@ -1298,7 +1300,7 @@ services:
 
 	rootCmd.SetOut(new(bytes.Buffer))
 	rootCmd.SetErr(new(bytes.Buffer))
-	rootCmd.SetArgs([]string{"apply"})
+	rootCmd.SetArgs([]string{"up"})
 
 	err = rootCmd.Execute()
 	if err == nil {
@@ -1309,7 +1311,7 @@ services:
 	}
 }
 
-func TestApply_TemplateModifiers(t *testing.T) {
+func TestUp_TemplateModifiers(t *testing.T) {
 	dir := setupProject(t, `name: myapp
 services:
   web:
@@ -1341,9 +1343,9 @@ derived:
     env_file: .env
 `)
 
-	output := executeCmd(t, "apply", "--json")
+	output := executeCmd(t, "up", "--json")
 
-	var result applyJSON
+	var result upJSON
 	if err := json.Unmarshal([]byte(output), &result); err != nil {
 		t.Fatalf("invalid JSON: %v\nOutput: %s", err, output)
 	}

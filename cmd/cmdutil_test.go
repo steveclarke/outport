@@ -10,14 +10,22 @@ import (
 // has an Args validator set. Without this, commands silently ignore
 // unexpected arguments, which is a poor user experience.
 func TestAllCommandsHaveArgsValidation(t *testing.T) {
-	// Skip hidden commands and Cobra's auto-generated help command
+	// Skip hidden commands, Cobra's auto-generated help command, and parent commands
 	skip := map[string]bool{
 		"daemon":     true,
 		"help":       true,
 		"completion": true,
+		"system":     true,
 	}
 
+	var allCmds []*cobra.Command
 	for _, cmd := range rootCmd.Commands() {
+		allCmds = append(allCmds, cmd)
+		for _, sub := range cmd.Commands() {
+			allCmds = append(allCmds, sub)
+		}
+	}
+	for _, cmd := range allCmds {
 		if skip[cmd.Name()] {
 			continue
 		}
@@ -31,8 +39,7 @@ func TestAllCommandsHaveArgsValidation(t *testing.T) {
 // accept arguments return a FlagError when given unexpected args.
 func TestNoArgsCommandsRejectArguments(t *testing.T) {
 	noArgsCmds := []string{
-		"apply", "gc", "init", "ports", "promote",
-		"setup", "teardown", "status", "unapply", "up", "down",
+		"up", "down", "init", "ports", "promote",
 	}
 
 	for _, name := range noArgsCmds {
@@ -166,4 +173,35 @@ func TestMinimumArgsHelper(t *testing.T) {
 	testArgsValidator(t, v, []string{"a"}, false, false)
 	testArgsValidator(t, v, []string{"a", "b"}, false, false)
 	testArgsValidator(t, v, []string{}, true, true)
+}
+
+func TestSystemCommandHasSubcommands(t *testing.T) {
+	cmd, _, err := rootCmd.Find([]string{"system"})
+	if err != nil {
+		t.Fatalf("system command not found: %v", err)
+	}
+	if !cmd.HasSubCommands() {
+		t.Error("system command should have subcommands")
+	}
+}
+
+func TestSystemSubcommandsRejectArguments(t *testing.T) {
+	subCmds := []string{"start", "stop", "restart", "status", "gc", "uninstall"}
+
+	for _, name := range subCmds {
+		cmd, _, err := rootCmd.Find([]string{"system", name})
+		if err != nil {
+			t.Errorf("command system %q not found: %v", name, err)
+			continue
+		}
+
+		validateErr := cmd.Args(cmd, []string{"unexpected-arg"})
+		if validateErr == nil {
+			t.Errorf("command system %q accepted unexpected arguments", name)
+			continue
+		}
+		if !IsFlagError(validateErr) {
+			t.Errorf("command system %q returned a plain error instead of FlagError: %v", name, validateErr)
+		}
+	}
 }

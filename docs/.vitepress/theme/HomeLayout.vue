@@ -25,7 +25,7 @@
           <div class="terminal-dot g" />
         </div>
         <div class="terminal-body">
-          <div><span class="prompt">$</span> <span class="cmd">outport apply</span></div>
+          <div><span class="prompt">$</span> <span class="cmd">outport up</span></div>
           <br>
           <div><span class="success">myapp</span> <span class="dim">&middot;</span> <span class="dim">main</span></div>
           <br>
@@ -100,8 +100,8 @@ services:
         <div class="step">
           <div class="step-number">2</div>
           <h3>Apply</h3>
-          <p class="step-desc">Run <code>outport apply</code> and ports are allocated</p>
-          <pre class="step-code"><span class="prompt">$</span> <span class="cmd">outport apply</span>
+          <p class="step-desc">Run <code>outport up</code> and ports are allocated</p>
+          <pre class="step-code"><span class="prompt">$</span> <span class="cmd">outport up</span>
 
 <span class="dim">myapp &middot; main</span>
 

@@ -12,11 +12,12 @@ import (
 )
 
 var promoteCmd = &cobra.Command{
-	Use:   "promote",
-	Short: "Promote the current instance to main",
-	Long:  "Promotes the current worktree instance to \"main\", demoting the existing main instance if one exists.",
-	Args:  NoArgs,
-	RunE:  runPromote,
+	Use:     "promote",
+	Short:   "Promote the current instance to main",
+	Long:    "Promotes the current worktree instance to \"main\", demoting the existing main instance if one exists.",
+	GroupID: "project",
+	Args:    NoArgs,
+	RunE:    runPromote,
 }
 
 func init() {

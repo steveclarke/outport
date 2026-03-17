@@ -13,6 +13,16 @@ brew install steveclarke/tap/outport
 
 See [Installation](/guide/installation) for other methods.
 
+## One-Time System Setup
+
+Run `outport system start` to install the DNS resolver, local CA, and daemon:
+
+```bash
+outport system start
+```
+
+This sets up `.test` domain resolution, HTTPS certificates, and the reverse proxy. You only need to do this once — the daemon starts at login automatically.
+
 ## Create Your Config
 
 Run `outport init` in your project directory:
@@ -39,10 +49,10 @@ services:
 
 Each service needs at least an `env_var` — the environment variable that will hold the allocated port.
 
-## Apply
+## Bring It Up
 
 ```bash
-outport apply
+outport up
 ```
 
 Output:
@@ -66,35 +76,27 @@ REDIS_PORT=29454
 # --- end outport.dev ---
 ```
 
-Run `outport apply` again — you'll get the same ports every time. It's idempotent.
-
-## Enable .test Domains (Optional)
-
-For friendly hostnames like `https://myapp.test` instead of `localhost:24920`:
-
-```bash
-outport setup
-```
-
-This installs a local DNS server, reverse proxy, and a local Certificate Authority for HTTPS (requires sudo). After setup, services with `protocol: http` and `hostname` become accessible at their `.test` URL with full HTTPS — `http://` requests are automatically redirected to `https://` via 307.
-
-Manage the daemon:
-
-```bash
-outport up       # Start the daemon
-outport down     # Stop the daemon
-outport teardown # Remove everything
-```
+Run `outport up` again — you'll get the same ports every time. It's idempotent.
 
 ## What Just Happened
 
-When you run `outport apply`:
+When you run `outport up`:
 
 1. **Config loaded** — `.outport.yml` is read from the current directory (or nearest parent).
 2. **Instance resolved** — The first checkout of a project is "main". Additional checkouts (worktrees, clones) get auto-generated codes like "bxcf".
 3. **Ports allocated** — Each service gets a deterministic port via FNV-32a hash on `"{project}/{instance}/{service}"`. Range: 10000–39999.
 4. **Registry updated** — Allocations are saved to `~/.local/share/outport/registry.json`.
 5. **.env written** — Ports are written inside a fenced block (`# --- begin/end outport.dev ---`). Your existing `.env` content is preserved.
+
+## Managing the System
+
+```bash
+outport system stop        # Stop the daemon
+outport system start       # Start the daemon
+outport system restart     # Re-write plist and restart the daemon
+outport system status      # Show all registered projects
+outport system uninstall   # Remove DNS, CA, and daemon entirely
+```
 
 ## Next Steps
 

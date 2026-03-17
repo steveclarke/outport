@@ -10,11 +10,12 @@ import (
 )
 
 var initCmd = &cobra.Command{
-	Use:   "init",
-	Short: "Create .outport.yml for this project",
-	Long:  "Creates a commented .outport.yml template in the current directory.",
-	Args:  NoArgs,
-	RunE:  runInit,
+	Use:     "init",
+	Short:   "Create .outport.yml for this project",
+	Long:    "Creates a commented .outport.yml template in the current directory.",
+	GroupID: "project",
+	Args:    NoArgs,
+	RunE:    runInit,
 }
 
 func init() {
@@ -24,9 +25,9 @@ func init() {
 const configTemplate = `# Outport configuration
 # Docs: https://outport.app
 #
-# Declare your services, then run 'outport apply' to allocate ports.
+# Declare your services, then run 'outport up' to allocate ports.
 # Outport assigns deterministic ports and writes them to .env.
-# Run 'outport setup' to enable .test domains (e.g., %s.test).
+# Run 'outport system start' to enable .test domains (e.g., %s.test).
 
 name: %s
 
@@ -82,7 +83,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Fprintf(cmd.OutOrStdout(), "Created %s\n", config.FileName)
-	fmt.Fprintln(cmd.OutOrStdout(), "Edit it for your project, then run 'outport apply' to allocate ports.")
+	fmt.Fprintln(cmd.OutOrStdout(), "Edit it for your project, then run 'outport up' to allocate ports.")
 
 	return nil
 }

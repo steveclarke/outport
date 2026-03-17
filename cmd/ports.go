@@ -15,10 +15,11 @@ var portsCheckFlag bool
 var portsDerivedFlag bool
 
 var portsCmd = &cobra.Command{
-	Use:   "ports",
-	Short: "Show ports for the current project",
-	Args:  NoArgs,
-	RunE:  runPorts,
+	Use:     "ports",
+	Short:   "Show ports for the current project",
+	GroupID: "project",
+	Args:    NoArgs,
+	RunE:    runPorts,
 }
 
 func init() {
@@ -35,7 +36,7 @@ func runPorts(cmd *cobra.Command, args []string) error {
 
 	alloc, ok := ctx.Reg.Get(ctx.Cfg.Name, ctx.Instance)
 	if !ok {
-		fmt.Fprintln(cmd.OutOrStdout(), "No ports allocated. Run 'outport apply' first.")
+		fmt.Fprintln(cmd.OutOrStdout(), "No ports allocated. Run 'outport up' first.")
 		return nil
 	}
 
@@ -58,7 +59,7 @@ func printPortsJSON(cmd *cobra.Command, cfg *config.Config, instanceName string,
 		}
 	}
 
-	out := applyJSON{
+	out := upJSON{
 		Project:  cfg.Name,
 		Instance: instanceName,
 		Services: services,
