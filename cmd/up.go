@@ -21,6 +21,10 @@ import (
 var forceFlag bool
 var useHTTPS bool
 
+// isPortBusy checks if a port is in use on the system. Tests can override this
+// to avoid flaky failures when common ports (e.g., 5432) are bound locally.
+var isPortBusy = portcheck.IsBound
+
 var upCmd = &cobra.Command{
 	Use:     "up",
 	Short:   "Bring this project into outport",
@@ -82,7 +86,7 @@ func runUp(cmd *cobra.Command, args []string) error {
 
 		if port == 0 {
 			var err error
-			port, err = allocator.Allocate(cfg.Name, ctx.Instance, svcName, svc.PreferredPort, usedPorts, portcheck.IsBound)
+			port, err = allocator.Allocate(cfg.Name, ctx.Instance, svcName, svc.PreferredPort, usedPorts, isPortBusy)
 			if err != nil {
 				return fmt.Errorf("allocating port for %s: %w", svcName, err)
 			}

@@ -32,9 +32,11 @@ func setupProject(t *testing.T, configYAML string) string {
 
 	t.Chdir(dir)
 
-	// Reset flags between tests
+	// Reset flags and disable port-busy checks so tests aren't affected
+	// by locally running services (e.g., postgres on 5432)
 	jsonFlag = false
 	useHTTPS = false
+	isPortBusy = func(int) bool { return false }
 
 	return dir
 }
@@ -607,7 +609,7 @@ func TestUp_ForceReallocatesWithPreferredPorts(t *testing.T) {
 		t.Errorf("apply --force: web port = %d, want 3000", r2.Services["web"].Port)
 	}
 	if r2.Services["postgres"].Port != 5432 {
-		t.Errorf("apply --force: postgres port = %d, want 5432", r2.Services["postgres"].Port)
+		t.Errorf("up --force: postgres port = %d, want 5432", r2.Services["postgres"].Port)
 	}
 }
 
