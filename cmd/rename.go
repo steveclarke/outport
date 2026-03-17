@@ -17,7 +17,12 @@ var renameCmd = &cobra.Command{
 	Use:   "rename <old> <new>",
 	Short: "Rename an instance of the current project",
 	Long:  "Renames an instance in the registry and updates hostnames in .env files.",
-	Args:  cobra.ExactArgs(2),
+	Args: func(cmd *cobra.Command, args []string) error {
+		if len(args) != 2 {
+			return fmt.Errorf("usage: outport rename <old-name> <new-name>")
+		}
+		return nil
+	},
 	RunE:  runRename,
 }
 
