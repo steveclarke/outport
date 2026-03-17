@@ -17,6 +17,7 @@ var portsDerivedFlag bool
 var portsCmd = &cobra.Command{
 	Use:   "ports",
 	Short: "Show ports for the current project",
+	Args:  NoArgs,
 	RunE:  runPorts,
 }
 

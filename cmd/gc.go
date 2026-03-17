@@ -11,6 +11,7 @@ var gcCmd = &cobra.Command{
 	Use:   "gc",
 	Short: "Remove stale entries from the registry",
 	Long:  "Scans the registry and removes entries whose project directories or config files no longer exist.",
+	Args:  NoArgs,
 	RunE:  runGC,
 }
 

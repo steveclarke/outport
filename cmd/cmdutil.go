@@ -49,6 +49,24 @@ func ExactArgs(n int, msg string) cobra.PositionalArgs {
 	}
 }
 
+// NoArgs returns a Cobra arg validator that rejects any positional args.
+func NoArgs(cmd *cobra.Command, args []string) error {
+	if len(args) > 0 {
+		return FlagErrorf("this command does not accept arguments")
+	}
+	return nil
+}
+
+// MaximumArgs returns a Cobra arg validator that accepts at most n args.
+func MaximumArgs(n int, msg string) cobra.PositionalArgs {
+	return func(cmd *cobra.Command, args []string) error {
+		if len(args) > n {
+			return FlagErrorf("%s", msg)
+		}
+		return nil
+	}
+}
+
 // MinimumArgs returns a Cobra arg validator that requires at least n args.
 func MinimumArgs(n int, msg string) cobra.PositionalArgs {
 	return func(cmd *cobra.Command, args []string) error {

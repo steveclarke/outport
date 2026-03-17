@@ -13,6 +13,7 @@ var initCmd = &cobra.Command{
 	Use:   "init",
 	Short: "Create .outport.yml for this project",
 	Long:  "Creates a commented .outport.yml template in the current directory.",
+	Args:  NoArgs,
 	RunE:  runInit,
 }
 

@@ -25,6 +25,7 @@ var applyCmd = &cobra.Command{
 	Aliases: []string{"a"},
 	Short:   "Apply port configuration and write .env files",
 	Long:    "Reads .outport.yml, allocates deterministic ports, saves to the central registry, and writes them to .env files.",
+	Args:    NoArgs,
 	RunE:    runApply,
 }
 

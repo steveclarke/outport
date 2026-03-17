@@ -22,6 +22,7 @@ var statusDerivedFlag bool
 var statusCmd = &cobra.Command{
 	Use:   "status",
 	Short: "Show all registered projects and their ports",
+	Args:  NoArgs,
 	RunE:  runStatus,
 }
 

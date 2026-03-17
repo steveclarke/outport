@@ -15,6 +15,7 @@ var setupCmd = &cobra.Command{
 	Use:   "setup",
 	Short: "Install the DNS resolver, daemon, and local CA for HTTPS",
 	Long:  "Installs the .test DNS resolver, LaunchAgent, and local Certificate Authority so that *.test hostnames resolve to your local services with HTTPS.",
+	Args:  NoArgs,
 	RunE:  runSetup,
 }
 
@@ -22,6 +23,7 @@ var teardownCmd = &cobra.Command{
 	Use:   "teardown",
 	Short: "Remove the DNS resolver, daemon, and certificates",
 	Long:  "Unloads the daemon, removes the LaunchAgent plist, removes the .test DNS resolver file, and removes the CA certificate and cached server certs.",
+	Args:  NoArgs,
 	RunE:  runTeardown,
 }
 

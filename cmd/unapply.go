@@ -15,6 +15,7 @@ var unapplyCmd = &cobra.Command{
 	Use:   "unapply",
 	Short: "Remove ports and clean .env files",
 	Long:  "Removes the managed block from all .env files and removes the project from the central registry.",
+	Args:  NoArgs,
 	RunE:  runUnapply,
 }
 

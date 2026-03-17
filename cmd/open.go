@@ -15,7 +15,7 @@ var openCmd = &cobra.Command{
 	Use:   "open [service]",
 	Short: "Open HTTP services in the browser",
 	Long:  "Opens all HTTP/HTTPS services for the current project in your default browser. Specify a service name to open just one.",
-	Args:  cobra.MaximumNArgs(1),
+	Args:  MaximumArgs(1, "accepts at most one service name"),
 	RunE:  runOpen,
 }
 

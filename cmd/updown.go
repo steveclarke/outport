@@ -12,6 +12,7 @@ var upCmd = &cobra.Command{
 	Use:   "up",
 	Short: "Start the daemon",
 	Long:  "Loads the LaunchAgent to start the DNS resolver and HTTP proxy daemon.",
+	Args:  NoArgs,
 	RunE:  runUp,
 }
 
@@ -19,6 +20,7 @@ var downCmd = &cobra.Command{
 	Use:   "down",
 	Short: "Stop the daemon",
 	Long:  "Unloads the LaunchAgent to stop the DNS resolver and HTTP proxy daemon.",
+	Args:  NoArgs,
 	RunE:  runDown,
 }
 
