@@ -36,6 +36,8 @@ Entry point: `main.go` → `cmd.Execute()` (Cobra CLI).
 - **daemon** — Long-running process providing DNS server (port 15353, resolves `*.test` to 127.0.0.1), HTTP reverse proxy (port 80, 307 redirect to HTTPS when CA exists), and TLS reverse proxy (port 443, SNI-based cert selection). Watches the registry file for changes and rebuilds the route table automatically. Supports WebSocket proxying.
 - **platform** — macOS-specific integration for the daemon. Manages the LaunchAgent plist (`~/Library/LaunchAgents/`) and `/etc/resolver/test` file for `.test` domain resolution. Provides setup/uninstall/start/stop/restart operations and CA trust/untrust via macOS `security` CLI.
 - **dotenv** — Writes allocated ports and derived values into a fenced block (`# --- begin outport.dev ---` / `# --- end outport.dev ---`) at the bottom of `.env` files. User content outside the block is preserved. Managed vars in the user section are removed and relocated into the block. Also provides `RemoveBlock()` for cleanup.
+- **tunnel** — Tunnel provider abstraction and concurrent manager. Provider interface allows swapping tunnel backends (Cloudflare, etc.) without changing command code. Manager starts/stops multiple tunnels with all-or-nothing semantics and configurable timeout.
+- **tunnel/cloudflare** — Cloudflare quick tunnel provider. Shells out to `cloudflared tunnel --url`, parses tunnel URL from stderr output.
 - **ui** — Lipgloss terminal styling constants.
 
 ### CLI commands (`cmd/`)
@@ -47,6 +49,7 @@ Project commands (top-level):
 - **init** — Creates a commented `.outport.yml` template in the current directory.
 - **ports** — Show current project's allocated ports.
 - **open** — Open HTTP/HTTPS services in the default browser. Requires `protocol: http` on services.
+- **share** — Tunnel HTTP services to public URLs via Cloudflare quick tunnels. Shares all HTTP services by default, or specify service names. Requires `cloudflared` binary. Blocks until Ctrl+C.
 - **rename** — Rename an instance of the current project. Updates hostnames and re-merges `.env` files.
 - **promote** — Promote the current instance to "main". Demotes the existing main instance to a generated code name. Updates hostnames for both instances.
 
