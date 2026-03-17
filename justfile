@@ -21,7 +21,7 @@ test-short:
 # Install dev build to ~/.local/bin (overrides Homebrew)
 install:
     @mkdir -p ~/.local/bin
-    go build -ldflags "-X github.com/outport-app/outport/cmd.version=dev" -o ~/.local/bin/outport .
+    go build -ldflags "-X github.com/outport-app/outport/cmd.version=dev-$(git rev-parse --short HEAD)" -o ~/.local/bin/outport .
     @echo "Installed dev build to ~/.local/bin/outport"
     @echo "Run 'just uninstall' to switch back to Homebrew"
 
