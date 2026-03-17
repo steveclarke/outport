@@ -100,22 +100,22 @@ func expandExpr(template string, start int, vars map[string]string) (int, string
 }
 
 // extractBody reads the body of a :- or :+ expression, handling nested ${...}
-// references and brace depth. Returns the expanded body and index after the closing "}".
+// references. Scans until the closing "}" that matches the opening operator.
+// Nested ${...} expressions are expanded recursively (their closing braces are
+// consumed by expandExpr, not by this function).
+// Note: literal "}" characters inside the body are not supported — they will be
+// interpreted as the end of the expression. Use ${var} references for values
+// that might contain braces.
 func extractBody(template string, start int, vars map[string]string) (string, int) {
 	var b strings.Builder
 	i := start
-	depth := 1
 
-	for i < len(template) && depth > 0 {
+	for i < len(template) {
 		if template[i] == '}' {
-			depth--
-			if depth == 0 {
-				break
-			}
-			b.WriteByte('}')
-			i++
+			// Found the closing brace for this expression
+			return b.String(), i + 1
 		} else if i+1 < len(template) && template[i] == '$' && template[i+1] == '{' {
-			// Nested variable — expand it
+			// Nested variable — expand it (expandExpr consumes through its own closing })
 			end, result := expandExpr(template, i+2, vars)
 			b.WriteString(result)
 			i = end
@@ -125,10 +125,7 @@ func extractBody(template string, start int, vars map[string]string) (string, in
 		}
 	}
 
-	if i < len(template) {
-		i++ // skip closing }
-	}
-
+	// Unterminated — return what we have
 	return b.String(), i
 }
 

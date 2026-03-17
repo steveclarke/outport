@@ -178,7 +178,9 @@ func runSystemUninstall(cmd *cobra.Command, args []string) error {
 	}
 	registryPath, err := registry.DefaultPath()
 	if err == nil {
-		os.Remove(registryPath)
+		if err := os.Remove(registryPath); err != nil && !os.IsNotExist(err) && !jsonFlag {
+			fmt.Fprintf(w, "  Warning: could not remove registry: %v\n", err)
+		}
 	}
 
 	if jsonFlag {

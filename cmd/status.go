@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"strings"
 
 	"charm.land/lipgloss/v2"
 	"github.com/outport-app/outport/internal/certmanager"
@@ -67,23 +66,14 @@ func isStale(projectDir string) (bool, string) {
 	return false, ""
 }
 
-// instanceFromKey extracts the instance name from a "project/instance" registry key.
-func instanceFromKey(key string) string {
-	parts := strings.SplitN(key, "/", 2)
-	if len(parts) == 2 {
-		return parts[1]
-	}
-	return "main"
-}
-
 // formatProjectKey returns just the project name for main instances,
 // or "project/instance" for non-main instances.
 func formatProjectKey(key string) string {
-	parts := strings.SplitN(key, "/", 2)
-	if len(parts) != 2 || parts[1] == "main" {
-		return parts[0]
+	project, instance := registry.ParseKey(key)
+	if instance == "main" {
+		return project
 	}
-	return parts[0] + "/" + parts[1]
+	return project + "/" + instance
 }
 
 func runStatus(cmd *cobra.Command, args []string) error {
@@ -133,7 +123,7 @@ func printStatusJSON(cmd *cobra.Command, reg *registry.Registry, portStatus map[
 	for _, key := range keys {
 		alloc := reg.Projects[key]
 		cfg := loadProjectConfig(alloc.ProjectDir)
-		instanceName := instanceFromKey(key)
+		_, instanceName := registry.ParseKey(key)
 
 		services := make(map[string]svcJSON)
 		for svcName, port := range alloc.Ports {
@@ -183,7 +173,7 @@ func printStatusStyled(cmd *cobra.Command, reg *registry.Registry, portStatus ma
 	for i, key := range keys {
 		alloc := reg.Projects[key]
 		cfg := loadProjectConfig(alloc.ProjectDir)
-		instanceName := instanceFromKey(key)
+		_, instanceName := registry.ParseKey(key)
 
 		stale, staleReason := isStale(alloc.ProjectDir)
 

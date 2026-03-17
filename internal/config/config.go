@@ -16,6 +16,10 @@ var hostnameRe = regexp.MustCompile(`^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$`)
 // templateVarRe matches ${service.field} or ${service.field:modifier} references in derived value templates.
 var templateVarRe = regexp.MustCompile(`\$\{(\w+)\.(\w+)(?::(\w+))?\}`)
 
+// standaloneVarRe matches ${word} references that don't contain a dot (i.e., not service.field).
+// It also matches ${word:-...} and ${word:+...} conditional syntax.
+var standaloneVarRe = regexp.MustCompile(`\$\{(\w+)\}|\$\{(\w+):[+-]`)
+
 // validFields are the service fields that can be referenced in templates.
 var validFields = map[string]bool{
 	"port":     true,
@@ -28,10 +32,17 @@ var validModifiers = map[string]map[string]bool{
 	"url": {"direct": true},
 }
 
+// validStandaloneVars are top-level template variables (not service-scoped).
+var validStandaloneVars = map[string]bool{
+	"instance": true,
+}
+
 func validateTemplateRefs(derivedName, template string, services map[string]Service) error {
 	if template == "" {
 		return nil
 	}
+
+	// Validate ${service.field} and ${service.field:modifier} references
 	matches := templateVarRe.FindAllStringSubmatch(template, -1)
 	for _, m := range matches {
 		svcName := m[1]
@@ -54,6 +65,19 @@ func validateTemplateRefs(derivedName, template string, services map[string]Serv
 			}
 		}
 	}
+
+	// Validate standalone ${var} and ${var:-...} / ${var:+...} references
+	standaloneMatches := standaloneVarRe.FindAllStringSubmatch(template, -1)
+	for _, m := range standaloneMatches {
+		varName := m[1]
+		if varName == "" {
+			varName = m[2] // from the ${word:[+-] branch
+		}
+		if !validStandaloneVars[varName] {
+			return fmt.Errorf("derived %q: unknown variable %q (valid: instance)", derivedName, varName)
+		}
+	}
+
 	return nil
 }
 

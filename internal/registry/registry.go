@@ -19,6 +19,15 @@ func registryKey(project, instance string) string {
 	return project + "/" + instance
 }
 
+// ParseKey splits a registry key ("project/instance") into its components.
+func ParseKey(key string) (project, instance string) {
+	parts := strings.SplitN(key, "/", 2)
+	if len(parts) == 2 {
+		return parts[0], parts[1]
+	}
+	return key, "main"
+}
+
 type Registry struct {
 	Projects map[string]Allocation `json:"projects"`
 	path     string

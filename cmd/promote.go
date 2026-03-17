@@ -3,10 +3,10 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
-	"strings"
 
 	"github.com/outport-app/outport/internal/certmanager"
 	"github.com/outport-app/outport/internal/instance"
+	"github.com/outport-app/outport/internal/registry"
 	"github.com/outport-app/outport/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -50,8 +50,8 @@ func runPromote(cmd *cobra.Command, args []string) error {
 		usedNames := make(map[string]bool)
 		existing := reg.FindByProject(cfg.Name)
 		for key := range existing {
-			parts := strings.SplitN(key, "/", 2)
-			usedNames[parts[1]] = true
+			_, inst := registry.ParseKey(key)
+			usedNames[inst] = true
 		}
 		demotedTo = instance.GenerateCode(usedNames)
 
