@@ -2,7 +2,9 @@
 
 All commands support `--json` for machine-readable output.
 
-## Core
+## Project Commands
+
+These commands operate on the current project (the directory containing `.outport.yml`).
 
 ### `outport init`
 
@@ -14,14 +16,13 @@ outport init
 
 Creates a commented template in the current directory. Does not allocate ports or modify the registry.
 
-### `outport apply`
+### `outport up`
 
-Allocate ports, assign hostnames, and write `.env` files. Alias: `outport a`.
+Allocate ports, assign hostnames, and write `.env` files.
 
 ```bash
-outport apply
-outport a          # short alias
-outport apply --force  # re-allocate all ports from scratch
+outport up
+outport up --force  # re-allocate all ports from scratch
 ```
 
 Reads `.outport.yml`, allocates deterministic ports, saves to the registry, and writes them to `.env`. Idempotent — running again reuses existing allocations.
@@ -31,12 +32,12 @@ Reads `.outport.yml`, allocates deterministic ports, saves to the registry, and 
 | `--force` | Ignore existing allocations and re-allocate all ports |
 | `--json` | Output results as JSON |
 
-### `outport unapply`
+### `outport down`
 
 Remove ports and clean `.env` files.
 
 ```bash
-outport unapply
+outport down
 ```
 
 Removes the managed block from all `.env` files and removes the project/instance from the registry.
@@ -61,8 +62,6 @@ outport ports --derived  # include derived values
 | `--derived` | Show derived values |
 | `--json` | Output results as JSON |
 
-## Navigation
-
 ### `outport open`
 
 Open HTTP services in the browser.
@@ -72,35 +71,7 @@ outport open         # open all HTTP services
 outport open web     # open a specific service
 ```
 
-Opens services with `protocol: http` or `protocol: https` in your default browser. Works best with `.test` domains set up (`outport setup`).
-
-### `outport status`
-
-Show all registered projects and their ports.
-
-```bash
-outport status
-outport status --check  # include port health checks
-```
-
-Lists every project/instance in the registry with their allocated ports. Prompts to remove stale entries interactively.
-
-| Flag | Description |
-|------|-------------|
-| `--check` | Check if ports are accepting connections |
-| `--json` | Output results as JSON |
-
-## Maintenance
-
-### `outport gc`
-
-Remove stale entries from the registry.
-
-```bash
-outport gc
-```
-
-Scans the registry and removes entries whose project directories or config files no longer exist.
+Opens services with `protocol: http` or `protocol: https` in your default browser. Works best with `.test` domains set up (`outport system start`).
 
 ### `outport rename`
 
@@ -130,30 +101,78 @@ Promotes the current worktree instance to "main", demoting the existing main ins
 |------|-------------|
 | `--json` | Output results as JSON |
 
-## Daemon
+## System Commands
 
-These commands manage the `.test` domain DNS resolver, HTTPS reverse proxy, and local Certificate Authority.
+These commands manage machine-wide infrastructure: the `.test` domain DNS resolver, HTTPS reverse proxy, local Certificate Authority, and registry maintenance.
 
-### `outport setup`
+### `outport system start`
 
 Install the DNS resolver, daemon, and local Certificate Authority.
 
 ```bash
-outport setup
+outport system start
 ```
 
-Installs the `.test` DNS resolver (`/etc/resolver/test`, requires sudo), a LaunchAgent that runs a DNS server (port 15353) and reverse proxy (ports 80 and 443), and generates a local Certificate Authority that is added to the macOS trust store. After setup, `*.test` hostnames resolve to your local services with full HTTPS support. HTTP requests are automatically redirected to HTTPS via 307.
+On first run, installs the `.test` DNS resolver (`/etc/resolver/test`, requires sudo), a LaunchAgent that runs a DNS server (port 15353) and reverse proxy (ports 80 and 443), and generates a local Certificate Authority that is added to the macOS trust store. After setup, `*.test` hostnames resolve to your local services with full HTTPS support. HTTP requests are automatically redirected to HTTPS via 307.
+
+On subsequent runs, starts the daemon if it is not already running.
 
 | Flag | Description |
 |------|-------------|
 | `--json` | Output results as JSON (includes `ca_generated`, `ca_trusted` fields) |
 
-### `outport teardown`
+### `outport system stop`
+
+Stop the daemon.
+
+```bash
+outport system stop
+```
+
+Unloads the LaunchAgent to stop the DNS resolver and reverse proxy.
+
+### `outport system restart`
+
+Re-write the plist and restart the daemon.
+
+```bash
+outport system restart
+```
+
+Useful after upgrading Outport to pick up the new binary path in the LaunchAgent plist.
+
+### `outport system status`
+
+Show all registered projects and their ports.
+
+```bash
+outport system status
+outport system status --check  # include port health checks
+```
+
+Lists every project/instance in the registry with their allocated ports. Prompts to remove stale entries interactively.
+
+| Flag | Description |
+|------|-------------|
+| `--check` | Check if ports are accepting connections |
+| `--json` | Output results as JSON |
+
+### `outport system gc`
+
+Remove stale entries from the registry.
+
+```bash
+outport system gc
+```
+
+Scans the registry and removes entries whose project directories or config files no longer exist.
+
+### `outport system uninstall`
 
 Remove the DNS resolver, daemon, and Certificate Authority.
 
 ```bash
-outport teardown
+outport system uninstall
 ```
 
 Unloads the daemon, removes the LaunchAgent plist, removes the DNS resolver file, removes the CA from the macOS trust store, deletes the CA files, and removes cached certificates from `~/.cache/outport/certs/`.
@@ -161,23 +180,3 @@ Unloads the daemon, removes the LaunchAgent plist, removes the DNS resolver file
 | Flag | Description |
 |------|-------------|
 | `--json` | Output results as JSON (includes `ca_removed`, `certs_cleaned` fields) |
-
-### `outport up`
-
-Start the daemon.
-
-```bash
-outport up
-```
-
-Loads the LaunchAgent to start the DNS resolver and reverse proxy.
-
-### `outport down`
-
-Stop the daemon.
-
-```bash
-outport down
-```
-
-Unloads the LaunchAgent to stop the DNS resolver and reverse proxy.

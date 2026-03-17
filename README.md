@@ -14,17 +14,17 @@ Outport allocates deterministic, non-conflicting ports for all your projects, as
 
 You're running Rails on 3000, Nuxt on 5173, Postgres on 5432. You start a second project — port conflict. You spin up another instance for an AI agent — more conflicts. Your Nuxt frontend needs your Rails API URL. Your Rails backend needs the frontend URL for CORS. You're juggling port numbers across `.env` files, and if you get one wrong, nothing works.
 
-Outport fixes this. Declare your services once, run `outport apply`, and never think about ports again.
+Outport fixes this. Declare your services once, run `outport up`, and never think about ports again.
 
 ## Quick Start
 
 ```bash
+outport system start  # One-time setup: DNS, CA, daemon
 outport init          # Create .outport.yml
-outport apply         # Allocate ports, write .env
-outport setup         # Enable .test domains (one-time, optional)
+outport up            # Allocate ports, write .env
 ```
 
-After `outport apply`, your `.env` has deterministic ports and your services are accessible at friendly hostnames:
+After `outport up`, your `.env` has deterministic ports and your services are accessible at friendly hostnames:
 
 ```
 myapp [main]
@@ -51,13 +51,13 @@ services:
     env_var: REDIS_PORT
 ```
 
-Run `outport apply`. Outport allocates a deterministic hash-based port (range 10000–39999) for each service and writes the result to `.env`. Services with `hostname` get a `.test` URL routed through a local reverse proxy.
+Run `outport up`. Outport allocates a deterministic hash-based port (range 10000–39999) for each service and writes the result to `.env`. Services with `hostname` get a `.test` URL routed through a local reverse proxy.
 
 ### .test Domains
 
-Run `outport setup` once to enable friendly hostnames. This installs a local DNS server and reverse proxy — your services become accessible at `http://myapp.test` instead of `http://localhost:24920`.
+Run `outport system start` once to enable friendly hostnames. This installs a local DNS server, reverse proxy, and local CA — your services become accessible at `https://myapp.test` instead of `http://localhost:24920`.
 
-The proxy runs on port 80 via macOS launchd, starts at login, and updates routes automatically when you `outport apply`. No port numbers in your browser, ever.
+The proxy runs via macOS launchd, starts at login, and updates routes automatically when you `outport up`. No port numbers in your browser, ever.
 
 ### Multiple Instances
 
@@ -65,12 +65,12 @@ Every clone, worktree, or checkout of a project is an **instance**. The first is
 
 ```
 # Main checkout
-$ outport apply
+$ outport up
 myapp [main]
     web    PORT    → 24920  http://myapp.test
 
 # Second clone / worktree — different ports, different hostname
-$ outport apply
+$ outport up
   Registered as myapp-bkrm. Use 'outport rename bkrm <name>' to rename.
 myapp [bkrm]
     web    PORT    → 28104  http://myapp-bkrm.test
@@ -171,24 +171,30 @@ Outport preserves your existing `.env` variables. It only manages variables decl
 
 ## Commands
 
+### Project Commands
+
 ```
-outport init                Create .outport.yml for this project
-outport apply               Allocate ports, assign hostnames, write .env
-outport a                   Short alias for apply
-outport apply --force       Clear and re-allocate all ports
-outport unapply             Remove ports, clean .env files
-outport ports               Show ports for the current project
-outport ports --derived     Show ports and derived values
-outport open                Open HTTP services in the browser
-outport status              Show all registered projects
-outport status --check      Show with health checks (up/down)
-outport gc                  Remove stale registry entries
-outport setup               Install DNS resolver and daemon for .test domains
-outport teardown            Remove DNS resolver and daemon
-outport up                  Start the daemon manually
-outport down                Stop the daemon manually
-outport rename <old> <new>  Rename an instance
-outport promote             Promote the current instance to main
+outport init                   Create .outport.yml for this project
+outport up                     Allocate ports, assign hostnames, write .env
+outport up --force             Clear and re-allocate all ports
+outport down                   Remove ports, clean .env files
+outport ports                  Show ports for the current project
+outport ports --derived        Show ports and derived values
+outport open                   Open HTTP services in the browser
+outport rename <old> <new>     Rename an instance
+outport promote                Promote the current instance to main
+```
+
+### System Commands
+
+```
+outport system start           Install DNS, CA, and start the daemon
+outport system stop            Stop the daemon
+outport system restart         Re-write plist and restart the daemon
+outport system status          Show all registered projects
+outport system status --check  Show with health checks (up/down)
+outport system gc              Remove stale registry entries
+outport system uninstall       Remove DNS resolver, daemon, and CA
 ```
 
 All commands support `--json` for machine-readable output.
@@ -223,7 +229,7 @@ Install the Outport skill so your AI coding agent knows how to configure ports:
 npx skills add steveclarke/outport/skills
 ```
 
-The agent can run `outport apply` in any instance, read `outport ports --json` for structured output, and configure `.outport.yml` for new services.
+The agent can run `outport up` in any instance, read `outport ports --json` for structured output, and configure `.outport.yml` for new services.
 
 ## How Outport Compares
 
@@ -249,7 +255,7 @@ If you're a single developer running one Rails app, most of these tools work fin
 - **Multiple projects at once** — three Rails apps all defaulting to port 3000, each with their own Postgres and Redis. You need them all running simultaneously, completely segregated.
 - **Parallel AI agents** — you tell three agents to work on three features, each in its own instance. Every instance gets non-conflicting ports and a unique `.test` hostname — complete isolation.
 - **Multi-service apps** — your Nuxt frontend needs your Rails backend's URL. Your backend needs the frontend's URL for CORS. Outport's [derived values](#derived-values) wire this up declaratively — one config file, and every `.env` gets finished URLs.
-- **Declare once, apply anywhere** — check `.outport.yml` into your repo. Every developer, every machine, every instance gets deterministic ports with `outport apply`.
+- **Declare once, apply anywhere** — check `.outport.yml` into your repo. Every developer, every machine, every instance gets deterministic ports with `outport up`.
 
 ## FAQ
 
@@ -259,7 +265,7 @@ Use [derived values](#derived-values). `${service.url}` gives browser-facing URL
 
 ### "I'm running two instances and my sessions are colliding"
 
-Run `outport setup` to enable `.test` domains. Each instance gets its own hostname (`myapp.test` vs `myapp-bkrm.test`), so cookies are isolated automatically.
+Run `outport system start` to enable `.test` domains. Each instance gets its own hostname (`myapp.test` vs `myapp-bkrm.test`), so cookies are isolated automatically.
 
 ### "How do I add Outport to my project's setup script?"
 
@@ -267,7 +273,7 @@ Make it optional so developers without Outport aren't blocked:
 
 ```bash
 if command -v outport > /dev/null 2>&1; then
-  outport apply
+  outport up
 else
   echo "Outport not found — install: brew install steveclarke/tap/outport"
 fi
@@ -281,7 +287,7 @@ Requires [Go 1.26+](https://go.dev/dl/) and [just](https://github.com/casey/just
 just build        # Build the binary
 just test         # Run all tests
 just lint         # Run linter
-just run apply    # Build and run with args
+just run up       # Build and run with args
 just clean        # Clean build artifacts
 ```
 

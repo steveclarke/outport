@@ -13,12 +13,11 @@ URLs just work without manual configuration.
 ## Quick Reference
 
 ```bash
-# Core workflow
+# Project commands
 outport init              # Create .outport.yml (interactive)
-outport apply             # Allocate ports, assign hostnames, write .env
-outport a                 # Short alias for apply
-outport apply --force     # Clear and re-allocate all ports from scratch
-outport unapply           # Remove ports and clean .env files
+outport up                # Allocate ports, assign hostnames, write .env
+outport up --force        # Clear and re-allocate all ports from scratch
+outport down              # Remove ports and clean .env files
 
 # Inspect
 outport ports             # Show ports for current project
@@ -26,15 +25,15 @@ outport ports --derived   # Show ports and derived values
 outport ports --json      # Machine-readable output
 outport open              # Open HTTP services in browser
 outport open web          # Open a specific service
-outport status            # Show all registered projects
-outport status --check    # Show with health checks (up/down)
-outport gc                # Remove stale registry entries
 
-# .test domain routing (macOS, one-time setup)
-outport setup             # Install DNS resolver and proxy daemon
-outport teardown          # Remove DNS resolver and daemon
-outport up                # Start the daemon manually
-outport down              # Stop the daemon manually
+# System commands (machine-wide)
+outport system start      # Install DNS, CA, and start the daemon
+outport system stop       # Stop the daemon
+outport system restart    # Re-write plist and restart the daemon
+outport system status     # Show all registered projects
+outport system status --check  # Show with health checks (up/down)
+outport system gc         # Remove stale registry entries
+outport system uninstall  # Remove DNS resolver, daemon, and CA
 
 # Instance management
 outport rename <old> <new>  # Rename the current instance
@@ -61,7 +60,7 @@ services:
     env_var: REDIS_PORT
 ```
 
-### 2. Run `outport apply`
+### 2. Run `outport up`
 
 Allocates deterministic ports (hashed from project name + service name) and
 writes them to `.env`. Same inputs always produce the same ports.
@@ -90,26 +89,28 @@ gets its own.
 
 ## .test Domains (DNS Proxying)
 
-Running `outport setup` once enables friendly `.test` hostnames for your
-services. After setup, `http://myapp.test` routes to your app instead of
-`http://localhost:24920`.
+Running `outport system start` once enables friendly `.test` hostnames for
+your services. After setup, `https://myapp.test` routes to your app instead
+of `http://localhost:24920`.
 
 ### How it works
 
-`outport setup` installs two components (macOS, requires sudo for DNS step):
+`outport system start` installs three components (macOS, requires sudo for DNS step):
 
 1. **DNS resolver** — `/etc/resolver/test` points `*.test` queries to a
    local DNS server on port 15353, which resolves all `*.test` names to
    `127.0.0.1`.
-2. **HTTP reverse proxy** — a LaunchAgent runs on port 80, routes requests
-   by `Host` header to the correct service port, and auto-updates when you
-   run `outport apply`. WebSocket connections are proxied transparently.
+2. **Reverse proxy** — a LaunchAgent runs on ports 80 and 443, routes
+   requests by `Host` header to the correct service port, and auto-updates
+   when you run `outport up`. WebSocket connections are proxied transparently.
+3. **Local CA** — generates a Certificate Authority for HTTPS. HTTP requests
+   on port 80 are redirected to HTTPS via 307.
 
 ```bash
-outport setup     # Install DNS + daemon (one-time, prompts for sudo)
-outport teardown  # Remove everything — reverse of setup
-outport up        # Start the daemon (if it was stopped)
-outport down      # Stop the daemon
+outport system start      # Install DNS + CA + daemon (one-time, prompts for sudo)
+outport system stop       # Stop the daemon
+outport system restart    # Re-write plist and restart the daemon
+outport system uninstall  # Remove everything — reverse of start
 ```
 
 ### Configuring .test hostnames
@@ -277,7 +278,7 @@ derived:
     env_file: backend/.env
 ```
 
-After `outport apply`, every service has the right ports AND the right URLs.
+After `outport up`, every service has the right ports AND the right URLs.
 No hardcoded values survive.
 
 ## Framework Env Var Conventions
@@ -314,7 +315,7 @@ NUXT_API_BASE_URL=http://localhost:24920/api/v1
 # --- end outport.dev ---
 ```
 
-On each `outport apply`, the fenced block is replaced with current values.
+On each `outport up`, the fenced block is replaced with current values.
 Variables removed from `.outport.yml` disappear from the block. Everything
 outside the block is preserved.
 
@@ -325,13 +326,13 @@ and its own `.test` hostname — no configuration needed:
 
 ```bash
 # Main checkout
-$ outport apply
+$ outport up
 my-app [main]
   rails  RAILS_PORT → 24920  http://my-app.test
   web    MAIN_PORT  → 21349
 
 # Worktree — different ports, different hostname, zero conflicts
-$ cd ../my-app-feature && outport apply
+$ cd ../my-app-feature && outport up
   Registered as my-app-bkrm. Use 'outport rename bkrm <name>' to rename.
 my-app [bkrm]
   rails  RAILS_PORT → 20192  http://my-app-bkrm.test
@@ -352,14 +353,14 @@ outport promote                   # Promote current instance to main
 
 ## Integrating with Setup Scripts
 
-Run `outport apply` early in your project's setup flow — after `.env` file
+Run `outport up` early in your project's setup flow — after `.env` file
 creation but before services start. Make it optional so developers without
 Outport aren't blocked:
 
 ```bash
 # In bin/setup or similar
 if command -v outport > /dev/null 2>&1; then
-  outport apply
+  outport up
 else
   echo "Outport not found — using default ports"
   echo "Install: brew install steveclarke/tap/outport"
@@ -369,17 +370,17 @@ fi
 ## Common Tasks
 
 ### Port conflict with another project
-Run `outport apply` in both projects. Outport's registry ensures no
+Run `outport up` in both projects. Outport's registry ensures no
 collisions across all registered projects.
 
 ### Ports are stale from an old allocation
-Run `outport apply --force` to clear and re-allocate.
+Run `outport up --force` to clear and re-allocate.
 
 ### Freeing ports from a project you're done with
-Run `outport unapply` to remove from registry and free all ports.
+Run `outport down` to remove from registry and free all ports.
 
 ### Adding a new service to an existing project
-Add it to `.outport.yml` and run `outport apply`. Existing allocations
+Add it to `.outport.yml` and run `outport up`. Existing allocations
 are preserved — only the new service gets a port.
 
 ### Agent needs to know the project's URLs
@@ -387,9 +388,10 @@ Run `outport ports --json` for structured output with ports, protocols,
 and URLs.
 
 ### Services moved to different ports than expected
-Check `outport status` to see all allocations. If another project holds
-the ports you want, unapply it first, then `outport apply --force`.
+Check `outport system status` to see all allocations. If another project
+holds the ports you want, run `outport down` in it first, then
+`outport up --force` in yours.
 
 ### .test domain not resolving
-Run `outport status` to verify the daemon is configured. If `outport setup`
-was never run, run it now. If the daemon is stopped, run `outport up`.
+Run `outport system status` to verify the daemon is configured. If
+`outport system start` was never run, run it now.

@@ -84,7 +84,7 @@ services:
     hostname: myapp
 ```
 
-This makes the service accessible at `https://myapp.test` (after running `outport setup`). All `.test` hostnames get HTTPS automatically when the local CA is installed — no per-service configuration is needed.
+This makes the service accessible at `https://myapp.test` (after running `outport system start`). All `.test` hostnames get HTTPS automatically when the local CA is installed — no per-service configuration is needed.
 
 For non-main instances, the hostname is automatically suffixed: `https://myapp-bkrm.test`.
 
@@ -135,7 +135,7 @@ derived:
 | `${service.url}` | `https://myapp.test` | Browser-facing URLs (CORS, asset hosts) |
 | `${service.url:direct}` | `http://localhost:24920` | Server-to-server (API calls, WebSocket) |
 
-Use `${service.url}` for URLs the browser sees — it produces `https://` URLs when the local CA is installed (via `outport setup`). Use `${service.url:direct}` for server-to-server communication that bypasses the proxy (always `http://localhost:{port}`).
+Use `${service.url}` for URLs the browser sees — it produces `https://` URLs when the local CA is installed (via `outport system start`). Use `${service.url:direct}` for server-to-server communication that bypasses the proxy (always `http://localhost:{port}`).
 
 #### Per-File Overrides
 

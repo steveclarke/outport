@@ -16,7 +16,7 @@ just test             # Run all tests (verbose)
 just test-short       # Run tests (compact output)
 just lint             # Run golangci-lint
 just install          # Install to $GOPATH/bin
-just run <args>       # Build and run (e.g., just run apply)
+just run <args>       # Build and run (e.g., just run up)
 just release-dry-run  # Test GoReleaser locally
 ```
 
@@ -29,30 +29,38 @@ Entry point: `main.go` → `cmd.Execute()` (Cobra CLI).
 ### Core packages (`internal/`)
 
 - **allocator** — Port allocation via FNV-32a hash on `"{project}/{instance}/{service}"`. An optional preferred_port can be specified per service; when omitted, the hash is the primary allocation method. Port range: 10000–39999 (port 15353 reserved for daemon DNS). Collisions resolved by linear probing with wraparound.
-- **certmanager** — Local CA and server certificate lifecycle. Generates a CA (EC P-256, 10-year) during `outport setup`, creates per-hostname server certs on demand via TLS SNI callback, caches to disk (`~/.cache/outport/certs/`) and memory. Exports path helpers (`CACertPath`, `CAKeyPath`, `CertCacheDir`) used by `apply` and `open` to detect HTTPS availability.
+- **certmanager** — Local CA and server certificate lifecycle. Generates a CA (EC P-256, 10-year) during `outport system start`, creates per-hostname server certs on demand via TLS SNI callback, caches to disk (`~/.cache/outport/certs/`) and memory. Exports path helpers (`CACertPath`, `CAKeyPath`, `CertCacheDir`) used by `up` and `open` to detect HTTPS availability.
 - **registry** — Persistent JSON store at `~/.local/share/outport/registry.json`. Keys are `"{project}/{instance}"` (e.g., `"myapp/main"`, `"myapp/bxcf"`). Each allocation stores ports, hostnames, and protocols. Atomic writes via temp file + rename. Supports lookup by directory (`FindByDir`) and by project name (`FindByProject`).
 - **config** — Loads/validates `.outport.yml`. Supports per-service env_file (string or array), preferred_port, protocol, hostname, and derived values (`${service.field}` and `${service.field:modifier}` templates with optional per-file overrides). `FindDir()` walks up from the current directory to locate the config. Validates env_var uniqueness per file, hostname format (must contain project name, requires http/https protocol), and derived value reference validity (service name + field + modifier).
 - **instance** — Resolves instance names for projects. First instance of a project is "main". Additional instances get random 4-character consonant codes (e.g., "bxcf"). Looks up the registry by directory to find existing instances. Provides name validation (lowercase alphanumeric + hyphens).
 - **daemon** — Long-running process providing DNS server (port 15353, resolves `*.test` to 127.0.0.1), HTTP reverse proxy (port 80, 307 redirect to HTTPS when CA exists), and TLS reverse proxy (port 443, SNI-based cert selection). Watches the registry file for changes and rebuilds the route table automatically. Supports WebSocket proxying.
-- **platform** — macOS-specific integration for the daemon. Manages the LaunchAgent plist (`~/Library/LaunchAgents/`) and `/etc/resolver/test` file for `.test` domain resolution. Provides setup/teardown/load/unload operations and CA trust/untrust via macOS `security` CLI.
+- **platform** — macOS-specific integration for the daemon. Manages the LaunchAgent plist (`~/Library/LaunchAgents/`) and `/etc/resolver/test` file for `.test` domain resolution. Provides setup/uninstall/start/stop/restart operations and CA trust/untrust via macOS `security` CLI.
 - **dotenv** — Writes allocated ports and derived values into a fenced block (`# --- begin outport.dev ---` / `# --- end outport.dev ---`) at the bottom of `.env` files. User content outside the block is preserved. Managed vars in the user section are removed and relocated into the block. Also provides `RemoveBlock()` for cleanup.
 - **ui** — Lipgloss terminal styling constants.
 
 ### CLI commands (`cmd/`)
 
-- **apply** — Main workflow: load config → resolve instance → load registry → allocate ports → compute hostnames → check hostname uniqueness → resolve derived values → merge `.env` → display results. Use `--force` to re-allocate all ports from scratch.
-- **unapply** — Reverse of apply: clean managed blocks from all `.env` files and remove the project/instance from the registry.
+Project commands (top-level):
+
+- **up** — Main workflow: load config → resolve instance → load registry → allocate ports → compute hostnames → check hostname uniqueness → resolve derived values → merge `.env` → display results. Use `--force` to re-allocate all ports from scratch.
+- **down** — Reverse of up: clean managed blocks from all `.env` files and remove the project/instance from the registry.
 - **init** — Creates a commented `.outport.yml` template in the current directory.
 - **ports** — Show current project's allocated ports.
 - **open** — Open HTTP/HTTPS services in the default browser. Requires `protocol: http` on services.
-- **status** — Show all registered projects across the system. Prompts to remove stale entries interactively.
-- **gc** — Remove stale registry entries where the project directory no longer exists.
 - **rename** — Rename an instance of the current project. Updates hostnames and re-merges `.env` files.
 - **promote** — Promote the current instance to "main". Demotes the existing main instance to a generated code name. Updates hostnames for both instances.
-- **setup** — Install the `.test` DNS resolver, LaunchAgent daemon, and local CA for HTTPS. Requires sudo for `/etc/resolver/test`. Generates a CA certificate and adds it to the macOS login keychain trust store (GUI password prompt). Listens on ports 80 (HTTP->HTTPS redirect) and 443 (TLS proxy).
-- **teardown** — Remove the DNS resolver, daemon, CA certificate, and cached server certs. Reverse of setup.
-- **up** — Start the daemon (load the LaunchAgent).
-- **down** — Stop the daemon (unload the LaunchAgent).
+
+System commands (under `outport system`):
+
+- **system start** — Install the `.test` DNS resolver, LaunchAgent daemon, and local CA for HTTPS. Auto-runs setup on first use. Requires sudo for `/etc/resolver/test`. Generates a CA certificate and adds it to the macOS login keychain trust store (GUI password prompt). Listens on ports 80 (HTTP->HTTPS redirect) and 443 (TLS proxy).
+- **system stop** — Stop the daemon (unload the LaunchAgent).
+- **system restart** — Re-write plist and restart the daemon.
+- **system status** — Show all registered projects across the system. Prompts to remove stale entries interactively.
+- **system gc** — Remove stale registry entries where the project directory no longer exists.
+- **system uninstall** — Remove the DNS resolver, daemon, CA certificate, and cached server certs. Reverse of start.
+
+Hidden:
+
 - **daemon** — (hidden) Run the DNS and proxy daemon directly. Invoked by launchd, not by users.
 
 All commands support `--json` for machine-readable output. Each command has paired `print*Styled()` and `print*JSON()` output functions.
@@ -60,13 +68,14 @@ All commands support `--json` for machine-readable output. Each command has pair
 ## Key Design Decisions
 
 - **Stateless commands** — Each command independently loads config, resolves the instance, and loads the registry. No shared state between commands.
-- **Deterministic allocation** — Same inputs always produce the same port (idempotent `outport apply`).
+- **Deterministic allocation** — Same inputs always produce the same port (idempotent `outport up`).
 - **Instance model** — The first checkout of a project is "main". Additional checkouts (worktrees, clones) get auto-generated 4-character codes. Instances can be renamed (`outport rename`) or promoted to main (`outport promote`). The registry is the source of truth for instance identity — directories are looked up by path.
 - **`.test` hostnames** — Services with `hostname` + `protocol: http/https` get `.test` domain hostnames (e.g., `myapp.test`). Non-main instances get suffixed hostnames (e.g., `myapp-bxcf.test`). Hostnames are globally unique across all registered projects.
 - **Template modifiers** — Derived values support `${service.field}` references. The `url` field resolves to the `.test` hostname URL (e.g., `http://myapp.test`). The `:direct` modifier gives the localhost URL with port (e.g., `http://localhost:3000`). Syntax: `${service.url}` vs `${service.url:direct}`.
 - **Fenced .env blocks** — Managed variables are written in a `# --- begin/end outport.dev ---` fenced section. User content outside the block is never touched. Vars claimed by Outport are removed from the user section and relocated into the block.
 - **Daemon architecture** — A LaunchAgent runs a DNS server (port 15353, `*.test` -> 127.0.0.1), HTTP reverse proxy (port 80), and TLS reverse proxy (port 443). When the CA is installed, port 80 issues 307 redirects to HTTPS. The daemon watches the registry file and rebuilds routes on changes.
-- **Automatic HTTPS** — When the CA is installed (after `outport setup`), all `.test` hostnames automatically get HTTPS. Port 80 redirects to HTTPS via 307. Port 443 terminates TLS and proxies to the backend over plain HTTP. `${service.url}` produces `https://` URLs when the CA exists. No per-service opt-in required.
+- **Automatic HTTPS** — When the CA is installed (after `outport system start`), all `.test` hostnames automatically get HTTPS. Port 80 redirects to HTTPS via 307. Port 443 terminates TLS and proxies to the backend over plain HTTP. `${service.url}` produces `https://` URLs when the CA exists. No per-service opt-in required.
+- **Command structure** — Project commands (`up`, `down`, `init`, `ports`, `open`, `rename`, `promote`) are top-level. Machine-wide operations (`start`, `stop`, `restart`, `status`, `gc`, `uninstall`) live under `outport system`. `up`/`down` follow the Docker Compose mental model (project-scoped). `system start` auto-runs setup on first use.
 - **XDG directory layout** — Registry at `~/.local/share/outport/registry.json`, CA at `~/.local/share/outport/`, cert cache at `~/.cache/outport/certs/`. `~/.config/outport/` reserved for future global config.
 - **Error wrapping** — Uses `fmt.Errorf("context: %w", err)` throughout.
 
