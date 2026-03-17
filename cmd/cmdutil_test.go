@@ -39,8 +39,7 @@ func TestAllCommandsHaveArgsValidation(t *testing.T) {
 // accept arguments return a FlagError when given unexpected args.
 func TestNoArgsCommandsRejectArguments(t *testing.T) {
 	noArgsCmds := []string{
-		"apply", "gc", "init", "ports", "promote",
-		"setup", "teardown", "status", "unapply", "up", "down",
+		"apply", "init", "ports", "promote", "unapply",
 	}
 
 	for _, name := range noArgsCmds {
@@ -174,4 +173,35 @@ func TestMinimumArgsHelper(t *testing.T) {
 	testArgsValidator(t, v, []string{"a"}, false, false)
 	testArgsValidator(t, v, []string{"a", "b"}, false, false)
 	testArgsValidator(t, v, []string{}, true, true)
+}
+
+func TestSystemCommandHasSubcommands(t *testing.T) {
+	cmd, _, err := rootCmd.Find([]string{"system"})
+	if err != nil {
+		t.Fatalf("system command not found: %v", err)
+	}
+	if !cmd.HasSubCommands() {
+		t.Error("system command should have subcommands")
+	}
+}
+
+func TestSystemSubcommandsRejectArguments(t *testing.T) {
+	subCmds := []string{"start", "stop", "restart", "uninstall"}
+
+	for _, name := range subCmds {
+		cmd, _, err := rootCmd.Find([]string{"system", name})
+		if err != nil {
+			t.Errorf("command system %q not found: %v", name, err)
+			continue
+		}
+
+		validateErr := cmd.Args(cmd, []string{"unexpected-arg"})
+		if validateErr == nil {
+			t.Errorf("command system %q accepted unexpected arguments", name)
+			continue
+		}
+		if !IsFlagError(validateErr) {
+			t.Errorf("command system %q returned a plain error instead of FlagError: %v", name, validateErr)
+		}
+	}
 }

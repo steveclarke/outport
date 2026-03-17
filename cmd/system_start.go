@@ -11,35 +11,55 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var setupCmd = &cobra.Command{
-	Use:   "setup",
-	Short: "Install the DNS resolver, daemon, and local CA for HTTPS",
-	Long:  "Installs the .test DNS resolver, LaunchAgent, and local Certificate Authority so that *.test hostnames resolve to your local services with HTTPS.",
+var systemStartCmd = &cobra.Command{
+	Use:   "start",
+	Short: "Start the outport system",
+	Long:  "Starts the outport daemon. On first run, installs the .test DNS resolver, generates a local Certificate Authority, and adds it to the system trust store.",
 	Args:  NoArgs,
-	RunE:  runSetup,
+	RunE:  runSystemStart,
 }
 
-var teardownCmd = &cobra.Command{
-	Use:   "teardown",
-	Short: "Remove the DNS resolver, daemon, and certificates",
-	Long:  "Unloads the daemon, removes the LaunchAgent plist, removes the .test DNS resolver file, and removes the CA certificate and cached server certs.",
+var systemUninstallCmd = &cobra.Command{
+	Use:   "uninstall",
+	Short: "Remove outport system components",
+	Long:  "Unloads the daemon, removes the LaunchAgent, DNS resolver, CA certificate, and cached server certs.",
 	Args:  NoArgs,
-	RunE:  runTeardown,
+	RunE:  runSystemUninstall,
 }
 
 func init() {
-	rootCmd.AddCommand(setupCmd)
-	rootCmd.AddCommand(teardownCmd)
+	systemCmd.AddCommand(systemStartCmd)
+	systemCmd.AddCommand(systemUninstallCmd)
 }
 
-func runSetup(cmd *cobra.Command, args []string) error {
+func runSystemStart(cmd *cobra.Command, args []string) error {
 	w := cmd.OutOrStdout()
 
+	// Already set up — just ensure the agent is running
 	if platform.IsSetup() {
-		fmt.Fprintln(w, "Already set up. Use 'outport teardown' to remove and re-install.")
+		if platform.IsAgentLoaded() {
+			if jsonFlag {
+				fmt.Fprintln(w, `{"status": "already_running"}`)
+				return nil
+			}
+			fmt.Fprintln(w, "Outport system is already running.")
+			return nil
+		}
+
+		if err := platform.LoadAgent(); err != nil {
+			return err
+		}
+
+		if jsonFlag {
+			fmt.Fprintln(w, `{"status": "started"}`)
+			return nil
+		}
+
+		fmt.Fprintln(w, ui.SuccessStyle.Render("Outport system started."))
 		return nil
 	}
 
+	// First-time setup
 	if isPortInUse(80) {
 		return fmt.Errorf("port 80 is already in use — stop the other server first")
 	}
@@ -100,7 +120,7 @@ func runSetup(cmd *cobra.Command, args []string) error {
 	}
 
 	if jsonFlag {
-		return printSetupJSON(cmd, caGenerated, caTrusted)
+		return printSystemStartJSON(cmd, caGenerated, caTrusted)
 	}
 
 	fmt.Fprintln(w)
@@ -108,7 +128,7 @@ func runSetup(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func runTeardown(cmd *cobra.Command, args []string) error {
+func runSystemUninstall(cmd *cobra.Command, args []string) error {
 	w := cmd.OutOrStdout()
 
 	caRemoved := false
@@ -152,10 +172,10 @@ func runTeardown(cmd *cobra.Command, args []string) error {
 	}
 
 	if jsonFlag {
-		return printTeardownJSON(cmd, caRemoved, certsCleaned)
+		return printSystemUninstallJSON(cmd, caRemoved, certsCleaned)
 	}
 
-	fmt.Fprintln(w, ui.SuccessStyle.Render("Teardown complete. DNS resolver, daemon, and SSL certificates removed."))
+	fmt.Fprintln(w, ui.SuccessStyle.Render("Uninstall complete. DNS resolver, daemon, and certificates removed."))
 	return nil
 }
 
@@ -167,13 +187,13 @@ func isPortInUse(port int) bool {
 	return len(out) > 0
 }
 
-type setupJSON struct {
+type systemStartJSON struct {
 	CAGenerated bool `json:"ca_generated"`
 	CATrusted   bool `json:"ca_trusted"`
 }
 
-func printSetupJSON(cmd *cobra.Command, caGenerated, caTrusted bool) error {
-	data, err := json.MarshalIndent(setupJSON{
+func printSystemStartJSON(cmd *cobra.Command, caGenerated, caTrusted bool) error {
+	data, err := json.MarshalIndent(systemStartJSON{
 		CAGenerated: caGenerated,
 		CATrusted:   caTrusted,
 	}, "", "  ")
@@ -184,13 +204,13 @@ func printSetupJSON(cmd *cobra.Command, caGenerated, caTrusted bool) error {
 	return nil
 }
 
-type teardownJSON struct {
+type systemUninstallJSON struct {
 	CARemoved    bool `json:"ca_removed"`
 	CertsCleaned bool `json:"certs_cleaned"`
 }
 
-func printTeardownJSON(cmd *cobra.Command, caRemoved, certsCleaned bool) error {
-	data, err := json.MarshalIndent(teardownJSON{
+func printSystemUninstallJSON(cmd *cobra.Command, caRemoved, certsCleaned bool) error {
+	data, err := json.MarshalIndent(systemUninstallJSON{
 		CARemoved:    caRemoved,
 		CertsCleaned: certsCleaned,
 	}, "", "  ")
