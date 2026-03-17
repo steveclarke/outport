@@ -3,10 +3,12 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"os/exec"
 
 	"github.com/outport-app/outport/internal/certmanager"
 	"github.com/outport-app/outport/internal/platform"
+	"github.com/outport-app/outport/internal/registry"
 	"github.com/outport-app/outport/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -171,11 +173,19 @@ func runSystemUninstall(cmd *cobra.Command, args []string) error {
 		certsCleaned = true
 	}
 
+	if !jsonFlag {
+		fmt.Fprintln(w, "Removing registry...")
+	}
+	registryPath, err := registry.DefaultPath()
+	if err == nil {
+		os.Remove(registryPath)
+	}
+
 	if jsonFlag {
 		return printSystemUninstallJSON(cmd, caRemoved, certsCleaned)
 	}
 
-	fmt.Fprintln(w, ui.SuccessStyle.Render("Uninstall complete. DNS resolver, daemon, and certificates removed."))
+	fmt.Fprintln(w, ui.SuccessStyle.Render("Uninstall complete. DNS resolver, daemon, certificates, and registry removed."))
 	return nil
 }
 
