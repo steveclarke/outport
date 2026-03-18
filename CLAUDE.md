@@ -35,6 +35,7 @@ Entry point: `main.go` → `cmd.Execute()` (Cobra CLI).
 - **instance** — Resolves instance names for projects. First instance of a project is "main". Additional instances get random 4-character consonant codes (e.g., "bxcf"). Looks up the registry by directory to find existing instances. Provides name validation (lowercase alphanumeric + hyphens).
 - **daemon** — Long-running process providing DNS server (port 15353, resolves `*.test` to 127.0.0.1), HTTP reverse proxy (port 80, 307 redirect to HTTPS when CA exists), and TLS reverse proxy (port 443, SNI-based cert selection). Watches the registry file for changes and rebuilds the route table automatically. Supports WebSocket proxying.
 - **platform** — macOS-specific integration for the daemon. Manages the LaunchAgent plist (`~/Library/LaunchAgents/`) and `/etc/resolver/test` file for `.test` domain resolution. Provides setup/uninstall/start/stop/restart operations and CA trust/untrust via macOS `security` CLI.
+- **doctor** — Diagnostic checks for the `outport doctor` command. `Check`, `Result`, and `Runner` types. `SystemChecks()` returns checks for DNS, daemon, CA, registry, and cloudflared. `ProjectChecks()` returns checks for config validation, registry lookup, and port availability. Each check returns pass/warn/fail with a fix suggestion.
 - **dotenv** — Writes allocated ports and derived values into a fenced block (`# --- begin outport.dev ---` / `# --- end outport.dev ---`) at the bottom of `.env` files. User content outside the block is preserved. Managed vars in the user section are removed and relocated into the block. Also provides `RemoveBlock()` for cleanup.
 - **tunnel** — Tunnel provider abstraction and concurrent manager. Provider interface allows swapping tunnel backends (Cloudflare, etc.) without changing command code. Manager starts/stops multiple tunnels with all-or-nothing semantics and configurable timeout.
 - **tunnel/cloudflare** — Cloudflare quick tunnel provider. Shells out to `cloudflared tunnel --url`, parses tunnel URL from stderr output.
@@ -52,6 +53,7 @@ Project commands (top-level):
 - **share** — Tunnel HTTP services to public URLs via Cloudflare quick tunnels. Shares all HTTP services by default, or specify service names. Requires `cloudflared` binary. Rewrites `.env` files so `${service.url}` derived values resolve to tunnel URLs (`${service.url:direct}` stays localhost). Reverts `.env` on exit. Blocks until Ctrl+C.
 - **rename** — Rename an instance of the current project. Updates hostnames and re-merges `.env` files.
 - **promote** — Promote the current instance to "main". Demotes the existing main instance to a generated code name. Updates hostnames for both instances.
+- **doctor** — Diagnostic command that checks the health of all Outport infrastructure: DNS resolver, LaunchAgent daemon, CA certificates, registry, and project config (when `.outport.yml` is found). Reports pass/warn/fail for each check with actionable fix suggestions. Read-only — never modifies system state.
 
 System commands (under `outport system`):
 

@@ -10,12 +10,13 @@ import (
 )
 
 const (
-	resolverPath = "/etc/resolver/test"
-	plistName    = "dev.outport.daemon.plist"
-	plistLabel   = "dev.outport.daemon"
+	ResolverPath    = "/etc/resolver/test"
+	ResolverContent = "nameserver 127.0.0.1\nport 15353\n"
+	plistName       = "dev.outport.daemon.plist"
+	plistLabel      = "dev.outport.daemon"
 )
 
-func plistPath() string {
+func PlistPath() string {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return ""
@@ -24,28 +25,26 @@ func plistPath() string {
 }
 
 func isResolverInstalled() bool {
-	_, err := os.Stat(resolverPath)
+	_, err := os.Stat(ResolverPath)
 	return err == nil
 }
 
 func isPlistInstalled() bool {
-	_, err := os.Stat(plistPath())
+	_, err := os.Stat(PlistPath())
 	return err == nil
 }
 
 // WriteResolverFile creates /etc/resolver/test pointing to the local DNS server.
 // Requires sudo — the caller should inform the user that a password prompt may appear.
 func WriteResolverFile() error {
-	content := "nameserver 127.0.0.1\nport 15353\n"
-
 	// Skip if file already has the correct content.
-	existing, err := os.ReadFile(resolverPath)
-	if err == nil && string(existing) == content {
+	existing, err := os.ReadFile(ResolverPath)
+	if err == nil && string(existing) == ResolverContent {
 		return nil
 	}
 
 	// Ensure /etc/resolver/ exists (not present by default on fresh macOS installs).
-	resolverDir := filepath.Dir(resolverPath)
+	resolverDir := filepath.Dir(ResolverPath)
 	mkdirCmd := exec.Command("sudo", "mkdir", "-p", resolverDir)
 	mkdirCmd.Stderr = os.Stderr
 	if err := mkdirCmd.Run(); err != nil {
@@ -54,12 +53,12 @@ func WriteResolverFile() error {
 
 	// Write to a temp file, then sudo cp into place.
 	tmpFile := fmt.Sprintf("/tmp/outport-resolver-%d", os.Getpid())
-	if err := os.WriteFile(tmpFile, []byte(content), 0644); err != nil {
+	if err := os.WriteFile(tmpFile, []byte(ResolverContent), 0644); err != nil {
 		return fmt.Errorf("writing temp resolver file: %w", err)
 	}
 	defer os.Remove(tmpFile)
 
-	cpCmd := exec.Command("sudo", "cp", tmpFile, resolverPath)
+	cpCmd := exec.Command("sudo", "cp", tmpFile, ResolverPath)
 	cpCmd.Stderr = os.Stderr
 	if err := cpCmd.Run(); err != nil {
 		return fmt.Errorf("copying resolver file: %w", err)
@@ -70,7 +69,7 @@ func WriteResolverFile() error {
 // RemoveResolverFile removes /etc/resolver/test.
 // Requires sudo.
 func RemoveResolverFile() error {
-	cmd := exec.Command("sudo", "rm", "-f", resolverPath)
+	cmd := exec.Command("sudo", "rm", "-f", ResolverPath)
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("removing resolver file: %w", err)
@@ -83,7 +82,7 @@ func RemoveResolverFile() error {
 func WritePlist(outportBinary string) error {
 	content := GeneratePlist(outportBinary)
 
-	path := plistPath()
+	path := PlistPath()
 	dir := filepath.Dir(path)
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return fmt.Errorf("creating LaunchAgents directory: %w", err)
@@ -140,7 +139,7 @@ func GeneratePlist(outportBinary string) string {
 
 // RemovePlist removes the LaunchAgent plist file.
 func RemovePlist() error {
-	path := plistPath()
+	path := PlistPath()
 	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("removing plist: %w", err)
 	}
@@ -155,7 +154,7 @@ func IsAgentLoaded() bool {
 
 // LoadAgent loads the LaunchAgent via launchctl.
 func LoadAgent() error {
-	cmd := exec.Command("launchctl", "load", plistPath())
+	cmd := exec.Command("launchctl", "load", PlistPath())
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("loading LaunchAgent: %w", err)
@@ -165,7 +164,7 @@ func LoadAgent() error {
 
 // UnloadAgent unloads the LaunchAgent via launchctl.
 func UnloadAgent() error {
-	cmd := exec.Command("launchctl", "unload", plistPath())
+	cmd := exec.Command("launchctl", "unload", PlistPath())
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("unloading LaunchAgent: %w", err)
@@ -197,4 +196,11 @@ func UntrustCA(certPath string) error {
 		return fmt.Errorf("removing CA from trust store: %w", err)
 	}
 	return nil
+}
+
+// IsCATrusted checks if the CA certificate is trusted in the system keychain
+// by running "security verify-cert".
+func IsCATrusted(certPath string) bool {
+	err := exec.Command("security", "verify-cert", "-c", certPath).Run()
+	return err == nil
 }

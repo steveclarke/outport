@@ -185,6 +185,7 @@ outport share                  Tunnel HTTP services to public URLs
 outport share web              Tunnel a specific service
 outport rename <old> <new>     Rename an instance
 outport promote                Promote the current instance to main
+outport doctor                 Check the health of the outport system
 ```
 
 ### System Commands
