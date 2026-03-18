@@ -27,16 +27,16 @@ After `outport up`:
 A monorepo with a Rails API, two Nuxt frontends, Mailpit for email, and Bruno for API testing. Each sub-app has its own `.env` file:
 
 ```yaml
-name: unio
+name: acme
 services:
   rails:
     env_var: RAILS_PORT
     protocol: http
-    hostname: api.unio.test
+    hostname: api.acme.test
     env_file:
       - backend/.env
       - frontend/apps/main/.env
-      - frontend/apps/portal/.env
+      - frontend/apps/admin/.env
   postgres:
     env_var: DB_PORT
     env_file: backend/.env
@@ -46,7 +46,7 @@ services:
   mailpit_web:
     env_var: MAILPIT_WEB_PORT
     protocol: http
-    hostname: mailpit.unio.test
+    hostname: mailpit.acme.test
     env_file: backend/.env
   mailpit_smtp:
     env_var: MAILPIT_SMTP_PORT
@@ -54,16 +54,16 @@ services:
   frontend_main:
     env_var: MAIN_PORT
     protocol: http
-    hostname: unio.test
+    hostname: acme.test
     env_file:
       - frontend/apps/main/.env
       - backend/.env
-  frontend_portal:
-    env_var: PORTAL_PORT
+  frontend_admin:
+    env_var: ADMIN_PORT
     protocol: http
-    hostname: portal.unio.test
+    hostname: admin.acme.test
     env_file:
-      - frontend/apps/portal/.env
+      - frontend/apps/admin/.env
       - backend/.env
 
 derived:
@@ -72,41 +72,41 @@ derived:
     env_file:
       - file: frontend/apps/main/.env
         value: "${rails.url:direct}/api/v1"
-      - file: frontend/apps/portal/.env
-        value: "${rails.url:direct}/portal/api/v1"
+      - file: frontend/apps/admin/.env
+        value: "${rails.url:direct}/admin/api/v1"
 
   NUXT_CABLE_BASE_URL:
     env_file:
       - file: frontend/apps/main/.env
         value: "${rails.url:direct}/cable"
-      - file: frontend/apps/portal/.env
-        value: "${rails.url:direct}/portal/cable"
+      - file: frontend/apps/admin/.env
+        value: "${rails.url:direct}/admin/cable"
 
   # CORS origins — browser-facing, use .test URLs
-  CORE_CORS_ORIGINS:
-    value: "${frontend_main.url},${frontend_portal.url}"
+  APP_CORS_ORIGINS:
+    value: "${frontend_main.url},${frontend_admin.url}"
     env_file: backend/.env
 
-  CORE_FRONTEND_URL:
+  APP_FRONTEND_URL:
     value: "${frontend_main.url}"
     env_file: backend/.env
 
   # Asset host for file uploads
-  SHRINE_ASSET_HOST:
+  ASSET_HOST:
     value: "${rails.url}"
     env_file: backend/.env
 
   # Docker Compose isolation per worktree
   COMPOSE_PROJECT_NAME:
-    value: "unio${instance:+-${instance}}"
+    value: "acme${instance:+-${instance}}"
     env_file: backend/.env
 
   # Bruno API testing
   BRUNO_API_URL:
     value: "${rails.url:direct}/api/v1"
     env_file: backend/bruno/.env
-  BRUNO_PORTAL_URL:
-    value: "${rails.url:direct}/portal/api/v1"
+  BRUNO_ADMIN_URL:
+    value: "${rails.url:direct}/admin/api/v1"
     env_file: backend/bruno/.env
   BRUNO_EXTERNAL_URL:
     value: "${rails.url:direct}/external/api/v1"
