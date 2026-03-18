@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** When `outport share` tunnels HTTP services, rewrite `.env` files with tunnel URLs so derived values (CORS, API URLs) resolve to public tunnel URLs automatically — and revert on exit.
+**Goal:** When `outport share` tunnels HTTP services, rewrite `.env` files with tunnel URLs so computed values (CORS, API URLs) resolve to public tunnel URLs automatically — and revert on exit.
 
-**Architecture:** Extract the env-writing pipeline (`buildTemplateVars` → `resolveDerivedFromAlloc` → `mergeEnvFiles`) to accept an optional tunnel URL override map. `outport share` calls it after tunnels start (with overrides) and again on exit (without overrides). No new config fields or template variables.
+**Architecture:** Extract the env-writing pipeline (`buildTemplateVars` → `resolveComputedFromAlloc` → `mergeEnvFiles`) to accept an optional tunnel URL override map. `outport share` calls it after tunnels start (with overrides) and again on exit (without overrides). No new config fields or template variables.
 
 **Tech Stack:** Go, Cobra CLI, existing internal packages (config, dotenv, tunnel)
 
@@ -16,7 +16,7 @@
 
 | File | Action | Responsibility |
 |------|--------|---------------|
-| `cmd/up.go` | Modify | `buildTemplateVars` and `resolveDerivedFromAlloc` gain `tunnelURLs` parameter |
+| `cmd/up.go` | Modify | `buildTemplateVars` and `resolveComputedFromAlloc` gain `tunnelURLs` parameter |
 | `cmd/rename.go` | Modify | `mergeEnvFiles` gains `tunnelURLs` parameter, passes through |
 | `cmd/promote.go` | Modify | Two `mergeEnvFiles` call sites gain `nil` argument |
 | `cmd/share.go` | Modify | After tunnels start, rewrite `.env`; on exit, revert `.env` |
@@ -30,7 +30,7 @@
 
 **Files:**
 - Modify: `cmd/up.go:226-254` (buildTemplateVars function)
-- Modify: `cmd/up.go:258-263` (resolveDerivedFromAlloc — passes through)
+- Modify: `cmd/up.go:258-263` (resolveComputedFromAlloc — passes through)
 - Test: `cmd/cmd_test.go`
 
 - [ ] **Step 1: Write the failing test**
@@ -149,17 +149,17 @@ func buildTemplateVars(cfg *config.Config, instanceName string, ports map[string
 }
 ```
 
-- [ ] **Step 4: Update resolveDerivedFromAlloc to pass through tunnelURLs**
+- [ ] **Step 4: Update resolveComputedFromAlloc to pass through tunnelURLs**
 
 In `cmd/up.go`, update the function:
 
 ```go
-func resolveDerivedFromAlloc(cfg *config.Config, instanceName string, ports map[string]int, hostnames map[string]string, httpsEnabled bool, tunnelURLs map[string]string) map[string]map[string]string {
-	if len(cfg.Derived) == 0 {
+func resolveComputedFromAlloc(cfg *config.Config, instanceName string, ports map[string]int, hostnames map[string]string, httpsEnabled bool, tunnelURLs map[string]string) map[string]map[string]string {
+	if len(cfg.Computed) == 0 {
 		return nil
 	}
 	templateVars := buildTemplateVars(cfg, instanceName, ports, hostnames, httpsEnabled, tunnelURLs)
-	return config.ResolveDerived(cfg.Derived, templateVars)
+	return config.ResolveComputed(cfg.Computed, templateVars)
 }
 ```
 
@@ -174,7 +174,7 @@ func mergeEnvFiles(dir string, cfg *config.Config, instanceName string, ports ma
 And update the call inside it:
 
 ```go
-resolvedDerived := resolveDerivedFromAlloc(cfg, instanceName, ports, hostnames, httpsEnabled, tunnelURLs)
+resolvedComputed := resolveComputedFromAlloc(cfg, instanceName, ports, hostnames, httpsEnabled, tunnelURLs)
 ```
 
 Update all existing call sites to pass `nil` (no behavior change):
@@ -219,7 +219,7 @@ All existing callers pass nil (no behavior change)."
 Add to `cmd/cmd_test.go`:
 
 ```go
-const testConfigWithDerivedAndHostnames = `name: testapp
+const testConfigWithComputedAndHostnames = `name: testapp
 services:
   rails:
     preferred_port: 3000
@@ -234,7 +234,7 @@ services:
   postgres:
     preferred_port: 5432
     env_var: DATABASE_PORT
-derived:
+computed:
   API_URL:
     value: "${rails.url}/api"
     env_file: .env
@@ -247,7 +247,7 @@ derived:
 `
 
 func TestMergeEnvFiles_WithTunnelURLs(t *testing.T) {
-	dir := setupProject(t, testConfigWithDerivedAndHostnames)
+	dir := setupProject(t, testConfigWithComputedAndHostnames)
 
 	ports := map[string]int{"rails": 3000, "vite": 5173, "postgres": 5432}
 	hostnames := map[string]string{"rails": "testapp.test", "vite": "testapp-vite.test"}
@@ -264,7 +264,7 @@ func TestMergeEnvFiles_WithTunnelURLs(t *testing.T) {
 
 	env := readEnvFile(t, filepath.Join(dir, ".env"))
 
-	// Derived values using ${service.url} should have tunnel URLs
+	// Computed values using ${service.url} should have tunnel URLs
 	if got := env["API_URL"]; got != "https://abc.trycloudflare.com/api" {
 		t.Errorf("API_URL = %q, want tunnel-based URL", got)
 	}
@@ -272,7 +272,7 @@ func TestMergeEnvFiles_WithTunnelURLs(t *testing.T) {
 		t.Errorf("CORS_ORIGINS = %q, want tunnel-based URL", got)
 	}
 
-	// Derived values using ${service.url:direct} should stay localhost
+	// Computed values using ${service.url:direct} should stay localhost
 	if got := env["API_URL_DIRECT"]; got != "http://localhost:3000/api" {
 		t.Errorf("API_URL_DIRECT = %q, want localhost URL", got)
 	}
@@ -336,7 +336,7 @@ func readEnvFile(t *testing.T, path string) map[string]string {
 - [ ] **Step 2: Run test to verify the pipeline works end to end**
 
 Run: `go test ./cmd/ -run TestMergeEnvFiles_WithTunnelURLs -v`
-Expected: PASS — the pipeline changes from Task 1 already support tunnel URL overrides through `mergeEnvFiles`. This test validates the full flow (template vars → derived values → .env file) before wiring it into the share command.
+Expected: PASS — the pipeline changes from Task 1 already support tunnel URL overrides through `mergeEnvFiles`. This test validates the full flow (template vars → computed values → .env file) before wiring it into the share command.
 
 - [ ] **Step 3: Update runShare to rewrite .env files**
 
@@ -483,7 +483,7 @@ Expected: 0 issues.
 git add cmd/share.go cmd/cmd_test.go
 git commit -m "feat: outport share rewrites .env with tunnel URLs
 
-After tunnels start, rewrites .env files so \${service.url} derived
+After tunnels start, rewrites .env files so \${service.url} computed
 values resolve to tunnel URLs. On exit, reverts to local URLs.
 Prints messages telling the user to restart services.
 
@@ -502,19 +502,19 @@ Closes #17"
 
 - [ ] **Step 1: Update shareJSON struct**
 
-In `cmd/share.go`, extend the JSON output to include derived values. Note: `derivedJSON` and `buildDerivedMap` are already defined in `cmd/up.go` and accessible within the `cmd` package:
+In `cmd/share.go`, extend the JSON output to include computed values. Note: `computedJSON` and `buildComputedMap` are already defined in `cmd/up.go` and accessible within the `cmd` package:
 
 ```go
 type shareJSON struct {
-	Tunnels []tunnelJSON           `json:"tunnels"`
-	Derived map[string]derivedJSON `json:"derived,omitempty"`
+	Tunnels  []tunnelJSON            `json:"tunnels"`
+	Computed map[string]computedJSON `json:"computed,omitempty"`
 }
 ```
 
-- [ ] **Step 2: Update printShareJSON to accept derived values**
+- [ ] **Step 2: Update printShareJSON to accept computed values**
 
 ```go
-func printShareJSON(cmd *cobra.Command, tunnels []*tunnel.Tunnel, cfg *config.Config, resolvedDerived map[string]map[string]string) error {
+func printShareJSON(cmd *cobra.Command, tunnels []*tunnel.Tunnel, cfg *config.Config, resolvedComputed map[string]map[string]string) error {
 	out := shareJSON{}
 	for _, tun := range tunnels {
 		out.Tunnels = append(out.Tunnels, tunnelJSON{
@@ -523,23 +523,23 @@ func printShareJSON(cmd *cobra.Command, tunnels []*tunnel.Tunnel, cfg *config.Co
 			Port:    tun.Port,
 		})
 	}
-	out.Derived = buildDerivedMap(cfg.Derived, resolvedDerived)
+	out.Computed = buildComputedMap(cfg.Computed, resolvedComputed)
 	return writeJSON(cmd, out)
 }
 ```
 
-- [ ] **Step 3: Update runShare to pass derived values to printShareJSON**
+- [ ] **Step 3: Update runShare to pass computed values to printShareJSON**
 
 Capture the return value from `mergeEnvFiles` and pass it to `printShareJSON`:
 
 ```go
-resolvedDerived, err := mergeEnvFiles(ctx.Dir, ctx.Cfg, ctx.Instance, alloc.Ports, alloc.Hostnames, httpsEnabled, tunnelURLs)
+resolvedComputed, err := mergeEnvFiles(ctx.Dir, ctx.Cfg, ctx.Instance, alloc.Ports, alloc.Hostnames, httpsEnabled, tunnelURLs)
 if err != nil {
 	return fmt.Errorf("writing tunnel URLs to .env: %w", err)
 }
 
 if jsonFlag {
-	if err := printShareJSON(cmd, tunnels, ctx.Cfg, resolvedDerived); err != nil {
+	if err := printShareJSON(cmd, tunnels, ctx.Cfg, resolvedComputed); err != nil {
 		return err
 	}
 } else {
@@ -556,7 +556,7 @@ Expected: ALL PASS, 0 lint issues.
 
 ```bash
 git add cmd/share.go
-git commit -m "feat: include derived values in share --json output"
+git commit -m "feat: include computed values in share --json output"
 ```
 
 ---
@@ -575,7 +575,7 @@ git commit -m "feat: include derived values in share --json output"
 Use the `/update-docs` skill to audit all documentation locations and update any that reference `outport share` to mention the tunnel URL orchestration behavior:
 
 - `outport share` now rewrites `.env` files with tunnel URLs
-- Derived values using `${service.url}` automatically resolve to tunnel URLs
+- Computed values using `${service.url}` automatically resolve to tunnel URLs
 - On exit, `.env` files revert to local URLs
 - Users should restart services after `outport share` starts and after it stops
 

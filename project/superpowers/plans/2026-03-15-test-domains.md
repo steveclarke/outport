@@ -758,7 +758,7 @@ services:
     env_var: PORT
     protocol: http
     hostname: myapp
-derived:
+computed:
   API_URL:
     value: "${rails.url:direct}/api"
     env_file: .env
@@ -776,7 +776,7 @@ derived:
 		"rails.url":        "http://myapp.test",
 		"rails.url:direct": "http://localhost:24920",
 	}
-	resolved := ResolveDerived(cfg.Derived, vars)
+	resolved := ResolveComputed(cfg.Computed, vars)
 	val := resolved["API_URL"][".env"]
 	if val != "http://localhost:24920/api" {
 		t.Errorf("got %q, want %q", val, "http://localhost:24920/api")
@@ -791,7 +791,7 @@ services:
     env_var: PORT
     protocol: http
     hostname: myapp
-derived:
+computed:
   BAD:
     value: "${rails.url:bogus}"
     env_file: .env
@@ -812,7 +812,7 @@ services:
     env_var: PORT
     protocol: http
     hostname: myapp
-derived:
+computed:
   SITE_URL:
     value: "${rails.url}"
     env_file: .env
@@ -2531,7 +2531,7 @@ func runRename(cmd *cobra.Command, args []string) error {
 
 	// Re-merge .env files for this instance
 	templateVars := buildTemplateVars(ctx.Cfg, alloc.Ports, alloc.Hostnames)
-	resolved := resolveDerivedFromAlloc(ctx.Cfg, alloc.Ports, templateVars)
+	resolved := resolveComputedFromAlloc(ctx.Cfg, alloc.Ports, templateVars)
 	envFileVars := buildEnvFileVars(ctx.Cfg, alloc.Ports, resolved)
 	for file, vars := range envFileVars {
 		dotenv.Merge(filepath.Join(alloc.ProjectDir, file), vars)
@@ -2547,7 +2547,7 @@ func runRename(cmd *cobra.Command, args []string) error {
 }
 ```
 
-Note: The exact signatures for `buildTemplateVars`, `resolveDerivedFromAlloc`, and `buildEnvFileVars` will depend on how they are refactored in Task 8. The helper functions may need to be extracted from `runApply` to be reusable. Adapt during implementation.
+Note: The exact signatures for `buildTemplateVars`, `resolveComputedFromAlloc`, and `buildEnvFileVars` will depend on how they are refactored in Task 8. The helper functions may need to be extracted from `runApply` to be reusable. Adapt during implementation.
 
 - [ ] **Step 2: Implement promote command**
 
@@ -2692,7 +2692,7 @@ Test the complete workflow:
 
 - [ ] **Step 4: Write integration test for template modifiers**
 
-1. Config with `${service.url}` and `${service.url:direct}` in derived values
+1. Config with `${service.url}` and `${service.url:direct}` in computed values
 2. Run apply
 3. Read .env file and verify resolved values
 
@@ -2817,7 +2817,7 @@ All new commands (setup, teardown, up, down, rename, promote) must support `--js
 
 ### Shared `.env` Re-merge Helper
 
-The rename, promote, and apply commands all need to recompute template vars, resolve derived values, and re-merge `.env` files. Extract a shared helper (e.g., `remergeEnvFiles(cfg, alloc, instanceName)`) to avoid duplication. The promote command's .env re-merge (for both the promoted and demoted instances) must be fully implemented, not left as a TODO comment.
+The rename, promote, and apply commands all need to recompute template vars, resolve computed values, and re-merge `.env` files. Extract a shared helper (e.g., `remergeEnvFiles(cfg, alloc, instanceName)`) to avoid duplication. The promote command's .env re-merge (for both the promoted and demoted instances) must be fully implemented, not left as a TODO comment.
 
 ### Breaking Changes
 

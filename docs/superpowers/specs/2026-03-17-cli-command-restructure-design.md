@@ -34,7 +34,7 @@ Run in a project directory, operate on that project's configuration and registry
 | `outport init` | Create `.outport.yml` template | *(unchanged)* | `--json` |
 | `outport up` | Register project, allocate ports, write `.env` | `apply` | `--force`, `--json` |
 | `outport down` | Clean `.env` blocks, remove from registry | `unapply` | `--json` |
-| `outport ports` | Show allocated ports for current project | *(unchanged)* | `--check`, `--derived`, `--json` |
+| `outport ports` | Show allocated ports for current project | *(unchanged)* | `--check`, `--computed`, `--json` |
 | `outport open [service]` | Open HTTP services in the browser | *(unchanged)* | `--json` |
 | `outport rename <old> <new>` | Rename a project instance | *(unchanged)* | `--json` |
 | `outport promote` | Promote current instance to main | *(unchanged)* | `--json` |
@@ -48,7 +48,7 @@ Operate on the machine-wide outport installation: daemon, DNS resolver, CA, and 
 | `outport system start` | Start the daemon (auto-setup on first run) | `setup` + `up` | Idempotent. First run: writes plist, installs DNS resolver (sudo), generates CA, trusts CA (keychain prompt), loads agent. Subsequent runs: loads agent if not running. `--json` |
 | `outport system stop` | Stop the daemon | `down` | Unloads LaunchAgent. Non-destructive. `--json` |
 | `outport system restart` | Restart the daemon | *(new)* | Stop + start. Re-writes plist (re-resolves binary path) but does NOT re-run full setup (no sudo, no CA). Errors if setup hasn't been done. `--json` |
-| `outport system status` | Show all registered projects | `status` | Shows all projects system-wide. `--check`, `--derived`, `--json` flags. Shows stale markers but does NOT prompt for removal — use `system gc` instead. |
+| `outport system status` | Show all registered projects | `status` | Shows all projects system-wide. `--check`, `--computed`, `--json` flags. Shows stale markers but does NOT prompt for removal — use `system gc` instead. |
 | `outport system gc` | Remove stale registry entries | `gc` | Removes entries where directory or config no longer exists. `--json` |
 | `outport system uninstall` | Remove DNS, daemon, CA, and certs | `teardown` | Full cleanup: unload agent, remove plist, remove `/etc/resolver/test`, untrust and delete CA, clear cert cache. `--json` |
 

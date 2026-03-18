@@ -2,7 +2,7 @@
 
 > **For agentic workers:** This spec describes enhancing `outport share` to rewrite `.env` files with tunnel URLs so multi-service architectures (SPA + API) automatically discover each other's public URLs during sharing.
 
-**Goal:** When `outport share` tunnels HTTP services, derived values like CORS origins and API base URLs should automatically resolve to tunnel URLs — and revert when sharing stops.
+**Goal:** When `outport share` tunnels HTTP services, computed values like CORS origins and API base URLs should automatically resolve to tunnel URLs — and revert when sharing stops.
 
 **Depends on:** Issue #16 (`outport share` — basic tunneling, shipped in v0.15.0)
 
@@ -12,7 +12,7 @@
 
 When a project has a frontend and a backend, tunneling one service isn't enough. The frontend needs the backend's tunnel URL for API calls, and the backend needs the frontend's tunnel URL for CORS. Today this requires manually copying tunnel URLs into env vars and restarting services. Nobody does this.
 
-Outport is uniquely positioned to solve this because it already owns the full service map AND the `.env` files. The derived values system (`${service.url}`) already wires services together — during sharing, those URLs should resolve to tunnel URLs instead of local `.test` URLs.
+Outport is uniquely positioned to solve this because it already owns the full service map AND the `.env` files. The computed values system (`${service.url}`) already wires services together — during sharing, those URLs should resolve to tunnel URLs instead of local `.test` URLs.
 
 ## Design
 
@@ -33,14 +33,14 @@ The `url:direct` field stays as localhost because local services still talk to e
 After overriding the template vars, the pipeline runs unchanged:
 
 1. `buildTemplateVars()` — with tunnel URL overrides for shared services
-2. `ResolveDerived()` — expands all derived value templates
+2. `ResolveComputed()` — expands all computed value templates
 3. `mergeEnvFiles()` — rewrites fenced blocks in `.env` files
 
-Every derived value that references `${service.url}` cascades automatically. CORS origins, API base URLs, asset hosts — all resolve to tunnel URLs without any config changes.
+Every computed value that references `${service.url}` cascades automatically. CORS origins, API base URLs, asset hosts — all resolve to tunnel URLs without any config changes.
 
 ### Refactoring the Pipeline
 
-The env-writing pipeline (`buildTemplateVars` → `ResolveDerived` → `mergeEnvFiles`) currently lives as unexported functions in `cmd/up.go`. To share it between `up` and `share`, extract it into a common function:
+The env-writing pipeline (`buildTemplateVars` → `ResolveComputed` → `mergeEnvFiles`) currently lives as unexported functions in `cmd/up.go`. To share it between `up` and `share`, extract it into a common function:
 
 ```
 computeAndWriteEnv(cfg, reg, alloc, tunnelURLs map[string]string) error
@@ -87,21 +87,21 @@ Restored .env files to local URLs.
 Restart your services to revert to local development.
 ```
 
-**`--json` mode**: Includes `tunnelUrls` map and shows which derived values were rewritten.
+**`--json` mode**: Includes `tunnelUrls` map and shows which computed values were rewritten.
 
 ### Partial Sharing
 
-When sharing a subset of services (`outport share web`), only those services get tunnel URL overrides. Non-tunneled services retain their local `.test` URLs. This means derived values referencing non-tunneled services still point to local URLs — which is correct, since those services aren't reachable from outside the network anyway.
+When sharing a subset of services (`outport share web`), only those services get tunnel URL overrides. Non-tunneled services retain their local `.test` URLs. This means computed values referencing non-tunneled services still point to local URLs — which is correct, since those services aren't reachable from outside the network anyway.
 
 ### Error Handling
 
 - **Partial tunnel failure**: The tunnel manager has all-or-nothing semantics. If one tunnel fails, none start and `.env` is never rewritten.
-- **No derived values configured**: The pipeline still runs — service port env vars are written as normal. Tunnel URLs appear in the share output for manual use.
+- **No computed values configured**: The pipeline still runs — service port env vars are written as normal. Tunnel URLs appear in the share output for manual use.
 - **Config changed while sharing**: The exit cleanup re-reads config and recomputes everything fresh, picking up any changes.
 
 ## What Doesn't Change
 
-- **No new config fields.** No `tunnel_url_var`, no `tunnel:` section. The existing `services` and `derived` config is sufficient.
+- **No new config fields.** No `tunnel_url_var`, no `tunnel:` section. The existing `services` and `computed` config is sufficient.
 - **No new template variables.** `${service.url}` is dynamic based on context — no `${service.tunnel_url}`.
 - **No restart hooks.** The user restarts their own services. Messages tell them when to do so.
 - **No persistent tunnel state.** Tunnel URLs exist only while `outport share` is running. Nothing is written to the registry.
@@ -109,7 +109,7 @@ When sharing a subset of services (`outport share web`), only those services get
 
 ## Concrete Example: Unio
 
-Unio has Rails API (`api.unio.test`), Nuxt main app (`unio.test`), and Nuxt portal (`portal.unio.test`). Derived values include:
+Unio has Rails API (`api.unio.test`), Nuxt main app (`unio.test`), and Nuxt portal (`portal.unio.test`). Computed values include:
 
 - `CORE_CORS_ORIGINS` = `${frontend_main.url},${frontend_portal.url}` → written to `backend/.env`
 - `NUXT_API_BASE_URL` = `${rails.url:direct}/api/v1` → written to `frontend/apps/main/.env`

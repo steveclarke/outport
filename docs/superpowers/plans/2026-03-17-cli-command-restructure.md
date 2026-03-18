@@ -507,7 +507,7 @@ Update `init()` to register with `systemCmd`:
 ```go
 func init() {
 	systemStatusCmd.Flags().BoolVar(&statusCheckFlag, "check", false, "check if ports are accepting connections")
-	systemStatusCmd.Flags().BoolVar(&statusDerivedFlag, "derived", false, "show derived values")
+	systemStatusCmd.Flags().BoolVar(&statusComputedFlag, "computed", false, "show computed values")
 	systemCmd.AddCommand(systemStatusCmd)
 }
 ```

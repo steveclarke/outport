@@ -41,7 +41,7 @@ The registry becomes the single source of truth for instance identity. The `inte
 
 **New commands for instance management:**
 
-- `outport rename <old> <new>` — rename an instance. Must be run from a directory belonging to the target project (so the project name can be resolved from `.outport.yml`). Updates registry key, recomputes hostnames for the renamed instance, and re-merges all `.env` files for that instance (so derived values referencing `${service.url}` or `${service.hostname}` get updated). The new name must not collide with an existing instance of the same project. Ports are unchanged.
+- `outport rename <old> <new>` — rename an instance. Must be run from a directory belonging to the target project (so the project name can be resolved from `.outport.yml`). Updates registry key, recomputes hostnames for the renamed instance, and re-merges all `.env` files for that instance (so computed values referencing `${service.url}` or `${service.hostname}` get updated). The new name must not collide with an existing instance of the same project. Ports are unchanged.
 - `outport promote` — run from a non-main instance directory. Swaps it to `"main"`, demotes current main to an auto-generated code. If no current main exists (deleted/gc'd), the instance simply becomes main with no swap. Both instances' `.env` files are re-merged to reflect the new hostnames. Ports stay the same, only hostnames and registry keys change.
 
 ### 2. Registry Extension
@@ -227,7 +227,7 @@ Extends the existing `${service.field}` template syntax with `${service.field:mo
 | Template | Resolves to | Notes |
 |----------|------------|-------|
 | `${rails.port}` | `24920` | Unchanged |
-| `${rails.hostname}` | `unio.test` | **Changed** — now resolves to instance-aware `.test` hostname instead of the raw config value. For services without a `hostname` declaration, this field is unavailable (config validation will catch references to it in derived values). |
+| `${rails.hostname}` | `unio.test` | **Changed** — now resolves to instance-aware `.test` hostname instead of the raw config value. For services without a `hostname` declaration, this field is unavailable (config validation will catch references to it in computed values). |
 | `${rails.url}` | `http://unio.test` | **New** — full proxied URL, no port (port 80 via proxy) |
 | `${rails.url:direct}` | `http://localhost:24920` | **New** — direct localhost URL with port, for server-to-server communication |
 
@@ -235,10 +235,10 @@ Extends the existing `${service.field}` template syntax with `${service.field:mo
 
 **Modifier parsing:** The template resolver splits on `:` after the field name. Only one modifier is supported initially (`:direct`), but the parser handles the pattern generically for future extensibility. An unrecognized modifier is a config validation error.
 
-**Example — Unio derived values with modifiers:**
+**Example — Unio computed values with modifiers:**
 
 ```yaml
-derived:
+computed:
   NUXT_API_BASE_URL:
     env_file:
       - file: frontend/apps/main/.env

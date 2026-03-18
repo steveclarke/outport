@@ -210,7 +210,7 @@ All landing page sections are self-contained within `HomeLayout.vue`. Sections c
 ## Out of Scope (follow-up issues)
 
 - Instance management guide
-- Template system / derived values guide
+- Template system / computed values guide
 - Integration guides (Docker, Rails, Nuxt, Phoenix, Django)
 - .test domains deep-dive
 - FAQ page
