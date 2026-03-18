@@ -1,9 +1,11 @@
 package portcheck
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"sync"
+	"syscall"
 	"time"
 )
 
@@ -37,10 +39,22 @@ func IsBound(port int) bool {
 // Unlike IsBound (which dials), this detects ports in LISTEN state even
 // if they aren't yet accepting connections. Used by system start to check
 // whether ports 80/443 are available before starting the daemon.
+// Permission errors (e.g., binding to port 80 without root) are not
+// treated as "in use" — the daemon runs via launchd with socket
+// activation, so it doesn't need the calling process to have permission.
 func IsListening(port int) bool {
 	ln, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", port))
 	if err != nil {
-		return true // port is in use
+		// Permission denied (EACCES) means the port is available but
+		// we can't bind to it as a non-root user. That's fine — the
+		// daemon gets the socket from launchd.
+		var sysErr *net.OpError
+		if errors.As(err, &sysErr) {
+			if errors.Is(sysErr.Err, syscall.EACCES) {
+				return false
+			}
+		}
+		return true // port is genuinely in use
 	}
 	ln.Close()
 	return false
