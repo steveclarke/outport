@@ -63,7 +63,7 @@ func runRename(cmd *cobra.Command, args []string) error {
 
 	// Re-merge .env files with updated hostnames
 	httpsEnabled := certmanager.IsCAInstalled()
-	if _, err := mergeEnvFiles(ctx.Dir, cfg, newName, oldAlloc.Ports, newAlloc.Hostnames, httpsEnabled); err != nil {
+	if _, err := mergeEnvFiles(ctx.Dir, cfg, newName, oldAlloc.Ports, newAlloc.Hostnames, httpsEnabled, nil); err != nil {
 		return fmt.Errorf("updating .env files: %w", err)
 	}
 
@@ -81,7 +81,7 @@ func runRename(cmd *cobra.Command, args []string) error {
 // This is used by rename and promote to update .env files after hostnames change.
 // mergeEnvFiles rebuilds and writes env file vars for an allocation.
 // Returns the resolved derived values so callers can reuse them for display.
-func mergeEnvFiles(dir string, cfg *config.Config, instanceName string, ports map[string]int, hostnames map[string]string, httpsEnabled bool) (map[string]map[string]string, error) {
+func mergeEnvFiles(dir string, cfg *config.Config, instanceName string, ports map[string]int, hostnames map[string]string, httpsEnabled bool, tunnelURLs map[string]string) (map[string]map[string]string, error) {
 	envFileVars := make(map[string]map[string]string)
 
 	for svcName, svc := range cfg.Services {
@@ -95,7 +95,7 @@ func mergeEnvFiles(dir string, cfg *config.Config, instanceName string, ports ma
 	}
 
 	// Resolve derived values and add to envFileVars
-	resolvedDerived := resolveDerivedFromAlloc(cfg, instanceName, ports, hostnames, httpsEnabled)
+	resolvedDerived := resolveDerivedFromAlloc(cfg, instanceName, ports, hostnames, httpsEnabled, tunnelURLs)
 	for name, fileValues := range resolvedDerived {
 		for file, value := range fileValues {
 			if envFileVars[file] == nil {

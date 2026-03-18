@@ -142,7 +142,7 @@ func printStatusJSON(cmd *cobra.Command, reg *registry.Registry, portStatus map[
 
 		var derived map[string]derivedJSON
 		if cfg != nil && statusDerivedFlag {
-			derived = buildDerivedMap(cfg.Derived, resolveDerivedFromAlloc(cfg, instanceName, alloc.Ports, alloc.Hostnames, httpsEnabled))
+			derived = buildDerivedMap(cfg.Derived, resolveDerivedFromAlloc(cfg, instanceName, alloc.Ports, alloc.Hostnames, httpsEnabled, nil))
 		}
 
 		entries = append(entries, statusEntryJSON{
@@ -200,7 +200,7 @@ func printStatusStyled(cmd *cobra.Command, reg *registry.Registry, portStatus ma
 		}
 
 		if cfg != nil && statusDerivedFlag {
-			if resolved := resolveDerivedFromAlloc(cfg, instanceName, alloc.Ports, alloc.Hostnames, httpsEnabled); len(resolved) > 0 {
+			if resolved := resolveDerivedFromAlloc(cfg, instanceName, alloc.Ports, alloc.Hostnames, httpsEnabled, nil); len(resolved) > 0 {
 				printDerivedValues(w, resolved)
 			}
 		}

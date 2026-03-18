@@ -1480,7 +1480,7 @@ func TestBuildTemplateVarsHTTPS(t *testing.T) {
 	hostnames := map[string]string{"rails": "myapp.test"}
 
 	httpsEnabled := certmanager.IsCAInstalled()
-	vars := buildTemplateVars(cfg, "main", ports, hostnames, httpsEnabled)
+	vars := buildTemplateVars(cfg, "main", ports, hostnames, httpsEnabled, nil)
 
 	if vars["rails.url"] != "https://myapp.test" {
 		t.Errorf("rails.url = %q, want %q", vars["rails.url"], "https://myapp.test")
@@ -1504,7 +1504,7 @@ func TestBuildTemplateVarsHTTP(t *testing.T) {
 	hostnames := map[string]string{"rails": "myapp.test"}
 
 	httpsEnabled := certmanager.IsCAInstalled()
-	vars := buildTemplateVars(cfg, "main", ports, hostnames, httpsEnabled)
+	vars := buildTemplateVars(cfg, "main", ports, hostnames, httpsEnabled, nil)
 
 	if vars["rails.url"] != "http://myapp.test" {
 		t.Errorf("rails.url = %q, want %q", vars["rails.url"], "http://myapp.test")
@@ -1521,12 +1521,12 @@ func TestBuildTemplateVarsInstance(t *testing.T) {
 	ports := map[string]int{"web": 3000}
 	hostnames := map[string]string{}
 
-	vars := buildTemplateVars(cfg, "main", ports, hostnames, false)
+	vars := buildTemplateVars(cfg, "main", ports, hostnames, false, nil)
 	if vars["instance"] != "" {
 		t.Errorf("instance for main = %q, want empty string", vars["instance"])
 	}
 
-	vars = buildTemplateVars(cfg, "xbjf", ports, hostnames, false)
+	vars = buildTemplateVars(cfg, "xbjf", ports, hostnames, false, nil)
 	if vars["instance"] != "xbjf" {
 		t.Errorf("instance = %q, want %q", vars["instance"], "xbjf")
 	}
@@ -1641,5 +1641,176 @@ func TestShare_CloudflaredNotInstalled(t *testing.T) {
 	want := "cloudflared not found"
 	if got := err.Error(); !strings.Contains(got, want) {
 		t.Errorf("error = %q, want containing %q", got, want)
+	}
+}
+
+// --- Tunnel URL orchestration tests ---
+
+func TestBuildTemplateVars_TunnelOverrides(t *testing.T) {
+	cfg := &config.Config{
+		Name: "myapp",
+		Services: map[string]config.Service{
+			"rails": {
+				EnvVar:   "RAILS_PORT",
+				Protocol: "http",
+				Hostname: "myapp.test",
+			},
+			"postgres": {
+				EnvVar: "DB_PORT",
+			},
+		},
+	}
+	ports := map[string]int{"rails": 3000, "postgres": 5432}
+	hostnames := map[string]string{"rails": "myapp.test"}
+	tunnelURLs := map[string]string{"rails": "https://abc-def.trycloudflare.com"}
+
+	vars := buildTemplateVars(cfg, "main", ports, hostnames, true, tunnelURLs)
+
+	// Tunneled service: url overridden, url:direct stays localhost
+	if got := vars["rails.url"]; got != "https://abc-def.trycloudflare.com" {
+		t.Errorf("rails.url = %q, want tunnel URL", got)
+	}
+	if got := vars["rails.url:direct"]; got != "http://localhost:3000" {
+		t.Errorf("rails.url:direct = %q, want localhost", got)
+	}
+
+	// Non-tunneled service: unchanged
+	if got := vars["postgres.port"]; got != "5432" {
+		t.Errorf("postgres.port = %q, want 5432", got)
+	}
+
+	// Hostname stays the same (only url changes)
+	if got := vars["rails.hostname"]; got != "myapp.test" {
+		t.Errorf("rails.hostname = %q, want myapp.test", got)
+	}
+}
+
+func TestBuildTemplateVars_NilTunnelURLs(t *testing.T) {
+	cfg := &config.Config{
+		Name: "myapp",
+		Services: map[string]config.Service{
+			"rails": {
+				EnvVar:   "RAILS_PORT",
+				Protocol: "http",
+				Hostname: "myapp.test",
+			},
+		},
+	}
+	ports := map[string]int{"rails": 3000}
+	hostnames := map[string]string{"rails": "myapp.test"}
+
+	vars := buildTemplateVars(cfg, "main", ports, hostnames, true, nil)
+
+	if got := vars["rails.url"]; got != "https://myapp.test" {
+		t.Errorf("rails.url = %q, want https://myapp.test", got)
+	}
+}
+
+const testConfigWithDerivedAndHostnames = `name: testapp
+services:
+  rails:
+    preferred_port: 3000
+    env_var: RAILS_PORT
+    protocol: http
+    hostname: testapp.test
+  vite:
+    preferred_port: 5173
+    env_var: VITE_PORT
+    protocol: http
+    hostname: testapp-vite.test
+  postgres:
+    preferred_port: 5432
+    env_var: DATABASE_PORT
+derived:
+  API_URL:
+    value: "${rails.url}/api"
+    env_file: .env
+  API_URL_DIRECT:
+    value: "${rails.url:direct}/api"
+    env_file: .env
+  CORS_ORIGINS:
+    value: "${vite.url}"
+    env_file: .env
+`
+
+func mustLoadConfig(t *testing.T, dir string) *config.Config {
+	t.Helper()
+	cfg, err := config.Load(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return cfg
+}
+
+func readEnvFile(t *testing.T, path string) map[string]string {
+	t.Helper()
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result := make(map[string]string)
+	for _, line := range strings.Split(string(data), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		parts := strings.SplitN(line, "=", 2)
+		if len(parts) == 2 {
+			result[parts[0]] = parts[1]
+		}
+	}
+	return result
+}
+
+func TestMergeEnvFiles_WithTunnelURLs(t *testing.T) {
+	dir := setupProject(t, testConfigWithDerivedAndHostnames)
+
+	ports := map[string]int{"rails": 3000, "vite": 5173, "postgres": 5432}
+	hostnames := map[string]string{"rails": "testapp.test", "vite": "testapp-vite.test"}
+	tunnelURLs := map[string]string{
+		"rails": "https://abc.trycloudflare.com",
+		"vite":  "https://def.trycloudflare.com",
+	}
+
+	// Write with tunnel URLs
+	_, err := mergeEnvFiles(dir, mustLoadConfig(t, dir), "main", ports, hostnames, false, tunnelURLs)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	env := readEnvFile(t, filepath.Join(dir, ".env"))
+
+	// Derived values using ${service.url} should have tunnel URLs
+	if got := env["API_URL"]; got != "https://abc.trycloudflare.com/api" {
+		t.Errorf("API_URL = %q, want tunnel-based URL", got)
+	}
+	if got := env["CORS_ORIGINS"]; got != "https://def.trycloudflare.com" {
+		t.Errorf("CORS_ORIGINS = %q, want tunnel-based URL", got)
+	}
+
+	// Derived values using ${service.url:direct} should stay localhost
+	if got := env["API_URL_DIRECT"]; got != "http://localhost:3000/api" {
+		t.Errorf("API_URL_DIRECT = %q, want localhost URL", got)
+	}
+
+	// Service port env vars should still be present
+	if got := env["RAILS_PORT"]; got != "3000" {
+		t.Errorf("RAILS_PORT = %q, want 3000", got)
+	}
+
+	// Now revert (nil tunnelURLs) — simulates cleanup on exit
+	_, err = mergeEnvFiles(dir, mustLoadConfig(t, dir), "main", ports, hostnames, false, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	env = readEnvFile(t, filepath.Join(dir, ".env"))
+
+	// Should be back to local URLs
+	if got := env["API_URL"]; got != "http://testapp.test/api" {
+		t.Errorf("after revert: API_URL = %q, want local URL", got)
+	}
+	if got := env["CORS_ORIGINS"]; got != "http://testapp-vite.test" {
+		t.Errorf("after revert: CORS_ORIGINS = %q, want local URL", got)
 	}
 }
