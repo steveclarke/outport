@@ -15,7 +15,7 @@ import (
 )
 
 var statusCheckFlag bool
-var statusDerivedFlag bool
+var statusComputedFlag bool
 
 var systemStatusCmd = &cobra.Command{
 	Use:   "status",
@@ -26,7 +26,7 @@ var systemStatusCmd = &cobra.Command{
 
 func init() {
 	systemStatusCmd.Flags().BoolVar(&statusCheckFlag, "check", false, "check if ports are accepting connections")
-	systemStatusCmd.Flags().BoolVar(&statusDerivedFlag, "derived", false, "show derived values")
+	systemStatusCmd.Flags().BoolVar(&statusComputedFlag, "computed", false, "show computed values")
 	systemCmd.AddCommand(systemStatusCmd)
 }
 
@@ -108,11 +108,11 @@ func runStatus(cmd *cobra.Command, args []string) error {
 }
 
 type statusEntryJSON struct {
-	Key        string                 `json:"key"`
-	ProjectDir string                 `json:"project_dir"`
-	Current    bool                   `json:"current"`
-	Services   map[string]svcJSON     `json:"services"`
-	Derived    map[string]derivedJSON `json:"derived,omitempty"`
+	Key        string                  `json:"key"`
+	ProjectDir string                  `json:"project_dir"`
+	Current    bool                    `json:"current"`
+	Services   map[string]svcJSON      `json:"services"`
+	Computed   map[string]computedJSON `json:"computed,omitempty"`
 }
 
 func printStatusJSON(cmd *cobra.Command, reg *registry.Registry, portStatus map[int]bool, httpsEnabled bool) error {
@@ -140,9 +140,9 @@ func printStatusJSON(cmd *cobra.Command, reg *registry.Registry, portStatus map[
 			services[svcName] = s
 		}
 
-		var derived map[string]derivedJSON
-		if cfg != nil && statusDerivedFlag {
-			derived = buildDerivedMap(cfg.Derived, resolveDerivedFromAlloc(cfg, instanceName, alloc.Ports, alloc.Hostnames, httpsEnabled, nil))
+		var computed map[string]computedJSON
+		if cfg != nil && statusComputedFlag {
+			computed = buildComputedMap(cfg.Computed, resolveComputedFromAlloc(cfg, instanceName, alloc.Ports, alloc.Hostnames, httpsEnabled, nil))
 		}
 
 		entries = append(entries, statusEntryJSON{
@@ -150,7 +150,7 @@ func printStatusJSON(cmd *cobra.Command, reg *registry.Registry, portStatus map[
 			ProjectDir: alloc.ProjectDir,
 			Current:    key == currentKey,
 			Services:   services,
-			Derived:    derived,
+			Computed:   computed,
 		})
 	}
 
@@ -199,9 +199,9 @@ func printStatusStyled(cmd *cobra.Command, reg *registry.Registry, portStatus ma
 			printServiceLine(w, renderCfg, svcName, alloc.Ports[svcName], alloc.Hostnames, portStatus, httpsEnabled, false)
 		}
 
-		if cfg != nil && statusDerivedFlag {
-			if resolved := resolveDerivedFromAlloc(cfg, instanceName, alloc.Ports, alloc.Hostnames, httpsEnabled, nil); len(resolved) > 0 {
-				printDerivedValues(w, resolved)
+		if cfg != nil && statusComputedFlag {
+			if resolved := resolveComputedFromAlloc(cfg, instanceName, alloc.Ports, alloc.Hostnames, httpsEnabled, nil); len(resolved) > 0 {
+				printComputedValues(w, resolved)
 			}
 		}
 
