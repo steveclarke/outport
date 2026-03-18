@@ -31,7 +31,7 @@ _(placeholder — zero thinking, .env is the contract, framework-agnostic, workt
 | Spec | Status | Description |
 |------|--------|-------------|
 | [Configuration](configuration.md) | Draft | Config format, fields, rules, edge cases |
-| [Derived Values](derived-values.md) | Proposal | Computed env vars that reference allocated ports |
+| [Computed Values](computed-values.md) | Proposal | Computed env vars that reference allocated ports |
 | [Allocation](allocation.md) | Placeholder | Port assignment algorithm, deterministic hashing, registry |
 | [DNS & Proxy](dns-proxy.md) | Placeholder | Friendly hostnames, reverse proxy, TLD choice |
 | [SSL](ssl.md) | Placeholder | Certificates, ACME DNS-PERSIST-01, CertMagic |

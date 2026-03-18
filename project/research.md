@@ -133,7 +133,7 @@ Investigated all options:
 | Phone (complex app) | `outport share` (#16) + QR (#15) |
 | Remote colleague | `outport share` (#16) |
 
-- **Simple apps:** QR with `http://<LAN-IP>:<port>` works if the app doesn't reference `localhost` in derived values
+- **Simple apps:** QR with `http://<LAN-IP>:<port>` works if the app doesn't reference `localhost` in computed values
 - **Multi-service apps:** Derived values contain `localhost` URLs → phone resolves `localhost` to itself → API calls fail. Only tunneling (#16) + env var rewriting (#17) solves this.
 - **Security:** Cloudflare Tunnel URLs are high-entropy, temporary, HTTPS, not indexed. Acceptable for dev environments with test data.
 
@@ -159,7 +159,7 @@ This is Outport's unique value prop. Validated 2026-03-15.
 | **portree** (Rust) | 1,2,3 + partial 6 | Worktree-aware, local `$PT_BACKEND_URL` injection. No tunneling. **Watch this one.** |
 | **Portless** (Vercel Labs, TS) | 1,2,3 | Runtime wrapper (injects env into child process, not `.env`). No multi-service wiring. |
 | **LocalCan** (macOS GUI) | 2,3,5 | Built-in tunneling + SSL. No port allocation, no worktrees, no orchestration. Commercial. |
-| **dot-test** (Go) | 2 + partial 1 | Rails-only, sequential ports, `.test` domains. No worktrees, no derived values. |
+| **dot-test** (Go) | 2 + partial 1 | Rails-only, sequential ports, `.test` domains. No worktrees, no computed values. |
 | **puma-dev** (Go) | 2,3 | Ruby/Rack only. `.test` domains + SSL. No ports, no worktrees. |
 | **Laravel Valet** (PHP) | 2,3,5 | `.test` + SSL + `valet share` (ngrok). PHP-only. |
 
