@@ -28,7 +28,7 @@ services:
   redis:
     env_var: REDIS_PORT
 
-derived:
+computed:
   API_URL:
     value: "${web.url}/api/v1"
     env_file: frontend/.env
@@ -115,12 +115,12 @@ services:
       - shared/.env
 ```
 
-### `derived`
+### `computed`
 
 Computed environment variables that reference service values. Useful for wiring URLs between services.
 
 ```yaml
-derived:
+computed:
   API_URL:
     value: "${rails.url:direct}/api/v1"
     env_file: frontend/.env
@@ -128,7 +128,7 @@ derived:
 
 #### Template Syntax
 
-Derived values use bash-style parameter expansion:
+Computed values use bash-style parameter expansion:
 
 **Service variables:**
 
@@ -159,7 +159,7 @@ The `${instance}` variable is empty for main instances and set to the instance c
 **Real-world example** — unique Docker Compose project names per instance:
 
 ```yaml
-derived:
+computed:
   COMPOSE_PROJECT_NAME:
     value: "myapp${instance:+-${instance}}"
     env_file: .env
@@ -172,7 +172,7 @@ This produces `myapp` for the main instance and `myapp-xbjf` for worktrees, so `
 When the same env var needs different values per file:
 
 ```yaml
-derived:
+computed:
   API_BASE_URL:
     env_file:
       - file: frontend/apps/main/.env

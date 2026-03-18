@@ -53,13 +53,13 @@ Show ports for the current project.
 ```bash
 outport ports
 outport ports --check    # check if ports are accepting connections
-outport ports --derived  # include derived values
+outport ports --computed  # include computed values
 ```
 
 | Flag | Description |
 |------|-------------|
 | `--check` | Check if ports are accepting connections |
-| `--derived` | Show derived values |
+| `--computed` | Show computed values |
 | `--json` | Output results as JSON |
 
 ### `outport open`
@@ -85,7 +85,7 @@ outport share web vite     # tunnel specific services
 
 Creates temporary public URLs for services with `protocol: http` or `protocol: https`. Requires `cloudflared` (`brew install cloudflared`). The command blocks until you press Ctrl+C.
 
-While sharing, `.env` files are rewritten so derived values using `${service.url}` resolve to the tunnel URLs. This means CORS origins, API base URLs, and other derived values automatically point to the public tunnel URLs. Values using `${service.url:direct}` stay as localhost. On exit, `.env` files revert to local URLs. Restart your services after starting and stopping `outport share`.
+While sharing, `.env` files are rewritten so computed values using `${service.url}` resolve to the tunnel URLs. This means CORS origins, API base URLs, and other computed values automatically point to the public tunnel URLs. Values using `${service.url:direct}` stay as localhost. On exit, `.env` files revert to local URLs. Restart your services after starting and stopping `outport share`.
 
 | Flag | Description |
 |------|-------------|

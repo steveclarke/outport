@@ -106,7 +106,7 @@ Need to show your app to someone outside your network, test a webhook, or view i
 outport share
 ```
 
-This tunnels all HTTP services to public Cloudflare URLs and rewrites `.env` files so derived values (CORS, API URLs) automatically point to the tunnel URLs. On exit, everything reverts. Requires `cloudflared` (`brew install cloudflared`). See [Tips & Troubleshooting](/guide/tips#sharing-services-with-outport-share) for details.
+This tunnels all HTTP services to public Cloudflare URLs and rewrites `.env` files so computed values (CORS, API URLs) automatically point to the tunnel URLs. On exit, everything reverts. Requires `cloudflared` (`brew install cloudflared`). See [Tips & Troubleshooting](/guide/tips#sharing-services-with-outport-share) for details.
 
 ## Next Steps
 

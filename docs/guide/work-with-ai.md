@@ -34,7 +34,7 @@ Once installed, your AI agent understands Outport's config format, commands, and
 The skill covers:
 
 - `.outport.yml` configuration — services, hostnames, protocols, preferred ports, env files
-- Derived values — template syntax, `url` vs `url:direct`, per-file overrides, `${instance}` variable
+- Computed values — template syntax, `url` vs `url:direct`, per-file overrides, `${instance}` variable
 - All CLI commands — `up`, `down`, `ports`, `open`, `share`, `doctor`, `system start/stop/restart`
 - Multi-instance workflows — worktrees, renaming, promoting
 - Troubleshooting — DNS, daemon, certificates, port conflicts

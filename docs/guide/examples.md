@@ -66,7 +66,7 @@ services:
       - frontend/apps/admin/.env
       - backend/.env
 
-derived:
+computed:
   # Frontend API URLs — server-to-server, use :direct
   NUXT_API_BASE_URL:
     env_file:
@@ -118,13 +118,13 @@ Key patterns in this config:
 - **Per-file overrides** — `NUXT_API_BASE_URL` resolves to different paths depending on which frontend's `.env` it's written to
 - **`:direct` vs `.test` URLs** — Server-to-server calls (API, WebSocket) use `${rails.url:direct}` to bypass the proxy. Browser-facing URLs (CORS, asset host) use `${rails.url}` which resolves to the `.test` hostname
 - **Shared ports across files** — The Rails port is written to all three `.env` files so each sub-app knows where the API is
-- **Bruno integration** — API testing URLs are derived from the same port allocations, staying in sync automatically
+- **Bruno integration** — API testing URLs are computed from the same port allocations, staying in sync automatically
 
 ## Docker Compose Multi-Instance
 
 When working with git worktrees, each checkout needs its own Docker containers. Without unique project names, `docker compose up` from one worktree replaces the other's containers.
 
-Add a `COMPOSE_PROJECT_NAME` derived value:
+Add a `COMPOSE_PROJECT_NAME` computed value:
 
 ```yaml
 name: myapp
@@ -136,7 +136,7 @@ services:
   postgres:
     env_var: DB_PORT
 
-derived:
+computed:
   COMPOSE_PROJECT_NAME:
     value: "myapp${instance:+-${instance}}"
     env_file: .env
@@ -169,4 +169,4 @@ services:
     hostname: kiso.test
 ```
 
-Three services, each with its own `.test` hostname. No derived values needed since the services don't reference each other.
+Three services, each with its own `.test` hostname. No computed values needed since the services don't reference each other.

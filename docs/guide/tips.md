@@ -85,10 +85,10 @@ outport promote
 
 ## Docker Compose conflicts with worktrees
 
-If `docker compose up` from one worktree replaces another's containers, add a `COMPOSE_PROJECT_NAME` derived value:
+If `docker compose up` from one worktree replaces another's containers, add a `COMPOSE_PROJECT_NAME` computed value:
 
 ```yaml
-derived:
+computed:
   COMPOSE_PROJECT_NAME:
     value: "myapp${instance:+-${instance}}"
     env_file: .env
@@ -107,7 +107,7 @@ outport share web          # tunnel a specific service
 
 The command blocks until you press Ctrl+C.
 
-While sharing, `.env` files are rewritten so derived values using `${service.url}` resolve to the tunnel URLs automatically. CORS origins, API base URLs, and other cross-service values just work. Values using `${service.url:direct}` stay as localhost (server-to-server calls still go direct). On exit, `.env` files revert to local URLs. Restart your services after starting and stopping `outport share`.
+While sharing, `.env` files are rewritten so computed values using `${service.url}` resolve to the tunnel URLs automatically. CORS origins, API base URLs, and other cross-service values just work. Values using `${service.url:direct}` stay as localhost (server-to-server calls still go direct). On exit, `.env` files revert to local URLs. Restart your services after starting and stopping `outport share`.
 
 ### Vite/Nuxt blocks the tunnel hostname
 

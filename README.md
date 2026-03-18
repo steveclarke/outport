@@ -103,12 +103,12 @@ services:
 
 Each HTTP service gets its own `.test` URL. Non-HTTP services (Postgres, Redis) get port allocations only.
 
-## Derived Values
+## Computed Values
 
-Applications don't just need port numbers — they need URLs. Derived values compute environment variables from your service map:
+Applications don't just need port numbers — they need URLs. Computed values compute environment variables from your service map:
 
 ```yaml
-derived:
+computed:
   CORS_ORIGINS:
     value: "${frontend.url},${portal.url}"     # browser-facing: http://app.unio.test,...
     env_file: backend/.env
@@ -133,7 +133,7 @@ Use `${service.url}` for URLs the browser sees. Use `${service.url:direct}` for 
 When the same env var needs different values per file (common in monorepos):
 
 ```yaml
-derived:
+computed:
   API_BASE_URL:
     env_file:
       - file: frontend/apps/main/.env
@@ -179,7 +179,7 @@ outport up                     Allocate ports, assign hostnames, write .env
 outport up --force             Clear and re-allocate all ports
 outport down                   Remove ports, clean .env files
 outport ports                  Show ports for the current project
-outport ports --derived        Show ports and derived values
+outport ports --computed       Show ports and computed values
 outport open                   Open HTTP services in the browser
 outport share                  Tunnel HTTP services to public URLs
 outport share web              Tunnel a specific service
@@ -257,14 +257,14 @@ If you're a single developer running one Rails app, most of these tools work fin
 
 - **Multiple projects at once** — three Rails apps all defaulting to port 3000, each with their own Postgres and Redis. You need them all running simultaneously, completely segregated.
 - **Parallel AI agents** — you tell three agents to work on three features, each in its own instance. Every instance gets non-conflicting ports and a unique `.test` hostname — complete isolation.
-- **Multi-service apps** — your Nuxt frontend needs your Rails backend's URL. Your backend needs the frontend's URL for CORS. Outport's [derived values](#derived-values) wire this up declaratively — one config file, and every `.env` gets finished URLs.
+- **Multi-service apps** — your Nuxt frontend needs your Rails backend's URL. Your backend needs the frontend's URL for CORS. Outport's [computed values](#computed-values) wire this up declaratively — one config file, and every `.env` gets finished URLs.
 - **Declare once, apply anywhere** — check `.outport.yml` into your repo. Every developer, every machine, every instance gets deterministic ports with `outport up`.
 
 ## FAQ
 
 ### "My frontend and backend need to know each other's URLs, not just ports"
 
-Use [derived values](#derived-values). `${service.url}` gives browser-facing URLs, `${service.url:direct}` gives server-to-server URLs. Outport resolves everything and writes finished values to `.env`.
+Use [computed values](#computed-values). `${service.url}` gives browser-facing URLs, `${service.url:direct}` gives server-to-server URLs. Outport resolves everything and writes finished values to `.env`.
 
 ### "I'm running two instances and my sessions are colliding"
 

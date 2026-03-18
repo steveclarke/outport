@@ -65,7 +65,7 @@
         <div class="feature-card">
           <div class="feature-icon">.e</div>
           <h3>.env Integration</h3>
-          <p>Ports, URLs, and derived values written directly to your <code>.env</code> files. Your app reads them natively.</p>
+          <p>Ports, URLs, and computed values written directly to your <code>.env</code> files. Your app reads them natively.</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon">S</div>

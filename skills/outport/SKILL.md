@@ -1,6 +1,6 @@
 ---
 name: outport
-description: Manage dev ports with Outport. Use when setting up a new project, adding services, resolving port conflicts, configuring monorepo cross-service URLs, or working with worktrees and multiple instances. Triggers on "outport", "port conflict", "port allocation", "dev ports", ".outport.yml", "port management", "env var ports", "derived values", "cross-service URLs", "CORS origins from ports", ".test domains", "local DNS", "reverse proxy", "cookie isolation", "tunnel", "share localhost", "public URL", "cloudflare tunnel", "outport doctor", "health check", "diagnose outport". Also use when the user mentions running multiple instances of a project, worktree port setup, or when services need to discover each other's URLs.
+description: Manage dev ports with Outport. Use when setting up a new project, adding services, resolving port conflicts, configuring monorepo cross-service URLs, or working with worktrees and multiple instances. Triggers on "outport", "port conflict", "port allocation", "dev ports", ".outport.yml", "port management", "env var ports", "computed values", "cross-service URLs", "CORS origins from ports", ".test domains", "local DNS", "reverse proxy", "cookie isolation", "tunnel", "share localhost", "public URL", "cloudflare tunnel", "outport doctor", "health check", "diagnose outport". Also use when the user mentions running multiple instances of a project, worktree port setup, or when services need to discover each other's URLs.
 ---
 
 # Outport — Dev Port Manager
@@ -21,7 +21,7 @@ outport down              # Remove ports and clean .env files
 
 # Inspect & diagnose
 outport ports             # Show ports for current project
-outport ports --derived   # Show ports and derived values
+outport ports --computed  # Show ports and computed values
 outport ports --json      # Machine-readable output
 outport open              # Open HTTP services in browser
 outport open web          # Open a specific service
@@ -175,16 +175,16 @@ services:
       - frontend/.env          # Frontend needs this to construct API URLs
 ```
 
-## Derived Values
+## Computed Values
 
-Applications don't just need port numbers — they need URLs. Derived values
+Applications don't just need port numbers — they need URLs. Computed values
 compute environment variables from your service map and write finished values
 to `.env`.
 
 ### Basic syntax
 
 ```yaml
-derived:
+computed:
   API_URL:
     value: "${rails.url:direct}/api/v1"   # http://localhost:24920/api/v1
     env_file: frontend/.env
@@ -195,7 +195,7 @@ derived:
 
 - `${service_name.field}` references service fields
 - `env_file` is required (no default — you must be explicit)
-- Derived names must not collide with service `env_var` names
+- Computed names must not collide with service `env_var` names
 
 ### Template Fields
 
@@ -215,7 +215,7 @@ derived:
 
 ### The `${instance}` variable and bash-style parameter expansion
 
-Derived values support bash-style parameter expansion for instance-aware
+Computed values support bash-style parameter expansion for instance-aware
 configuration:
 
 | Variable | Main instance | Worktree instance (e.g., `bxcf`) |
@@ -228,7 +228,7 @@ configuration:
 **Common pattern — Docker Compose project name:**
 
 ```yaml
-derived:
+computed:
   COMPOSE_PROJECT_NAME:
     value: "myapp${instance:+-${instance}}"
     env_file: .env
@@ -244,7 +244,7 @@ monorepos where multiple apps share a framework convention), use the object
 syntax for `env_file` entries:
 
 ```yaml
-derived:
+computed:
   NUXT_API_BASE_URL:
     env_file:
       - file: frontend/apps/main/.env
@@ -285,7 +285,7 @@ services:
       - frontend/apps/portal/.env
       - backend/.env               # Backend needs this for CORS
 
-derived:
+computed:
   # Server-to-server API URLs (bypass proxy — use direct localhost)
   NUXT_API_BASE_URL:
     env_file:
@@ -310,7 +310,7 @@ No hardcoded values survive.
 
 ## Framework Env Var Conventions
 
-When setting up derived values, knowing how frameworks map env vars to
+When setting up computed values, knowing how frameworks map env vars to
 config is essential:
 
 | Framework | Convention | Example |
@@ -321,7 +321,7 @@ config is essential:
 | **Django** | Typically reads `os.environ` directly | Name vars however your `settings.py` expects |
 | **Docker Compose** | Reads `.env` automatically | `${DB_PORT:-5432}` in `compose.yml` |
 
-The derived values feature is most powerful when it writes env vars that
+The computed values feature is most powerful when it writes env vars that
 match these framework conventions — the framework reads the value natively
 and no config code changes are needed.
 
@@ -366,8 +366,8 @@ my-app [bkrm]
   web    MAIN_PORT  → 21133
 ```
 
-Derived values are recomputed per instance — CORS origins, API URLs, and
-all other derived values automatically use that instance's ports and
+Computed values are recomputed per instance — CORS origins, API URLs, and
+all other computed values automatically use that instance's ports and
 hostnames. Two full instances run simultaneously with no port collisions,
 no hostname collisions, and no manual configuration.
 
