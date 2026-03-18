@@ -70,14 +70,14 @@ func TestGeneratePlistDualSockets(t *testing.T) {
 }
 
 func TestPlistPath(t *testing.T) {
-	path := plistPath()
+	path := PlistPath()
 	if path == "" {
-		t.Fatal("plistPath() returned empty string")
+		t.Fatal("PlistPath() returned empty string")
 	}
 	if !strings.Contains(path, "Library/LaunchAgents") {
-		t.Errorf("plistPath() = %q, want it to contain Library/LaunchAgents", path)
+		t.Errorf("PlistPath() = %q, want it to contain Library/LaunchAgents", path)
 	}
 	if !strings.HasSuffix(path, plistName) {
-		t.Errorf("plistPath() = %q, want it to end with %s", path, plistName)
+		t.Errorf("PlistPath() = %q, want it to end with %s", path, plistName)
 	}
 }

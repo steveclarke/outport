@@ -119,6 +119,26 @@ Promotes the current worktree instance to "main", demoting the existing main ins
 |------|-------------|
 | `--json` | Output results as JSON |
 
+### `outport doctor`
+
+Check the health of the outport system.
+
+```bash
+outport doctor
+```
+
+Runs diagnostic checks on all Outport infrastructure and project configuration. Reports pass/warn/fail for each check with actionable fix suggestions. Checks include:
+
+**System checks** (always run): DNS resolver file, resolver content, LaunchAgent plist, plist binary validity, daemon agent loaded, DNS resolution, HTTP proxy (port 80), HTTPS proxy (port 443), CA certificate and key existence, CA expiry, CA trust, registry validity, cloudflared availability.
+
+**Project checks** (when `.outport.yml` found): config file validation, project registration in the registry, allocated port availability.
+
+Exit code 0 if all checks pass or warn. Exit code 1 if any check fails.
+
+| Flag | Description |
+|------|-------------|
+| `--json` | Output results as JSON (includes `results` array and `passed` boolean) |
+
 ## System Commands
 
 These commands manage machine-wide infrastructure: the `.test` domain DNS resolver, HTTPS reverse proxy, local Certificate Authority, and registry maintenance.
