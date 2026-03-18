@@ -2,11 +2,11 @@
   <div class="home-layout">
     <!-- HERO -->
     <section class="hero">
-      <h1>Stop fighting <span class="accent">port conflicts</span></h1>
+      <h1><code class="hero-code">myapp.test</code> <span class="accent">just works</span></h1>
       <p class="subtitle">
-        Port orchestration for multi-project development. Deterministic ports,
-        <code>.test</code> hostnames with automatic HTTPS, <code>.env</code> integration, and
-        multi-instance support — all from a single config file.
+        Declare your services once. Every project, worktree, and checkout gets
+        deterministic ports, <code>.test</code> hostnames with HTTPS, and fully
+        wired <code>.env</code> files.
       </p>
       <div class="hero-ctas">
         <a href="/guide/getting-started" class="btn-primary">Get Started</a>
@@ -168,6 +168,13 @@ MYAPP_URL=<span class="success">https://myapp.test</span></pre>
   margin-bottom: 1rem;
 }
 .hero h1 .accent { color: #2E86AB; }
+.hero h1 .hero-code {
+  font-family: var(--vp-font-family-mono);
+  font-size: 0.85em;
+  background: var(--vp-c-bg-soft);
+  padding: 0.05em 0.3em;
+  border-radius: 6px;
+}
 .hero .subtitle {
   font-size: 1.2rem;
   color: var(--vp-c-text-3);
