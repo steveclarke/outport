@@ -5,6 +5,7 @@ export default defineConfig({
   description: 'Deterministic port management for multi-project development',
   appearance: false,
   cleanUrls: true,
+  srcExclude: ['superpowers/**'],
 
   head: [
     ['link', { rel: 'icon', href: '/favicon.ico' }],
