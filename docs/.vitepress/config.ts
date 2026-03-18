@@ -37,6 +37,7 @@ export default defineConfig({
           { text: 'Getting Started', link: '/guide/getting-started' },
           { text: 'Installation', link: '/guide/installation' },
           { text: 'Examples', link: '/guide/examples' },
+          { text: 'Work with AI', link: '/guide/work-with-ai' },
           { text: 'Tips & Troubleshooting', link: '/guide/tips' },
         ],
       },
