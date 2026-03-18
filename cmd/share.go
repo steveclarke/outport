@@ -66,11 +66,13 @@ func runShare(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("starting tunnels: %w", err)
 	}
+
+	httpsEnabled := certmanager.IsCAInstalled()
+
 	defer func() {
 		mgr.StopAll()
 		// Revert .env files to local URLs (best-effort; user can run 'outport up' if this fails)
-		revertHTTPS := certmanager.IsCAInstalled()
-		_, _ = mergeEnvFiles(ctx.Dir, ctx.Cfg, ctx.Instance, alloc.Ports, alloc.Hostnames, revertHTTPS, nil)
+		_, _ = mergeEnvFiles(ctx.Dir, ctx.Cfg, ctx.Instance, alloc.Ports, alloc.Hostnames, httpsEnabled, nil)
 		fmt.Fprintln(cmd.OutOrStdout())
 		fmt.Fprintln(cmd.OutOrStdout(), ui.SuccessStyle.Render("Restored .env files to local URLs."))
 		fmt.Fprintln(cmd.OutOrStdout(), ui.DimStyle.Render("Restart your services to revert to local development."))
@@ -87,7 +89,6 @@ func runShare(cmd *cobra.Command, args []string) error {
 		tunnelURLs[tun.Service] = tun.URL
 	}
 
-	httpsEnabled := certmanager.IsCAInstalled()
 	resolvedDerived, err := mergeEnvFiles(ctx.Dir, ctx.Cfg, ctx.Instance, alloc.Ports, alloc.Hostnames, httpsEnabled, tunnelURLs)
 	if err != nil {
 		return fmt.Errorf("writing tunnel URLs to .env: %w", err)
