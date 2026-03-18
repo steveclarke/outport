@@ -1,5 +1,15 @@
 # Tips & Troubleshooting
 
+## Diagnose issues with outport doctor
+
+If something isn't working, start here:
+
+```bash
+outport doctor
+```
+
+This checks DNS, the daemon, TLS certificates, the registry, and (if you're in a project directory) your `.outport.yml` and port status. Each check shows pass/fail with a fix suggestion.
+
 ## protocol: http vs https
 
 Set `protocol: http` even though your `.test` URLs show `https://`. The `protocol` field describes what your app speaks — your Rails server, Nuxt dev server, and Mailpit all listen on plain HTTP. The outport daemon terminates TLS at the proxy and forwards to your app over HTTP.

@@ -1,6 +1,6 @@
 ---
 name: outport
-description: Manage dev ports with Outport. Use when setting up a new project, adding services, resolving port conflicts, configuring monorepo cross-service URLs, or working with worktrees and multiple instances. Triggers on "outport", "port conflict", "port allocation", "dev ports", ".outport.yml", "port management", "env var ports", "derived values", "cross-service URLs", "CORS origins from ports", ".test domains", "local DNS", "reverse proxy", "cookie isolation", "tunnel", "share localhost", "public URL", "cloudflare tunnel". Also use when the user mentions running multiple instances of a project, worktree port setup, or when services need to discover each other's URLs.
+description: Manage dev ports with Outport. Use when setting up a new project, adding services, resolving port conflicts, configuring monorepo cross-service URLs, or working with worktrees and multiple instances. Triggers on "outport", "port conflict", "port allocation", "dev ports", ".outport.yml", "port management", "env var ports", "derived values", "cross-service URLs", "CORS origins from ports", ".test domains", "local DNS", "reverse proxy", "cookie isolation", "tunnel", "share localhost", "public URL", "cloudflare tunnel", "outport doctor", "health check", "diagnose outport". Also use when the user mentions running multiple instances of a project, worktree port setup, or when services need to discover each other's URLs.
 ---
 
 # Outport — Dev Port Manager
@@ -19,7 +19,7 @@ outport up                # Allocate ports, assign hostnames, write .env
 outport up --force        # Clear and re-allocate all ports from scratch
 outport down              # Remove ports and clean .env files
 
-# Inspect
+# Inspect & diagnose
 outport ports             # Show ports for current project
 outport ports --derived   # Show ports and derived values
 outport ports --json      # Machine-readable output
@@ -27,6 +27,7 @@ outport open              # Open HTTP services in browser
 outport open web          # Open a specific service
 outport share             # Tunnel HTTP services to public URLs
 outport share web         # Tunnel a specific service
+outport doctor            # Check system health and project config
 
 # System commands (machine-wide)
 outport system start      # Install DNS, CA, and start the daemon

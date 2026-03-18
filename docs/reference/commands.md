@@ -131,7 +131,7 @@ Runs diagnostic checks on all Outport infrastructure and project configuration. 
 
 **System checks** (always run): DNS resolver file, resolver content, LaunchAgent plist, plist binary validity, daemon agent loaded, DNS resolution, HTTP proxy (port 80), HTTPS proxy (port 443), CA certificate and key existence, CA expiry, CA trust, registry validity, cloudflared availability.
 
-**Project checks** (when `.outport.yml` found): config file validation, project registration in the registry, allocated port availability.
+**Project checks** (when `.outport.yml` found): config file validation, project registration in the registry, per-service port status (running or not — both are informational, not failures).
 
 Exit code 0 if all checks pass or warn. Exit code 1 if any check fails.
 
