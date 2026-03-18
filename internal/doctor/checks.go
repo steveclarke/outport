@@ -137,8 +137,8 @@ func checkPlistBinary(plistPath string) *Result {
 		return &Result{
 			Name:    "Plist binary",
 			Status:  Fail,
-			Message: fmt.Sprintf("binary not found: %s", binPath),
-			Fix:     "Reinstall outport and run: outport system start",
+			Message: fmt.Sprintf("daemon plist references missing binary: %s", binPath),
+			Fix:     "Run: outport system restart",
 		}
 	}
 
@@ -315,10 +315,10 @@ func SystemChecks() []Check {
 
 	return []Check{
 		{
-			Name:     "Resolver file",
+			Name:     "DNS resolver",
 			Category: "DNS",
 			Run: func() *Result {
-				return checkFileExists(platform.ResolverPath, "Resolver file", "Run: outport system start")
+				return checkFileExists(platform.ResolverPath, "DNS resolver", "Run: outport system start")
 			},
 		},
 		{
@@ -329,10 +329,17 @@ func SystemChecks() []Check {
 			},
 		},
 		{
-			Name:     "Plist installed",
+			Name:     "DNS resolving *.test",
+			Category: "DNS",
+			Run: func() *Result {
+				return checkDNSResolving("127.0.0.1:15353")
+			},
+		},
+		{
+			Name:     "LaunchAgent plist",
 			Category: "Daemon",
 			Run: func() *Result {
-				return checkFileExists(plistPath, "Plist installed", "Run: outport system start")
+				return checkFileExists(plistPath, "LaunchAgent plist", "Run: outport system start")
 			},
 		},
 		{
@@ -350,13 +357,6 @@ func SystemChecks() []Check {
 			},
 		},
 		{
-			Name:     "DNS resolving *.test",
-			Category: "System",
-			Run: func() *Result {
-				return checkDNSResolving("127.0.0.1:15353")
-			},
-		},
-		{
 			Name:     "HTTP proxy",
 			Category: "Daemon",
 			Run: func() *Result {
@@ -371,17 +371,17 @@ func SystemChecks() []Check {
 			},
 		},
 		{
-			Name:     "CA cert exists",
+			Name:     "CA certificate",
 			Category: "TLS",
 			Run: func() *Result {
-				return checkFileExists(caCertPath, "CA cert exists", "Run: outport system start")
+				return checkFileExists(caCertPath, "CA certificate", "Run: outport system start")
 			},
 		},
 		{
-			Name:     "CA key exists",
+			Name:     "CA private key",
 			Category: "TLS",
 			Run: func() *Result {
-				return checkFileExists(caKeyPath, "CA key exists", "Run: outport system start")
+				return checkFileExists(caKeyPath, "CA private key", "Run: outport system start")
 			},
 		},
 		{
