@@ -18,23 +18,48 @@
         >View on GitHub</a>
       </div>
 
-      <div class="terminal">
-        <div class="terminal-bar">
-          <div class="terminal-dot r" />
-          <div class="terminal-dot y" />
-          <div class="terminal-dot g" />
+      <div class="terminal-pair">
+        <div class="terminal-wrapper">
+          <div class="terminal-label">Main checkout</div>
+          <div class="terminal">
+            <div class="terminal-bar">
+              <div class="terminal-dot r" />
+              <div class="terminal-dot y" />
+              <div class="terminal-dot g" />
+            </div>
+            <div class="terminal-body">
+              <div><span class="prompt">$</span> <span class="cmd">outport up</span></div>
+              <br>
+              <div><span class="success">myapp</span> <span class="dim">[main]</span></div>
+              <br>
+              <div>&nbsp;&nbsp;&nbsp;&nbsp;<span class="cmd">rails</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="dim">PORT</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="dim">&rarr;</span> <span class="value">13842</span>&nbsp;&nbsp;<span class="success">https://myapp.test</span></div>
+              <div>&nbsp;&nbsp;&nbsp;&nbsp;<span class="cmd">postgres</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="dim">DATABASE_PORT</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="dim">&rarr;</span> <span class="value">28391</span></div>
+              <div>&nbsp;&nbsp;&nbsp;&nbsp;<span class="cmd">redis</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="dim">REDIS_PORT</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="dim">&rarr;</span> <span class="value">19204</span></div>
+              <br>
+              <div><span class="success">Ports written to .env</span></div>
+            </div>
+          </div>
         </div>
-        <div class="terminal-body">
-          <div><span class="prompt">$</span> <span class="cmd">outport up</span></div>
-          <br>
-          <div><span class="success">myapp</span> <span class="dim">&middot;</span> <span class="dim">main</span></div>
-          <br>
-          <div>&nbsp;&nbsp;<span class="dim">service</span>&nbsp;&nbsp;&nbsp;&nbsp;<span class="dim">port</span>&nbsp;&nbsp;&nbsp;<span class="dim">hostname</span></div>
-          <div>&nbsp;&nbsp;<span class="cmd">rails</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="value">13842</span>&nbsp;&nbsp;<span class="success">myapp.test</span></div>
-          <div>&nbsp;&nbsp;<span class="cmd">postgres</span>&nbsp;&nbsp;<span class="value">28391</span></div>
-          <div>&nbsp;&nbsp;<span class="cmd">redis</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="value">19204</span></div>
-          <br>
-          <div><span class="dim">&rarr; .env updated</span></div>
+        <div class="terminal-wrapper">
+          <div class="terminal-label">Worktree</div>
+          <div class="terminal">
+            <div class="terminal-bar">
+              <div class="terminal-dot r" />
+              <div class="terminal-dot y" />
+              <div class="terminal-dot g" />
+            </div>
+            <div class="terminal-body">
+              <div><span class="prompt">$</span> <span class="cmd">outport up</span></div>
+              <br>
+              <div><span class="success">myapp</span> <span class="dim">[bxcf]</span></div>
+              <br>
+              <div>&nbsp;&nbsp;&nbsp;&nbsp;<span class="cmd">rails</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="dim">PORT</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="dim">&rarr;</span> <span class="value">22107</span>&nbsp;&nbsp;<span class="success">https://myapp-bxcf.test</span></div>
+              <div>&nbsp;&nbsp;&nbsp;&nbsp;<span class="cmd">postgres</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="dim">DATABASE_PORT</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="dim">&rarr;</span> <span class="value">31842</span></div>
+              <div>&nbsp;&nbsp;&nbsp;&nbsp;<span class="cmd">redis</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="dim">REDIS_PORT</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="dim">&rarr;</span> <span class="value">16509</span></div>
+              <br>
+              <div><span class="success">Ports written to .env</span></div>
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -221,8 +246,6 @@ MYAPP_URL=<span class="success">https://myapp.test</span></pre>
 
 /* TERMINAL */
 .terminal {
-  max-width: 680px;
-  margin: 0 auto;
   background: #1a1b26;
   border-radius: 10px;
   overflow: hidden;
@@ -246,12 +269,34 @@ MYAPP_URL=<span class="success">https://myapp.test</span></pre>
   font-size: 0.82rem;
   line-height: 1.7;
   color: #a9b1d6;
+  overflow-x: auto;
 }
 .terminal-body .prompt { color: #7aa2f7; }
 .terminal-body .cmd { color: #c0caf5; }
 .terminal-body .success { color: #9ece6a; }
 .terminal-body .value { color: #e0af68; }
 .terminal-body .dim { color: #565f89; }
+
+/* TERMINAL PAIR (side by side) */
+.terminal-pair {
+  display: flex;
+  gap: 1.25rem;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+.terminal-wrapper {
+  flex: 1;
+  min-width: 0;
+}
+.terminal-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--vp-c-text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.5rem;
+  text-align: center;
+}
 
 /* SECTION DIVIDER */
 .section-divider {
@@ -456,5 +501,6 @@ MYAPP_URL=<span class="success">https://myapp.test</span></pre>
   .feature-card { flex: 0 1 100%; }
   .steps { grid-template-columns: 1fr; }
   .hero-ctas { flex-direction: column; align-items: center; }
+  .terminal-pair { flex-direction: column; }
 }
 </style>
