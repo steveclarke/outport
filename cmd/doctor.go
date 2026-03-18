@@ -49,10 +49,12 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 	results := r.Run()
 
 	if jsonFlag {
-		return printDoctorJSON(cmd, results)
+		if err := printDoctorJSON(cmd, results); err != nil {
+			return err
+		}
+	} else {
+		printDoctorStyled(cmd.OutOrStdout(), results)
 	}
-
-	printDoctorStyled(cmd.OutOrStdout(), results)
 
 	if doctor.HasFailures(results) {
 		return ErrSilent

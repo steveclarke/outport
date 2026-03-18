@@ -47,9 +47,6 @@ func TestProjectChecksInvalidConfig(t *testing.T) {
 	regPath := filepath.Join(dir, "registry.json")
 	_ = os.WriteFile(regPath, []byte(`{"projects":{}}`), 0644)
 
-	configErr := config.Load  // trigger an error by passing nil cfg
-	_ = configErr
-
 	// Simulate a config error
 	checks := ProjectChecks(dir, nil, os.ErrNotExist, regPath)
 	if len(checks) != 1 {

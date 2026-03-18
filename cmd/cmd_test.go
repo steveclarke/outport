@@ -1871,3 +1871,139 @@ func TestPrintShareJSON_IncludesDerivedValues(t *testing.T) {
 		t.Errorf("API_URL derived value = %q, want tunnel-based URL", d.Value)
 	}
 }
+
+// --- doctor ---
+
+func TestDoctor_JSON(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	jsonFlag = false
+
+	buf := new(bytes.Buffer)
+	rootCmd.SetOut(buf)
+	rootCmd.SetErr(buf)
+	rootCmd.SetArgs([]string{"doctor", "--json"})
+
+	// Doctor returns ErrSilent when checks fail (expected in test env
+	// where system infrastructure is not installed).
+	err := rootCmd.Execute()
+
+	output := buf.String()
+	var result struct {
+		Results []struct {
+			Name     string `json:"name"`
+			Category string `json:"category"`
+			Status   string `json:"status"`
+			Message  string `json:"message"`
+			Fix      string `json:"fix,omitempty"`
+		} `json:"results"`
+		Passed bool `json:"passed"`
+	}
+	if jsonErr := json.Unmarshal([]byte(output), &result); jsonErr != nil {
+		t.Fatalf("invalid JSON output: %v\nOutput: %s", jsonErr, output)
+	}
+
+	// Should have system checks (at least resolver, plist, agent, CA, registry, cloudflared)
+	if len(result.Results) < 10 {
+		t.Errorf("expected at least 10 system checks, got %d", len(result.Results))
+	}
+
+	// Each result should have required fields
+	for i, r := range result.Results {
+		if r.Name == "" {
+			t.Errorf("result[%d] missing name", i)
+		}
+		if r.Category == "" {
+			t.Errorf("result[%d] %q missing category", i, r.Name)
+		}
+		if r.Status != "pass" && r.Status != "warn" && r.Status != "fail" {
+			t.Errorf("result[%d] %q has invalid status %q", i, r.Name, r.Status)
+		}
+		if r.Message == "" {
+			t.Errorf("result[%d] %q missing message", i, r.Name)
+		}
+	}
+
+	// In test env without system setup, should have failures
+	if result.Passed {
+		t.Error("expected passed=false in test environment without system setup")
+	}
+	if err == nil {
+		t.Error("expected ErrSilent when checks fail")
+	}
+}
+
+func TestDoctor_Styled(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	jsonFlag = false
+
+	buf := new(bytes.Buffer)
+	rootCmd.SetOut(buf)
+	rootCmd.SetErr(buf)
+	rootCmd.SetArgs([]string{"doctor"})
+
+	_ = rootCmd.Execute()
+
+	output := buf.String()
+
+	// Should contain check indicators
+	if !strings.Contains(output, "✓") && !strings.Contains(output, "✗") && !strings.Contains(output, "!") {
+		t.Error("styled output should contain check indicators (✓, ✗, or !)")
+	}
+
+	// Should contain a summary line
+	if !strings.Contains(output, "checks") && !strings.Contains(output, "passed") {
+		t.Error("styled output should contain a summary line")
+	}
+}
+
+func TestDoctor_WithProject(t *testing.T) {
+	setupProject(t, testConfig)
+	executeCmd(t, "up", "--json")
+
+	buf := new(bytes.Buffer)
+	rootCmd.SetOut(buf)
+	rootCmd.SetErr(buf)
+	rootCmd.SetArgs([]string{"doctor", "--json"})
+
+	_ = rootCmd.Execute()
+
+	output := buf.String()
+	var result struct {
+		Results []struct {
+			Name     string `json:"name"`
+			Category string `json:"category"`
+			Status   string `json:"status"`
+		} `json:"results"`
+	}
+	if err := json.Unmarshal([]byte(output), &result); err != nil {
+		t.Fatalf("invalid JSON output: %v\nOutput: %s", err, output)
+	}
+
+	// Should include project checks (category starts with "Project")
+	hasProjectCheck := false
+	for _, r := range result.Results {
+		if strings.HasPrefix(r.Category, "Project") {
+			hasProjectCheck = true
+			break
+		}
+	}
+	if !hasProjectCheck {
+		t.Error("expected project checks when .outport.yml exists and project is registered")
+	}
+
+	// Should have config valid check
+	hasConfigCheck := false
+	for _, r := range result.Results {
+		if strings.Contains(r.Name, ".outport.yml") {
+			hasConfigCheck = true
+			if r.Status != "pass" {
+				t.Errorf(".outport.yml check should pass, got %q", r.Status)
+			}
+		}
+	}
+	if !hasConfigCheck {
+		t.Error("expected .outport.yml validity check in project checks")
+	}
+}
