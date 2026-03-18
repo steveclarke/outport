@@ -86,6 +86,31 @@ derived:
 
 This gives each instance a unique Docker Compose project name.
 
+## Sharing services with outport share
+
+`outport share` tunnels your HTTP services to public URLs via Cloudflare quick tunnels. Requires `cloudflared` (`brew install cloudflared`).
+
+```bash
+outport share              # tunnel all HTTP services
+outport share web          # tunnel a specific service
+```
+
+The command blocks until you press Ctrl+C.
+
+### Rails blocks the tunnel hostname
+
+If you see a red "Blocked hosts" error page, Rails is rejecting the `.trycloudflare.com` hostname. Add it to your `config/environments/development.rb`:
+
+```ruby
+config.hosts << ".trycloudflare.com"
+```
+
+Restart your Rails server after adding this.
+
+### 502 Bad Gateway
+
+The tunnel connected but nothing is listening on the local port. Make sure the service is actually running on the port shown in `outport share` output.
+
 ## Port 80 or 443 already in use
 
 If `outport system start` fails with "port 80 is already in use", another server (nginx, Apache, another dev tool) is using that port. Stop it first, then retry.

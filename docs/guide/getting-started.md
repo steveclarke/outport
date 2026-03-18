@@ -98,6 +98,16 @@ outport system status      # Show all registered projects
 outport system uninstall   # Remove DNS, CA, and daemon entirely
 ```
 
+## Sharing Services
+
+Need to show your app to someone outside your network, test a webhook, or view it on your phone?
+
+```bash
+outport share
+```
+
+This tunnels all HTTP services to public Cloudflare URLs. Requires `cloudflared` (`brew install cloudflared`). See [Tips & Troubleshooting](/guide/tips#sharing-services-with-outport-share) for details.
+
 ## Next Steps
 
 - [Configuration Reference](/reference/configuration) — full `.outport.yml` schema
