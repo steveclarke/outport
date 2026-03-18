@@ -194,9 +194,9 @@ func TestUp_NoConfig(t *testing.T) {
 	}
 }
 
-// --- up with derived values ---
+// --- up with computed values ---
 
-const testConfigWithDerived = `name: testapp
+const testConfigWithComputed = `name: testapp
 services:
   rails:
     preferred_port: 3000
@@ -209,7 +209,7 @@ services:
     protocol: http
     env_file: frontend/.env
 
-derived:
+computed:
   API_URL:
     value: "http://localhost:${rails.port}/api/v1"
     env_file: frontend/.env
@@ -218,8 +218,8 @@ derived:
     env_file: backend/.env
 `
 
-func TestUp_WithDerivedValues(t *testing.T) {
-	dir := setupProject(t, testConfigWithDerived)
+func TestUp_WithComputedValues(t *testing.T) {
+	dir := setupProject(t, testConfigWithComputed)
 	if err := os.MkdirAll(filepath.Join(dir, "backend"), 0755); err != nil {
 		t.Fatalf("mkdir backend: %v", err)
 	}
@@ -234,11 +234,11 @@ func TestUp_WithDerivedValues(t *testing.T) {
 		t.Fatalf("invalid JSON: %v\nOutput: %s", err, output)
 	}
 
-	if len(result.Derived) != 2 {
-		t.Fatalf("derived count = %d, want 2", len(result.Derived))
+	if len(result.Computed) != 2 {
+		t.Fatalf("computed count = %d, want 2", len(result.Computed))
 	}
 
-	apiURL := result.Derived["API_URL"]
+	apiURL := result.Computed["API_URL"]
 	if apiURL.Value != "http://localhost:3000/api/v1" {
 		t.Errorf("API_URL = %q, want http://localhost:3000/api/v1", apiURL.Value)
 	}
@@ -246,12 +246,12 @@ func TestUp_WithDerivedValues(t *testing.T) {
 		t.Errorf("API_URL.EnvFiles = %v, want [frontend/.env]", apiURL.EnvFiles)
 	}
 
-	cors := result.Derived["CORS_ORIGINS"]
+	cors := result.Computed["CORS_ORIGINS"]
 	if cors.Value != "http://localhost:5173" {
 		t.Errorf("CORS_ORIGINS = %q, want http://localhost:5173", cors.Value)
 	}
 
-	// Check .env files contain derived values
+	// Check .env files contain computed values
 	frontendEnv, err := os.ReadFile(filepath.Join(dir, "frontend", ".env"))
 	if err != nil {
 		t.Fatalf("reading frontend/.env: %v", err)
@@ -269,8 +269,8 @@ func TestUp_WithDerivedValues(t *testing.T) {
 	}
 }
 
-func TestUp_DerivedStyledOutput(t *testing.T) {
-	dir := setupProject(t, testConfigWithDerived)
+func TestUp_ComputedStyledOutput(t *testing.T) {
+	dir := setupProject(t, testConfigWithComputed)
 	if err := os.MkdirAll(filepath.Join(dir, "backend"), 0755); err != nil {
 		t.Fatal(err)
 	}
@@ -280,15 +280,15 @@ func TestUp_DerivedStyledOutput(t *testing.T) {
 
 	output := executeCmd(t, "up")
 
-	if !bytes.Contains([]byte(output), []byte("derived:")) {
-		t.Errorf("styled output missing 'derived:' section, got:\n%s", output)
+	if !bytes.Contains([]byte(output), []byte("computed:")) {
+		t.Errorf("styled output missing 'computed:' section, got:\n%s", output)
 	}
 	if !bytes.Contains([]byte(output), []byte("API_URL")) {
 		t.Errorf("styled output missing API_URL, got:\n%s", output)
 	}
 }
 
-func TestUp_DerivedPerFileValues(t *testing.T) {
+func TestUp_ComputedPerFileValues(t *testing.T) {
 	dir := setupProject(t, `name: testapp
 services:
   rails:
@@ -297,7 +297,7 @@ services:
     protocol: http
     env_file: backend/.env
 
-derived:
+computed:
   API_URL:
     env_file:
       - file: frontend/main/.env
@@ -316,7 +316,7 @@ derived:
 		t.Fatalf("invalid JSON: %v\nOutput: %s", err, output)
 	}
 
-	apiURL := result.Derived["API_URL"]
+	apiURL := result.Computed["API_URL"]
 	// Per-file values should use the "values" field
 	if apiURL.Values == nil {
 		t.Fatal("expected per-file values map, got nil")
@@ -339,13 +339,13 @@ derived:
 	}
 }
 
-func TestUp_NoDerived_OmitsFromJSON(t *testing.T) {
+func TestUp_NoComputed_OmitsFromJSON(t *testing.T) {
 	setupProject(t, testConfig)
 
 	output := executeCmd(t, "up", "--json")
 
-	if bytes.Contains([]byte(output), []byte("derived")) {
-		t.Errorf("JSON output should omit derived when empty, got:\n%s", output)
+	if bytes.Contains([]byte(output), []byte("computed")) {
+		t.Errorf("JSON output should omit computed when empty, got:\n%s", output)
 	}
 }
 
@@ -743,7 +743,7 @@ func TestDown_RemovesFromRegistry(t *testing.T) {
 }
 
 func TestDown_CleansEnvFiles(t *testing.T) {
-	dir := setupProject(t, testConfigWithDerived)
+	dir := setupProject(t, testConfigWithComputed)
 	_ = os.MkdirAll(filepath.Join(dir, "backend"), 0755)
 	_ = os.MkdirAll(filepath.Join(dir, "frontend"), 0755)
 
@@ -771,7 +771,7 @@ func TestDown_CleansEnvFiles(t *testing.T) {
 }
 
 func TestDown_JSONShowsCleanedFiles(t *testing.T) {
-	dir := setupProject(t, testConfigWithDerived)
+	dir := setupProject(t, testConfigWithComputed)
 	_ = os.MkdirAll(filepath.Join(dir, "backend"), 0755)
 	_ = os.MkdirAll(filepath.Join(dir, "frontend"), 0755)
 
@@ -1139,7 +1139,7 @@ services:
     hostname: api.myapp
   postgres:
     env_var: PGPORT
-derived:
+computed:
   CORS_ORIGINS:
     value: "${web.url},${api.url}"
     env_file: .env
@@ -1214,7 +1214,7 @@ func TestUp_WithHostnames(t *testing.T) {
 		t.Errorf("registry api protocol = %q, want http", alloc.Protocols["api"])
 	}
 
-	// Verify .env contains resolved derived values with url and url:direct
+	// Verify .env contains resolved computed values with url and url:direct
 	envData, err := os.ReadFile(filepath.Join(dir, ".env"))
 	if err != nil {
 		t.Fatalf("reading .env: %v", err)
@@ -1362,7 +1362,7 @@ services:
     protocol: http
     hostname: api.myapp
 
-derived:
+computed:
   WEB_URL:
     value: "${web.url}/app"
     env_file: .env
@@ -1387,28 +1387,28 @@ derived:
 		t.Fatalf("invalid JSON: %v\nOutput: %s", err, output)
 	}
 
-	// Verify derived values in JSON output
-	webURL := result.Derived["WEB_URL"]
+	// Verify computed values in JSON output
+	webURL := result.Computed["WEB_URL"]
 	if webURL.Value != "http://myapp.test/app" {
 		t.Errorf("WEB_URL = %q, want http://myapp.test/app", webURL.Value)
 	}
 
-	webDirect := result.Derived["WEB_DIRECT"]
+	webDirect := result.Computed["WEB_DIRECT"]
 	if webDirect.Value != "http://localhost:3000/app" {
 		t.Errorf("WEB_DIRECT = %q, want http://localhost:3000/app", webDirect.Value)
 	}
 
-	apiURL := result.Derived["API_URL"]
+	apiURL := result.Computed["API_URL"]
 	if apiURL.Value != "http://api.myapp.test/v1" {
 		t.Errorf("API_URL = %q, want http://api.myapp.test/v1", apiURL.Value)
 	}
 
-	apiDirect := result.Derived["API_DIRECT"]
+	apiDirect := result.Computed["API_DIRECT"]
 	if apiDirect.Value != "http://localhost:4000/v1" {
 		t.Errorf("API_DIRECT = %q, want http://localhost:4000/v1", apiDirect.Value)
 	}
 
-	combined := result.Derived["COMBINED"]
+	combined := result.Computed["COMBINED"]
 	if combined.Value != "http://myapp.test,http://localhost:4000" {
 		t.Errorf("COMBINED = %q, want http://myapp.test,http://localhost:4000", combined.Value)
 	}
@@ -1708,7 +1708,7 @@ func TestBuildTemplateVars_NilTunnelURLs(t *testing.T) {
 	}
 }
 
-const testConfigWithDerivedAndHostnames = `name: testapp
+const testConfigWithComputedAndHostnames = `name: testapp
 services:
   rails:
     preferred_port: 3000
@@ -1723,7 +1723,7 @@ services:
   postgres:
     preferred_port: 5432
     env_var: DATABASE_PORT
-derived:
+computed:
   API_URL:
     value: "${rails.url}/api"
     env_file: .env
@@ -1765,7 +1765,7 @@ func readEnvFile(t *testing.T, path string) map[string]string {
 }
 
 func TestMergeEnvFiles_WithTunnelURLs(t *testing.T) {
-	dir := setupProject(t, testConfigWithDerivedAndHostnames)
+	dir := setupProject(t, testConfigWithComputedAndHostnames)
 
 	ports := map[string]int{"rails": 3000, "vite": 5173, "postgres": 5432}
 	hostnames := map[string]string{"rails": "testapp.test", "vite": "testapp-vite.test"}
@@ -1782,7 +1782,7 @@ func TestMergeEnvFiles_WithTunnelURLs(t *testing.T) {
 
 	env := readEnvFile(t, filepath.Join(dir, ".env"))
 
-	// Derived values using ${service.url} should have tunnel URLs
+	// Computed values using ${service.url} should have tunnel URLs
 	if got := env["API_URL"]; got != "https://abc.trycloudflare.com/api" {
 		t.Errorf("API_URL = %q, want tunnel-based URL", got)
 	}
@@ -1790,7 +1790,7 @@ func TestMergeEnvFiles_WithTunnelURLs(t *testing.T) {
 		t.Errorf("CORS_ORIGINS = %q, want tunnel-based URL", got)
 	}
 
-	// Derived values using ${service.url:direct} should stay localhost
+	// Computed values using ${service.url:direct} should stay localhost
 	if got := env["API_URL_DIRECT"]; got != "http://localhost:3000/api" {
 		t.Errorf("API_URL_DIRECT = %q, want localhost URL", got)
 	}
@@ -1817,13 +1817,13 @@ func TestMergeEnvFiles_WithTunnelURLs(t *testing.T) {
 	}
 }
 
-func TestPrintShareJSON_IncludesDerivedValues(t *testing.T) {
+func TestPrintShareJSON_IncludesComputedValues(t *testing.T) {
 	cfg := &config.Config{
 		Name: "testapp",
 		Services: map[string]config.Service{
 			"rails": {EnvVar: "RAILS_PORT", Protocol: "http", Hostname: "testapp.test"},
 		},
-		Derived: map[string]config.DerivedValue{
+		Computed: map[string]config.ComputedValue{
 			"API_URL": {
 				Value:    "${rails.url}/api",
 				EnvFiles: []string{".env"},
@@ -1836,7 +1836,7 @@ func TestPrintShareJSON_IncludesDerivedValues(t *testing.T) {
 	}
 	tunnels[0].Service = "rails"
 
-	resolvedDerived := map[string]map[string]string{
+	resolvedComputed := map[string]map[string]string{
 		"API_URL": {".env": "https://abc.trycloudflare.com/api"},
 	}
 
@@ -1844,7 +1844,7 @@ func TestPrintShareJSON_IncludesDerivedValues(t *testing.T) {
 	cmd := &cobra.Command{}
 	cmd.SetOut(&buf)
 
-	if err := printShareJSON(cmd, tunnels, cfg, resolvedDerived); err != nil {
+	if err := printShareJSON(cmd, tunnels, cfg, resolvedComputed); err != nil {
 		t.Fatal(err)
 	}
 
@@ -1860,15 +1860,15 @@ func TestPrintShareJSON_IncludesDerivedValues(t *testing.T) {
 		t.Errorf("tunnel URL = %q, want trycloudflare URL", result.Tunnels[0].URL)
 	}
 
-	if result.Derived == nil {
-		t.Fatal("derived is nil, expected derived values in JSON output")
+	if result.Computed == nil {
+		t.Fatal("computed is nil, expected computed values in JSON output")
 	}
-	d, ok := result.Derived["API_URL"]
+	d, ok := result.Computed["API_URL"]
 	if !ok {
-		t.Fatal("API_URL not in derived output")
+		t.Fatal("API_URL not in computed output")
 	}
 	if d.Value != "https://abc.trycloudflare.com/api" {
-		t.Errorf("API_URL derived value = %q, want tunnel-based URL", d.Value)
+		t.Errorf("API_URL computed value = %q, want tunnel-based URL", d.Value)
 	}
 }
 
