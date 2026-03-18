@@ -13,16 +13,6 @@ brew install steveclarke/tap/outport
 
 See [Installation](/guide/installation) for other methods.
 
-## One-Time System Setup
-
-Run `outport system start` to install the DNS resolver, local CA, and daemon:
-
-```bash
-outport system start
-```
-
-This sets up `.test` domain resolution, HTTPS certificates, and the reverse proxy. You only need to do this once — the daemon starts at login automatically.
-
 ## Create Your Config
 
 Run `outport init` in your project directory:
@@ -60,7 +50,7 @@ Output:
 ```
 myapp [main]
 
-    web       PORT        → 24920  https://myapp.test
+    web       PORT        → 24920
     postgres  DB_PORT     → 21536
     redis     REDIS_PORT  → 29454
 ```
@@ -77,6 +67,38 @@ REDIS_PORT=29454
 ```
 
 Run `outport up` again — you'll get the same ports every time. It's idempotent.
+
+## Enable .test Domains (Optional)
+
+For `.test` hostnames, automatic HTTPS, and a local reverse proxy, run the one-time system setup:
+
+```bash
+outport system start
+```
+
+This installs a DNS resolver, local Certificate Authority, and background daemon. You only need to do this once — the daemon starts at login automatically.
+
+After setup, re-run `outport up` to see the enhanced output:
+
+```
+myapp [main]
+
+    web       PORT        → 24920  https://myapp.test
+    postgres  DB_PORT     → 21536
+    redis     REDIS_PORT  → 29454
+```
+
+Your `.env` now includes the URL:
+
+```bash
+# .env
+# --- begin outport.dev ---
+PORT=24920
+DB_PORT=21536
+REDIS_PORT=29454
+MYAPP_URL=https://myapp.test
+# --- end outport.dev ---
+```
 
 ## What Just Happened
 
