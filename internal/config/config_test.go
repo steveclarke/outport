@@ -243,9 +243,9 @@ services:
 	}
 }
 
-// --- Derived Values ---
+// --- Computed Values ---
 
-func TestLoad_WithDerivedValues(t *testing.T) {
+func TestLoad_WithComputedValues(t *testing.T) {
 	dir := writeConfig(t, `name: myapp
 services:
   rails:
@@ -257,7 +257,7 @@ services:
     protocol: http
     env_file: frontend/.env
 
-derived:
+computed:
   API_URL:
     value: "http://localhost:${rails.port}/api/v1"
     env_file: frontend/.env
@@ -269,30 +269,30 @@ derived:
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if len(cfg.Derived) != 2 {
-		t.Fatalf("derived count = %d, want 2", len(cfg.Derived))
+	if len(cfg.Computed) != 2 {
+		t.Fatalf("computed count = %d, want 2", len(cfg.Computed))
 	}
-	apiURL := cfg.Derived["API_URL"]
+	apiURL := cfg.Computed["API_URL"]
 	if apiURL.Value != "http://localhost:${rails.port}/api/v1" {
 		t.Errorf("API_URL.Value = %q, want template string", apiURL.Value)
 	}
 	if len(apiURL.EnvFiles) != 1 || apiURL.EnvFiles[0] != "frontend/.env" {
 		t.Errorf("API_URL.EnvFiles = %v, want [frontend/.env]", apiURL.EnvFiles)
 	}
-	cors := cfg.Derived["CORS_ORIGINS"]
+	cors := cfg.Computed["CORS_ORIGINS"]
 	if len(cors.EnvFiles) != 1 || cors.EnvFiles[0] != "backend/.env" {
 		t.Errorf("CORS_ORIGINS.EnvFiles = %v, want [backend/.env]", cors.EnvFiles)
 	}
 }
 
-func TestLoad_DerivedEnvFileArray(t *testing.T) {
+func TestLoad_ComputedEnvFileArray(t *testing.T) {
 	dir := writeConfig(t, `name: myapp
 services:
   rails:
     env_var: RAILS_PORT
     env_file: backend/.env
 
-derived:
+computed:
   API_URL:
     value: "http://localhost:${rails.port}/api"
     env_file:
@@ -303,19 +303,19 @@ derived:
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if len(cfg.Derived["API_URL"].EnvFiles) != 2 {
-		t.Fatalf("EnvFiles count = %d, want 2", len(cfg.Derived["API_URL"].EnvFiles))
+	if len(cfg.Computed["API_URL"].EnvFiles) != 2 {
+		t.Fatalf("EnvFiles count = %d, want 2", len(cfg.Computed["API_URL"].EnvFiles))
 	}
 }
 
-func TestLoad_DerivedPerFileValues(t *testing.T) {
+func TestLoad_ComputedPerFileValues(t *testing.T) {
 	dir := writeConfig(t, `name: myapp
 services:
   rails:
     env_var: RAILS_PORT
     env_file: backend/.env
 
-derived:
+computed:
   NUXT_API_BASE_URL:
     env_file:
       - file: frontend/apps/main/.env
@@ -327,7 +327,7 @@ derived:
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	dv := cfg.Derived["NUXT_API_BASE_URL"]
+	dv := cfg.Computed["NUXT_API_BASE_URL"]
 	if len(dv.EnvFiles) != 2 {
 		t.Fatalf("EnvFiles count = %d, want 2", len(dv.EnvFiles))
 	}
@@ -342,14 +342,14 @@ derived:
 	}
 }
 
-func TestLoad_DerivedMixedEnvFileEntries(t *testing.T) {
+func TestLoad_ComputedMixedEnvFileEntries(t *testing.T) {
 	dir := writeConfig(t, `name: myapp
 services:
   rails:
     env_var: RAILS_PORT
     env_file: backend/.env
 
-derived:
+computed:
   API_URL:
     value: "http://localhost:${rails.port}/api"
     env_file:
@@ -361,7 +361,7 @@ derived:
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	dv := cfg.Derived["API_URL"]
+	dv := cfg.Computed["API_URL"]
 	if len(dv.EnvFiles) != 2 {
 		t.Fatalf("EnvFiles count = %d, want 2", len(dv.EnvFiles))
 	}
@@ -376,14 +376,14 @@ derived:
 	}
 }
 
-func TestLoad_DerivedPerFileValidatesReferences(t *testing.T) {
+func TestLoad_ComputedPerFileValidatesReferences(t *testing.T) {
 	dir := writeConfig(t, `name: myapp
 services:
   rails:
     env_var: RAILS_PORT
     env_file: backend/.env
 
-derived:
+computed:
   API_URL:
     env_file:
       - file: frontend/.env
@@ -398,14 +398,14 @@ derived:
 	}
 }
 
-func TestLoad_DerivedPerFileMissingValue(t *testing.T) {
+func TestLoad_ComputedPerFileMissingValue(t *testing.T) {
 	dir := writeConfig(t, `name: myapp
 services:
   rails:
     env_var: RAILS_PORT
     env_file: backend/.env
 
-derived:
+computed:
   API_URL:
     env_file:
       - frontend/shared/.env
@@ -445,13 +445,13 @@ services:
 	}
 }
 
-func TestLoad_DerivedInvalidReference(t *testing.T) {
+func TestLoad_ComputedInvalidReference(t *testing.T) {
 	dir := writeConfig(t, `name: myapp
 services:
   web:
     env_var: PORT
 
-derived:
+computed:
   API_URL:
     value: "http://localhost:${backend.port}/api"
     env_file: frontend/.env
@@ -465,13 +465,13 @@ derived:
 	}
 }
 
-func TestLoad_DerivedInvalidField(t *testing.T) {
+func TestLoad_ComputedInvalidField(t *testing.T) {
 	dir := writeConfig(t, `name: myapp
 services:
   web:
     env_var: PORT
 
-derived:
+computed:
   API_URL:
     value: "http://localhost:${web.bogus}"
     env_file: frontend/.env
@@ -485,13 +485,13 @@ derived:
 	}
 }
 
-func TestLoad_DerivedNameCollidesWithServiceEnvVar(t *testing.T) {
+func TestLoad_ComputedNameCollidesWithServiceEnvVar(t *testing.T) {
 	dir := writeConfig(t, `name: myapp
 services:
   web:
     env_var: PORT
 
-derived:
+computed:
   PORT:
     value: "http://localhost:${web.port}"
     env_file: frontend/.env
@@ -505,13 +505,13 @@ derived:
 	}
 }
 
-func TestLoad_DerivedMissingValue(t *testing.T) {
+func TestLoad_ComputedMissingValue(t *testing.T) {
 	dir := writeConfig(t, `name: myapp
 services:
   web:
     env_var: PORT
 
-derived:
+computed:
   API_URL:
     env_file: frontend/.env
 `)
@@ -524,13 +524,13 @@ derived:
 	}
 }
 
-func TestLoad_DerivedMissingEnvFile(t *testing.T) {
+func TestLoad_ComputedMissingEnvFile(t *testing.T) {
 	dir := writeConfig(t, `name: myapp
 services:
   web:
     env_var: PORT
 
-derived:
+computed:
   API_URL:
     value: "http://localhost:${web.port}/api"
 `)
@@ -543,7 +543,7 @@ derived:
 	}
 }
 
-func TestLoad_NoDerivedIsValid(t *testing.T) {
+func TestLoad_NoComputedIsValid(t *testing.T) {
 	dir := writeConfig(t, `name: myapp
 services:
   web:
@@ -553,15 +553,15 @@ services:
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if len(cfg.Derived) != 0 {
-		t.Errorf("expected nil or empty derived, got %v", cfg.Derived)
+	if len(cfg.Computed) != 0 {
+		t.Errorf("expected nil or empty computed, got %v", cfg.Computed)
 	}
 }
 
 // --- Resolution ---
 
-func TestResolveDerived_SubstitutesVars(t *testing.T) {
-	derived := map[string]DerivedValue{
+func TestResolveComputed_SubstitutesVars(t *testing.T) {
+	computed := map[string]ComputedValue{
 		"API_URL": {
 			Value:    "http://localhost:${rails.port}/api/v1",
 			EnvFiles: []string{"frontend/.env"},
@@ -569,15 +569,15 @@ func TestResolveDerived_SubstitutesVars(t *testing.T) {
 	}
 	vars := map[string]string{"rails.port": "24920", "rails.hostname": "localhost"}
 
-	resolved := ResolveDerived(derived, vars)
+	resolved := ResolveComputed(computed, vars)
 
 	if resolved["API_URL"]["frontend/.env"] != "http://localhost:24920/api/v1" {
 		t.Errorf("API_URL = %q, want http://localhost:24920/api/v1", resolved["API_URL"]["frontend/.env"])
 	}
 }
 
-func TestResolveDerived_HostnameReference(t *testing.T) {
-	derived := map[string]DerivedValue{
+func TestResolveComputed_HostnameReference(t *testing.T) {
+	computed := map[string]ComputedValue{
 		"CORS": {
 			Value:    "http://${web.hostname}:${web.port}",
 			EnvFiles: []string{".env"},
@@ -585,15 +585,15 @@ func TestResolveDerived_HostnameReference(t *testing.T) {
 	}
 	vars := map[string]string{"web.port": "3000", "web.hostname": "myapp.localhost"}
 
-	resolved := ResolveDerived(derived, vars)
+	resolved := ResolveComputed(computed, vars)
 
 	if resolved["CORS"][".env"] != "http://myapp.localhost:3000" {
 		t.Errorf("CORS = %q, want http://myapp.localhost:3000", resolved["CORS"][".env"])
 	}
 }
 
-func TestResolveDerived_MultipleReferences(t *testing.T) {
-	derived := map[string]DerivedValue{
+func TestResolveComputed_MultipleReferences(t *testing.T) {
+	computed := map[string]ComputedValue{
 		"CORS": {
 			Value:    "http://${web.hostname}:${web.port},http://${api.hostname}:${api.port}",
 			EnvFiles: []string{".env"},
@@ -604,15 +604,15 @@ func TestResolveDerived_MultipleReferences(t *testing.T) {
 		"api.port": "24920", "api.hostname": "localhost",
 	}
 
-	resolved := ResolveDerived(derived, vars)
+	resolved := ResolveComputed(computed, vars)
 
 	if resolved["CORS"][".env"] != "http://app.localhost:14139,http://localhost:24920" {
 		t.Errorf("CORS = %q, want substituted value", resolved["CORS"][".env"])
 	}
 }
 
-func TestResolveDerived_NoReferences(t *testing.T) {
-	derived := map[string]DerivedValue{
+func TestResolveComputed_NoReferences(t *testing.T) {
+	computed := map[string]ComputedValue{
 		"STATIC": {
 			Value:    "some-static-value",
 			EnvFiles: []string{".env"},
@@ -620,15 +620,15 @@ func TestResolveDerived_NoReferences(t *testing.T) {
 	}
 	vars := map[string]string{"web.port": "3000"}
 
-	resolved := ResolveDerived(derived, vars)
+	resolved := ResolveComputed(computed, vars)
 
 	if resolved["STATIC"][".env"] != "some-static-value" {
 		t.Errorf("STATIC = %q, want some-static-value", resolved["STATIC"][".env"])
 	}
 }
 
-func TestResolveDerived_PerFileValues(t *testing.T) {
-	derived := map[string]DerivedValue{
+func TestResolveComputed_PerFileValues(t *testing.T) {
+	computed := map[string]ComputedValue{
 		"API_URL": {
 			EnvFiles: []string{"main/.env", "portal/.env"},
 			PerFile: map[string]string{
@@ -639,7 +639,7 @@ func TestResolveDerived_PerFileValues(t *testing.T) {
 	}
 	vars := map[string]string{"rails.port": "3000"}
 
-	resolved := ResolveDerived(derived, vars)
+	resolved := ResolveComputed(computed, vars)
 
 	mainVal := resolved["API_URL"]["main/.env"]
 	if mainVal != "http://localhost:3000/api/v1" {
@@ -651,8 +651,8 @@ func TestResolveDerived_PerFileValues(t *testing.T) {
 	}
 }
 
-func TestResolveDerived_MixedPerFileAndDefault(t *testing.T) {
-	derived := map[string]DerivedValue{
+func TestResolveComputed_MixedPerFileAndDefault(t *testing.T) {
+	computed := map[string]ComputedValue{
 		"API_URL": {
 			Value:    "http://localhost:${rails.port}/api",
 			EnvFiles: []string{"shared/.env", "portal/.env"},
@@ -663,7 +663,7 @@ func TestResolveDerived_MixedPerFileAndDefault(t *testing.T) {
 	}
 	vars := map[string]string{"rails.port": "3000"}
 
-	resolved := ResolveDerived(derived, vars)
+	resolved := ResolveComputed(computed, vars)
 
 	sharedVal := resolved["API_URL"]["shared/.env"]
 	if sharedVal != "http://localhost:3000/api" {
@@ -675,8 +675,8 @@ func TestResolveDerived_MixedPerFileAndDefault(t *testing.T) {
 	}
 }
 
-func TestResolveDerived_DefaultValueAllFiles(t *testing.T) {
-	derived := map[string]DerivedValue{
+func TestResolveComputed_DefaultValueAllFiles(t *testing.T) {
+	computed := map[string]ComputedValue{
 		"API_URL": {
 			Value:    "http://localhost:${web.port}/api",
 			EnvFiles: []string{"a/.env", "b/.env"},
@@ -684,7 +684,7 @@ func TestResolveDerived_DefaultValueAllFiles(t *testing.T) {
 	}
 	vars := map[string]string{"web.port": "3000"}
 
-	resolved := ResolveDerived(derived, vars)
+	resolved := ResolveComputed(computed, vars)
 
 	for _, file := range []string{"a/.env", "b/.env"} {
 		if resolved["API_URL"][file] != "http://localhost:3000/api" {
@@ -693,8 +693,8 @@ func TestResolveDerived_DefaultValueAllFiles(t *testing.T) {
 	}
 }
 
-func TestResolveDerived_HostnameDefaultsToLocalhost(t *testing.T) {
-	derived := map[string]DerivedValue{
+func TestResolveComputed_HostnameDefaultsToLocalhost(t *testing.T) {
+	computed := map[string]ComputedValue{
 		"URL": {
 			Value:    "http://${web.hostname}:${web.port}",
 			EnvFiles: []string{".env"},
@@ -703,15 +703,15 @@ func TestResolveDerived_HostnameDefaultsToLocalhost(t *testing.T) {
 	// No hostname set on service — should resolve to "localhost"
 	vars := map[string]string{"web.port": "3000", "web.hostname": "localhost"}
 
-	resolved := ResolveDerived(derived, vars)
+	resolved := ResolveComputed(computed, vars)
 
 	if resolved["URL"][".env"] != "http://localhost:3000" {
 		t.Errorf("URL = %q, want http://localhost:3000", resolved["URL"][".env"])
 	}
 }
 
-func TestResolveDerived_EmptyMap(t *testing.T) {
-	resolved := ResolveDerived(nil, map[string]string{"web.port": "3000"})
+func TestResolveComputed_EmptyMap(t *testing.T) {
+	resolved := ResolveComputed(nil, map[string]string{"web.port": "3000"})
 	if len(resolved) != 0 {
 		t.Errorf("expected empty map, got %v", resolved)
 	}
@@ -783,7 +783,7 @@ services:
     env_var: PORT
     protocol: http
     hostname: myapp
-derived:
+computed:
   API_URL:
     value: "${rails.url:direct}/api"
     env_file: .env
@@ -803,7 +803,7 @@ derived:
 		"rails.url":        "http://myapp.test",
 		"rails.url:direct": "http://localhost:24920",
 	}
-	resolved := ResolveDerived(cfg.Derived, vars)
+	resolved := ResolveComputed(cfg.Computed, vars)
 	val := resolved["API_URL"][".env"]
 	if val != "http://localhost:24920/api" {
 		t.Errorf("got %q, want %q", val, "http://localhost:24920/api")
@@ -818,7 +818,7 @@ services:
     env_var: PORT
     protocol: http
     hostname: myapp
-derived:
+computed:
   BAD:
     value: "${rails.url:bogus}"
     env_file: .env
@@ -841,7 +841,7 @@ services:
     env_var: PORT
     protocol: http
     hostname: myapp
-derived:
+computed:
   SITE_URL:
     value: "${rails.url}"
     env_file: .env
