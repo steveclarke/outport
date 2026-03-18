@@ -350,6 +350,13 @@ func SystemChecks() []Check {
 			},
 		},
 		{
+			Name:     "DNS resolving *.test",
+			Category: "System",
+			Run: func() *Result {
+				return checkDNSResolving("127.0.0.1:15353")
+			},
+		},
+		{
 			Name:     "HTTP proxy",
 			Category: "Daemon",
 			Run: func() *Result {
