@@ -12,6 +12,8 @@ import (
 	"github.com/outport-app/outport/internal/certmanager"
 	"github.com/outport-app/outport/internal/config"
 	"github.com/outport-app/outport/internal/registry"
+	"github.com/outport-app/outport/internal/tunnel"
+	"github.com/spf13/cobra"
 )
 
 // setupProject creates a temp directory with .outport.yml and .git,
@@ -1812,5 +1814,60 @@ func TestMergeEnvFiles_WithTunnelURLs(t *testing.T) {
 	}
 	if got := env["CORS_ORIGINS"]; got != "http://testapp-vite.test" {
 		t.Errorf("after revert: CORS_ORIGINS = %q, want local URL", got)
+	}
+}
+
+func TestPrintShareJSON_IncludesDerivedValues(t *testing.T) {
+	cfg := &config.Config{
+		Name: "testapp",
+		Services: map[string]config.Service{
+			"rails": {EnvVar: "RAILS_PORT", Protocol: "http", Hostname: "testapp.test"},
+		},
+		Derived: map[string]config.DerivedValue{
+			"API_URL": {
+				Value:    "${rails.url}/api",
+				EnvFiles: []string{".env"},
+			},
+		},
+	}
+
+	tunnels := []*tunnel.Tunnel{
+		tunnel.NewTunnel("https://abc.trycloudflare.com", 3000, func() error { return nil }),
+	}
+	tunnels[0].Service = "rails"
+
+	resolvedDerived := map[string]map[string]string{
+		"API_URL": {".env": "https://abc.trycloudflare.com/api"},
+	}
+
+	var buf bytes.Buffer
+	cmd := &cobra.Command{}
+	cmd.SetOut(&buf)
+
+	if err := printShareJSON(cmd, tunnels, cfg, resolvedDerived); err != nil {
+		t.Fatal(err)
+	}
+
+	var result shareJSON
+	if err := json.Unmarshal(buf.Bytes(), &result); err != nil {
+		t.Fatalf("invalid JSON: %v", err)
+	}
+
+	if len(result.Tunnels) != 1 {
+		t.Fatalf("expected 1 tunnel, got %d", len(result.Tunnels))
+	}
+	if result.Tunnels[0].URL != "https://abc.trycloudflare.com" {
+		t.Errorf("tunnel URL = %q, want trycloudflare URL", result.Tunnels[0].URL)
+	}
+
+	if result.Derived == nil {
+		t.Fatal("derived is nil, expected derived values in JSON output")
+	}
+	d, ok := result.Derived["API_URL"]
+	if !ok {
+		t.Fatal("API_URL not in derived output")
+	}
+	if d.Value != "https://abc.trycloudflare.com/api" {
+		t.Errorf("API_URL derived value = %q, want tunnel-based URL", d.Value)
 	}
 }
