@@ -85,6 +85,8 @@ outport share web vite     # tunnel specific services
 
 Creates temporary public URLs for services with `protocol: http` or `protocol: https`. Requires `cloudflared` (`brew install cloudflared`). The command blocks until you press Ctrl+C.
 
+While sharing, `.env` files are rewritten so derived values using `${service.url}` resolve to the tunnel URLs. This means CORS origins, API base URLs, and other derived values automatically point to the public tunnel URLs. Values using `${service.url:direct}` stay as localhost. On exit, `.env` files revert to local URLs. Restart your services after starting and stopping `outport share`.
+
 | Flag | Description |
 |------|-------------|
 | `--json` | Output tunnel URLs as JSON |

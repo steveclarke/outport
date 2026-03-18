@@ -49,7 +49,7 @@ Project commands (top-level):
 - **init** — Creates a commented `.outport.yml` template in the current directory.
 - **ports** — Show current project's allocated ports.
 - **open** — Open HTTP/HTTPS services in the default browser. Requires `protocol: http` on services.
-- **share** — Tunnel HTTP services to public URLs via Cloudflare quick tunnels. Shares all HTTP services by default, or specify service names. Requires `cloudflared` binary. Blocks until Ctrl+C.
+- **share** — Tunnel HTTP services to public URLs via Cloudflare quick tunnels. Shares all HTTP services by default, or specify service names. Requires `cloudflared` binary. Rewrites `.env` files so `${service.url}` derived values resolve to tunnel URLs (`${service.url:direct}` stays localhost). Reverts `.env` on exit. Blocks until Ctrl+C.
 - **rename** — Rename an instance of the current project. Updates hostnames and re-merges `.env` files.
 - **promote** — Promote the current instance to "main". Demotes the existing main instance to a generated code name. Updates hostnames for both instances.
 
