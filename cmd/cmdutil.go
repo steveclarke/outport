@@ -1,11 +1,22 @@
 package cmd
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 
 	"github.com/spf13/cobra"
 )
+
+// writeJSON marshals v as indented JSON and writes it to the command's stdout.
+func writeJSON(cmd *cobra.Command, v any) error {
+	data, err := json.MarshalIndent(v, "", "  ")
+	if err != nil {
+		return err
+	}
+	fmt.Fprintln(cmd.OutOrStdout(), string(data))
+	return nil
+}
 
 // FlagError is a special error type that signals the error is due to
 // incorrect usage (bad args, bad flags, mutually exclusive options).

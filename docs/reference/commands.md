@@ -73,6 +73,22 @@ outport open web     # open a specific service
 
 Opens services with `protocol: http` or `protocol: https` in your default browser. Works best with `.test` domains set up (`outport system start`).
 
+### `outport share`
+
+Tunnel HTTP services to public URLs via Cloudflare quick tunnels.
+
+```bash
+outport share              # tunnel all HTTP services
+outport share web          # tunnel a specific service
+outport share web vite     # tunnel specific services
+```
+
+Creates temporary public URLs for services with `protocol: http` or `protocol: https`. Requires `cloudflared` (`brew install cloudflared`). The command blocks until you press Ctrl+C.
+
+| Flag | Description |
+|------|-------------|
+| `--json` | Output tunnel URLs as JSON |
+
 ### `outport rename`
 
 Rename an instance of the current project.

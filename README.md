@@ -181,6 +181,8 @@ outport down                   Remove ports, clean .env files
 outport ports                  Show ports for the current project
 outport ports --derived        Show ports and derived values
 outport open                   Open HTTP services in the browser
+outport share                  Tunnel HTTP services to public URLs
+outport share web              Tunnel a specific service
 outport rename <old> <new>     Rename an instance
 outport promote                Promote the current instance to main
 ```
