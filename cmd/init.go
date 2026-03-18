@@ -53,9 +53,9 @@ services:
 #    env_var: RAILS_PORT
 #    env_file: backend/.env
 
-# Derived values — computed env vars that reference allocated ports:
+# Computed values — env vars that reference allocated ports:
 #
-# derived:
+# computed:
 #  CORS_ORIGINS:
 #    value: "${web.url}"
 #    env_file: .env
