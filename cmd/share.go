@@ -94,7 +94,7 @@ func resolveShareServices(ctx *projectContext, args []string) ([]string, error) 
 				return nil, FlagErrorf("unknown service %q", name)
 			}
 			if svc.Protocol != "http" && svc.Protocol != "https" {
-				return nil, fmt.Errorf("service %q has no protocol and cannot be shared", name)
+				return nil, FlagErrorf("service %q does not have an HTTP protocol and cannot be shared", name)
 			}
 		}
 		sort.Strings(args)

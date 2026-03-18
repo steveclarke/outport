@@ -1578,7 +1578,10 @@ func TestShare_ServiceWithoutProtocol(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for service without protocol")
 	}
-	want := "has no protocol"
+	if !IsFlagError(err) {
+		t.Errorf("expected FlagError, got %T", err)
+	}
+	want := "does not have an HTTP protocol"
 	if got := err.Error(); !strings.Contains(got, want) {
 		t.Errorf("error = %q, want containing %q", got, want)
 	}
