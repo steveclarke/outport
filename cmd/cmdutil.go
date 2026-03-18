@@ -8,6 +8,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// ErrSilent is returned when a command wants to set exit code 1
+// without printing an error message to stderr.
+var ErrSilent = errors.New("")
+
 // writeJSON marshals v as indented JSON and writes it to the command's stdout.
 func writeJSON(cmd *cobra.Command, v any) error {
 	data, err := json.MarshalIndent(v, "", "  ")
