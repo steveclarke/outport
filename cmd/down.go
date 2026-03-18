@@ -59,7 +59,7 @@ func cleanEnvFiles(dir string, cfg *config.Config) []string {
 			seen[f] = true
 		}
 	}
-	for _, dv := range cfg.Derived {
+	for _, dv := range cfg.Computed {
 		for _, f := range dv.EnvFiles {
 			seen[f] = true
 		}

@@ -80,7 +80,7 @@ func runRename(cmd *cobra.Command, args []string) error {
 // mergeEnvFiles rebuilds and writes env file vars for an allocation.
 // This is used by rename and promote to update .env files after hostnames change.
 // mergeEnvFiles rebuilds and writes env file vars for an allocation.
-// Returns the resolved derived values so callers can reuse them for display.
+// Returns the resolved computed values so callers can reuse them for display.
 func mergeEnvFiles(dir string, cfg *config.Config, instanceName string, ports map[string]int, hostnames map[string]string, httpsEnabled bool, tunnelURLs map[string]string) (map[string]map[string]string, error) {
 	envFileVars := make(map[string]map[string]string)
 
@@ -94,9 +94,9 @@ func mergeEnvFiles(dir string, cfg *config.Config, instanceName string, ports ma
 		}
 	}
 
-	// Resolve derived values and add to envFileVars
-	resolvedDerived := resolveDerivedFromAlloc(cfg, instanceName, ports, hostnames, httpsEnabled, tunnelURLs)
-	for name, fileValues := range resolvedDerived {
+	// Resolve computed values and add to envFileVars
+	resolvedComputed := resolveComputedFromAlloc(cfg, instanceName, ports, hostnames, httpsEnabled, tunnelURLs)
+	for name, fileValues := range resolvedComputed {
 		for file, value := range fileValues {
 			if envFileVars[file] == nil {
 				envFileVars[file] = make(map[string]string)
@@ -113,7 +113,7 @@ func mergeEnvFiles(dir string, cfg *config.Config, instanceName string, ports ma
 		}
 	}
 
-	return resolvedDerived, nil
+	return resolvedComputed, nil
 }
 
 func printRenameJSON(cmd *cobra.Command, project, oldName, newName string) error {
