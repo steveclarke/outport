@@ -129,6 +129,10 @@ computed:
         <div class="example-block">
           <div class="example-label">Resulting .env</div>
           <pre class="step-code"><span class="dim"># .env</span>
+<span class="dim"># Your variables are never touched</span>
+SECRET_KEY=abc123
+DATABASE_URL=postgres://...
+
 <span class="dim"># --- begin outport.dev ---</span>
 PORT=<span class="value">13842</span>
 NUXT_PORT=<span class="value">24519</span>
