@@ -20,7 +20,7 @@ jobs:
 
       - uses: golangci/golangci-lint-action@v8
         with:
-          version: v1
+          version: v1.64
 
   test:
     runs-on: ubuntu-latest
