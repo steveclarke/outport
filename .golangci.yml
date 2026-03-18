@@ -1,5 +1,29 @@
-run:
-  timeout: 5m
+version: "2"
+
+linters:
+  settings:
+    errcheck:
+      exclude-functions:
+        - fmt.Fprint
+        - fmt.Fprintf
+        - fmt.Fprintln
+        - os.Remove
+    staticcheck:
+      checks:
+        - "all"
+        - "-ST1000"    # package comments
+        - "-ST1003"    # Go initialisms (UrlStyle vs URLStyle)
+        - "-ST1005"    # error strings ending with punctuation (user-facing messages)
+        - "-QF*"       # quickfix suggestions, not errors
+
+  exclusions:
+    rules:
+      - linters: [errcheck]
+        path: cmd/
+        text: "lipgloss\\."
+      - linters: [errcheck]
+        path: internal/
+        text: "(Close|Shutdown)"
 
 issues:
   max-issues-per-linter: 0
