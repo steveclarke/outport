@@ -1,6 +1,6 @@
 ---
 name: outport
-description: Manage dev ports with Outport. Use when setting up a new project, adding services, resolving port conflicts, configuring monorepo cross-service URLs, or working with worktrees and multiple instances. Triggers on "outport", "port conflict", "port allocation", "dev ports", ".outport.yml", "port management", "env var ports", "derived values", "cross-service URLs", "CORS origins from ports", ".test domains", "local DNS", "reverse proxy", "cookie isolation". Also use when the user mentions running multiple instances of a project, worktree port setup, or when services need to discover each other's URLs.
+description: Manage dev ports with Outport. Use when setting up a new project, adding services, resolving port conflicts, configuring monorepo cross-service URLs, or working with worktrees and multiple instances. Triggers on "outport", "port conflict", "port allocation", "dev ports", ".outport.yml", "port management", "env var ports", "derived values", "cross-service URLs", "CORS origins from ports", ".test domains", "local DNS", "reverse proxy", "cookie isolation", "tunnel", "share localhost", "public URL", "cloudflare tunnel". Also use when the user mentions running multiple instances of a project, worktree port setup, or when services need to discover each other's URLs.
 ---
 
 # Outport — Dev Port Manager
@@ -25,6 +25,8 @@ outport ports --derived   # Show ports and derived values
 outport ports --json      # Machine-readable output
 outport open              # Open HTTP services in browser
 outport open web          # Open a specific service
+outport share             # Tunnel HTTP services to public URLs
+outport share web         # Tunnel a specific service
 
 # System commands (machine-wide)
 outport system start      # Install DNS, CA, and start the daemon
@@ -415,6 +417,10 @@ and URLs.
 Check `outport system status` to see all allocations. If another project
 holds the ports you want, run `outport down` in it first, then
 `outport up --force` in yours.
+
+### Sharing a service with someone outside your network
+Run `outport share` to tunnel all HTTP services to public Cloudflare URLs.
+Requires `cloudflared` (`brew install cloudflared`). Press Ctrl+C to stop.
 
 ### .test domain not resolving
 Run `outport system status` to verify the daemon is configured. If
