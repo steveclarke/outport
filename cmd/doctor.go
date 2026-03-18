@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -89,12 +88,7 @@ func printDoctorJSON(cmd *cobra.Command, results []doctor.Result) error {
 			Fix:      r.Fix,
 		})
 	}
-	data, err := json.MarshalIndent(out, "", "  ")
-	if err != nil {
-		return err
-	}
-	fmt.Fprintln(cmd.OutOrStdout(), string(data))
-	return nil
+	return writeJSON(cmd, out)
 }
 
 // Styled output

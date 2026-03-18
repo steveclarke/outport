@@ -9,30 +9,6 @@ import (
 	"github.com/outport-app/outport/internal/registry"
 )
 
-// checkConfigValid attempts to load and validate the .outport.yml in dir.
-func checkConfigValid(dir string) *Result {
-	name := ".outport.yml valid"
-	_, err := config.Load(dir)
-	if err != nil {
-		return &Result{Name: name, Status: Fail, Message: fmt.Sprintf(".outport.yml: %v", err)}
-	}
-	return &Result{Name: name, Status: Pass, Message: ".outport.yml valid"}
-}
-
-// checkProjectRegistered checks if the current directory is registered in the registry.
-func checkProjectRegistered(regPath, dir string) *Result {
-	name := "Project registered"
-	reg, err := registry.Load(regPath)
-	if err != nil {
-		return &Result{Name: name, Status: Fail, Message: fmt.Sprintf("could not load registry: %v", err)}
-	}
-	key, _, found := reg.FindByDir(dir)
-	if !found {
-		return &Result{Name: name, Status: Fail, Message: "project not registered", Fix: "Run: outport up"}
-	}
-	return &Result{Name: name, Status: Pass, Message: fmt.Sprintf("Project registered (%s)", key)}
-}
-
 // checkPortAvailable checks if an allocated port is in use.
 // Returns Warn (not Fail) because the service itself may be running.
 func checkPortAvailable(port int, serviceName string) *Result {
@@ -74,36 +50,42 @@ func ProjectChecks(dir string, cfg *config.Config, configErr error, regPath stri
 		},
 	})
 
+	// Load registry once for both registration check and port checks
+	reg, err := registry.Load(regPath)
+	if err != nil {
+		return checks
+	}
+
+	key, alloc, found := reg.FindByDir(dir)
+
 	// Registration check
 	checks = append(checks, Check{
 		Name:     "Project registered",
 		Category: category,
 		Run: func() *Result {
-			return checkProjectRegistered(regPath, dir)
+			if !found {
+				return &Result{Name: "Project registered", Status: Fail, Message: "project not registered", Fix: "Run: outport up"}
+			}
+			return &Result{Name: "Project registered", Status: Pass, Message: fmt.Sprintf("Project registered (%s)", key)}
 		},
 	})
 
-	// Port checks — load registry to get allocated ports
-	reg, err := registry.Load(regPath)
-	if err == nil {
-		if _, alloc, found := reg.FindByDir(dir); found {
-			serviceNames := make([]string, 0, len(alloc.Ports))
-			for name := range alloc.Ports {
-				serviceNames = append(serviceNames, name)
-			}
-			sort.Strings(serviceNames)
-			for _, svcName := range serviceNames {
-				port := alloc.Ports[svcName]
-				svc := svcName // capture for closure
-				p := port
-				checks = append(checks, Check{
-					Name:     fmt.Sprintf("Port %d (%s)", p, svc),
-					Category: category,
-					Run: func() *Result {
-						return checkPortAvailable(p, svc)
-					},
-				})
-			}
+	// Port checks
+	if found {
+		serviceNames := make([]string, 0, len(alloc.Ports))
+		for name := range alloc.Ports {
+			serviceNames = append(serviceNames, name)
+		}
+		sort.Strings(serviceNames)
+		for _, svcName := range serviceNames {
+			port := alloc.Ports[svcName]
+			checks = append(checks, Check{
+				Name:     fmt.Sprintf("Port %d (%s)", port, svcName),
+				Category: category,
+				Run: func() *Result {
+					return checkPortAvailable(port, svcName)
+				},
+			})
 		}
 	}
 

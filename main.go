@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -9,7 +10,7 @@ import (
 
 func main() {
 	if err := cmd.Execute(); err != nil {
-		if err != cmd.ErrSilent {
+		if !errors.Is(err, cmd.ErrSilent) {
 			fmt.Fprintln(os.Stderr, err)
 		}
 		os.Exit(1)
