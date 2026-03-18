@@ -119,17 +119,17 @@ func runUp(cmd *cobra.Command, args []string) error {
 
 	httpsEnabled := certmanager.IsCAInstalled()
 
-	resolvedDerived, err := mergeEnvFiles(dir, cfg, ctx.Instance, ports, alloc.Hostnames, httpsEnabled, nil)
+	resolvedComputed, err := mergeEnvFiles(dir, cfg, ctx.Instance, ports, alloc.Hostnames, httpsEnabled, nil)
 	if err != nil {
 		return err
 	}
-	envFiles := mergedEnvFileList(cfg, resolvedDerived)
+	envFiles := mergedEnvFileList(cfg, resolvedComputed)
 
 	if jsonFlag {
-		return printUpJSON(cmd, cfg, ctx.Instance, ports, alloc.Hostnames, resolvedDerived, envFiles, httpsEnabled)
+		return printUpJSON(cmd, cfg, ctx.Instance, ports, alloc.Hostnames, resolvedComputed, envFiles, httpsEnabled)
 	}
 
-	if err := printUpStyled(cmd, cfg, ctx.Instance, serviceNames, ports, alloc.Hostnames, resolvedDerived, envFiles, httpsEnabled); err != nil {
+	if err := printUpStyled(cmd, cfg, ctx.Instance, serviceNames, ports, alloc.Hostnames, resolvedComputed, envFiles, httpsEnabled); err != nil {
 		return err
 	}
 
@@ -144,14 +144,14 @@ func runUp(cmd *cobra.Command, args []string) error {
 
 // mergedEnvFileList returns the sorted list of env files that would be written
 // by mergeEnvFiles, for display purposes.
-func mergedEnvFileList(cfg *config.Config, resolvedDerived map[string]map[string]string) []string {
+func mergedEnvFileList(cfg *config.Config, resolvedComputed map[string]map[string]string) []string {
 	files := make(map[string]bool)
 	for _, svc := range cfg.Services {
 		for _, envFile := range svc.EnvFiles {
 			files[envFile] = true
 		}
 	}
-	for _, fileValues := range resolvedDerived {
+	for _, fileValues := range resolvedComputed {
 		for file := range fileValues {
 			files[file] = true
 		}
@@ -260,14 +260,14 @@ func buildTemplateVars(cfg *config.Config, instanceName string, ports map[string
 	return vars
 }
 
-// resolveDerivedFromAlloc resolves derived value templates using allocated ports.
+// resolveComputedFromAlloc resolves computed value templates using allocated ports.
 // Returns name → file → resolved value.
-func resolveDerivedFromAlloc(cfg *config.Config, instanceName string, ports map[string]int, hostnames map[string]string, httpsEnabled bool, tunnelURLs map[string]string) map[string]map[string]string {
-	if len(cfg.Derived) == 0 {
+func resolveComputedFromAlloc(cfg *config.Config, instanceName string, ports map[string]int, hostnames map[string]string, httpsEnabled bool, tunnelURLs map[string]string) map[string]map[string]string {
+	if len(cfg.Computed) == 0 {
 		return nil
 	}
 	templateVars := buildTemplateVars(cfg, instanceName, ports, hostnames, httpsEnabled, tunnelURLs)
-	return config.ResolveDerived(cfg.Derived, templateVars)
+	return config.ResolveComputed(cfg.Computed, templateVars)
 }
 
 func sortedMapKeys[V any](m map[string]V) []string {
@@ -294,18 +294,18 @@ type svcJSON struct {
 
 func boolPtr(b bool) *bool { return &b }
 
-type derivedJSON struct {
+type computedJSON struct {
 	Value    string            `json:"value,omitempty"`     // when all files share a value
 	EnvFiles []string          `json:"env_files,omitempty"` // when all files share a value
 	Values   map[string]string `json:"values,omitempty"`    // file → value when per-file
 }
 
 type upJSON struct {
-	Project  string                 `json:"project"`
-	Instance string                 `json:"instance"`
-	Services map[string]svcJSON     `json:"services"`
-	Derived  map[string]derivedJSON `json:"derived,omitempty"`
-	EnvFiles []string               `json:"env_files"`
+	Project  string                  `json:"project"`
+	Instance string                  `json:"instance"`
+	Services map[string]svcJSON      `json:"services"`
+	Computed map[string]computedJSON `json:"computed,omitempty"`
+	EnvFiles []string                `json:"env_files"`
 }
 
 func serviceURL(protocol, hostname string, port int, httpsEnabled bool) string {
@@ -353,20 +353,20 @@ func uniformValue(fileValues map[string]string) (string, bool) {
 	return first, true
 }
 
-func buildDerivedMap(derived map[string]config.DerivedValue, resolved map[string]map[string]string) map[string]derivedJSON {
+func buildComputedMap(computed map[string]config.ComputedValue, resolved map[string]map[string]string) map[string]computedJSON {
 	if len(resolved) == 0 {
 		return nil
 	}
-	m := make(map[string]derivedJSON)
+	m := make(map[string]computedJSON)
 	for name, fileValues := range resolved {
-		dv := derived[name]
+		dv := computed[name]
 		if val, ok := uniformValue(fileValues); ok {
-			m[name] = derivedJSON{
+			m[name] = computedJSON{
 				Value:    val,
 				EnvFiles: dv.EnvFiles,
 			}
 		} else {
-			m[name] = derivedJSON{
+			m[name] = computedJSON{
 				Values: fileValues,
 			}
 		}
@@ -374,12 +374,12 @@ func buildDerivedMap(derived map[string]config.DerivedValue, resolved map[string
 	return m
 }
 
-func printUpJSON(cmd *cobra.Command, cfg *config.Config, instanceName string, ports map[string]int, hostnames map[string]string, resolvedDerived map[string]map[string]string, envFiles []string, httpsEnabled bool) error {
+func printUpJSON(cmd *cobra.Command, cfg *config.Config, instanceName string, ports map[string]int, hostnames map[string]string, resolvedComputed map[string]map[string]string, envFiles []string, httpsEnabled bool) error {
 	out := upJSON{
 		Project:  cfg.Name,
 		Instance: instanceName,
 		Services: buildServiceMap(cfg, ports, hostnames, httpsEnabled),
-		Derived:  buildDerivedMap(cfg.Derived, resolvedDerived),
+		Computed: buildComputedMap(cfg.Computed, resolvedComputed),
 		EnvFiles: envFiles,
 	}
 	data, err := json.MarshalIndent(out, "", "  ")
@@ -396,15 +396,15 @@ func printHeader(w io.Writer, projectName, instanceName string) {
 	lipgloss.Fprintln(w)
 }
 
-func printUpStyled(cmd *cobra.Command, cfg *config.Config, instanceName string, serviceNames []string, ports map[string]int, hostnames map[string]string, resolvedDerived map[string]map[string]string, envFiles []string, httpsEnabled bool) error {
+func printUpStyled(cmd *cobra.Command, cfg *config.Config, instanceName string, serviceNames []string, ports map[string]int, hostnames map[string]string, resolvedComputed map[string]map[string]string, envFiles []string, httpsEnabled bool) error {
 	w := cmd.OutOrStdout()
 
 	printHeader(w, cfg.Name, instanceName)
 
 	printFlatServices(w, cfg, serviceNames, ports, hostnames, nil, httpsEnabled)
 
-	if len(resolvedDerived) > 0 {
-		printDerivedValues(w, resolvedDerived)
+	if len(resolvedComputed) > 0 {
+		printComputedValues(w, resolvedComputed)
 	}
 
 	lipgloss.Fprintln(w)
@@ -426,9 +426,9 @@ func truncate(s string, max int) string {
 	return s
 }
 
-func printDerivedValues(w io.Writer, resolved map[string]map[string]string) {
+func printComputedValues(w io.Writer, resolved map[string]map[string]string) {
 	lipgloss.Fprintln(w)
-	lipgloss.Fprintln(w, ui.DimStyle.Render("    derived:"))
+	lipgloss.Fprintln(w, ui.DimStyle.Render("    computed:"))
 	names := sortedMapKeys(resolved)
 	for _, name := range names {
 		fileValues := resolved[name]
