@@ -119,7 +119,7 @@ func runUp(cmd *cobra.Command, args []string) error {
 
 	httpsEnabled := certmanager.IsCAInstalled()
 
-	resolvedDerived, err := mergeEnvFiles(dir, cfg, ctx.Instance, ports, alloc.Hostnames, httpsEnabled)
+	resolvedDerived, err := mergeEnvFiles(dir, cfg, ctx.Instance, ports, alloc.Hostnames, httpsEnabled, nil)
 	if err != nil {
 		return err
 	}
@@ -223,7 +223,9 @@ func effectiveScheme(protocol, hostname string, httpsEnabled bool) string {
 // buildTemplateVars builds the template variable map from services and allocated ports.
 // Keys are "service.field" (e.g., "rails.port", "rails.hostname", "rails.url").
 // When httpsEnabled is true, .url uses https:// for .test hostnames.
-func buildTemplateVars(cfg *config.Config, instanceName string, ports map[string]int, hostnames map[string]string, httpsEnabled bool) map[string]string {
+// When tunnelURLs is non-nil, ${service.url} resolves to the tunnel URL for tunneled services.
+// ${service.url:direct} always resolves to localhost (unaffected by tunnels).
+func buildTemplateVars(cfg *config.Config, instanceName string, ports map[string]int, hostnames map[string]string, httpsEnabled bool, tunnelURLs map[string]string) map[string]string {
 	vars := make(map[string]string)
 	if instanceName == "main" {
 		vars["instance"] = ""
@@ -240,7 +242,12 @@ func buildTemplateVars(cfg *config.Config, instanceName string, ports map[string
 			if protocol == "" {
 				protocol = "http"
 			}
-			vars[name+".url"] = fmt.Sprintf("%s://%s", effectiveScheme(protocol, h, httpsEnabled), h)
+
+			if tunnelURL, hasTunnel := tunnelURLs[name]; hasTunnel {
+				vars[name+".url"] = tunnelURL
+			} else {
+				vars[name+".url"] = fmt.Sprintf("%s://%s", effectiveScheme(protocol, h, httpsEnabled), h)
+			}
 			vars[name+".url:direct"] = fmt.Sprintf("http://localhost:%s", portStr)
 		} else {
 			hostname := svc.Hostname
@@ -255,11 +262,11 @@ func buildTemplateVars(cfg *config.Config, instanceName string, ports map[string
 
 // resolveDerivedFromAlloc resolves derived value templates using allocated ports.
 // Returns name → file → resolved value.
-func resolveDerivedFromAlloc(cfg *config.Config, instanceName string, ports map[string]int, hostnames map[string]string, httpsEnabled bool) map[string]map[string]string {
+func resolveDerivedFromAlloc(cfg *config.Config, instanceName string, ports map[string]int, hostnames map[string]string, httpsEnabled bool, tunnelURLs map[string]string) map[string]map[string]string {
 	if len(cfg.Derived) == 0 {
 		return nil
 	}
-	templateVars := buildTemplateVars(cfg, instanceName, ports, hostnames, httpsEnabled)
+	templateVars := buildTemplateVars(cfg, instanceName, ports, hostnames, httpsEnabled, tunnelURLs)
 	return config.ResolveDerived(cfg.Derived, templateVars)
 }
 

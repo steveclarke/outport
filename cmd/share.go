@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"charm.land/lipgloss/v2"
+	"github.com/outport-app/outport/internal/certmanager"
+	"github.com/outport-app/outport/internal/config"
 	"github.com/outport-app/outport/internal/tunnel"
 	"github.com/outport-app/outport/internal/tunnel/cloudflare"
 	"github.com/outport-app/outport/internal/ui"
@@ -64,15 +66,36 @@ func runShare(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("starting tunnels: %w", err)
 	}
-	defer mgr.StopAll()
+
+	httpsEnabled := certmanager.IsCAInstalled()
+
+	defer func() {
+		mgr.StopAll()
+		// Revert .env files to local URLs (best-effort; user can run 'outport up' if this fails)
+		_, _ = mergeEnvFiles(ctx.Dir, ctx.Cfg, ctx.Instance, alloc.Ports, alloc.Hostnames, httpsEnabled, nil)
+		fmt.Fprintln(cmd.OutOrStdout())
+		fmt.Fprintln(cmd.OutOrStdout(), ui.SuccessStyle.Render("Restored .env files to local URLs."))
+		fmt.Fprintln(cmd.OutOrStdout(), ui.DimStyle.Render("Restart your services to revert to local development."))
+	}()
 
 	// Sort once for deterministic output in both modes
 	sort.Slice(tunnels, func(i, j int) bool {
 		return tunnels[i].Service < tunnels[j].Service
 	})
 
+	// Build tunnel URL map and rewrite .env files
+	tunnelURLs := make(map[string]string)
+	for _, tun := range tunnels {
+		tunnelURLs[tun.Service] = tun.URL
+	}
+
+	resolvedDerived, err := mergeEnvFiles(ctx.Dir, ctx.Cfg, ctx.Instance, alloc.Ports, alloc.Hostnames, httpsEnabled, tunnelURLs)
+	if err != nil {
+		return fmt.Errorf("writing tunnel URLs to .env: %w", err)
+	}
+
 	if jsonFlag {
-		if err := printShareJSON(cmd, tunnels); err != nil {
+		if err := printShareJSON(cmd, tunnels, ctx.Cfg, resolvedDerived); err != nil {
 			return err
 		}
 	} else {
@@ -124,10 +147,11 @@ type tunnelJSON struct {
 }
 
 type shareJSON struct {
-	Tunnels []tunnelJSON `json:"tunnels"`
+	Tunnels []tunnelJSON           `json:"tunnels"`
+	Derived map[string]derivedJSON `json:"derived,omitempty"`
 }
 
-func printShareJSON(cmd *cobra.Command, tunnels []*tunnel.Tunnel) error {
+func printShareJSON(cmd *cobra.Command, tunnels []*tunnel.Tunnel, cfg *config.Config, resolvedDerived map[string]map[string]string) error {
 	out := shareJSON{}
 	for _, tun := range tunnels {
 		out.Tunnels = append(out.Tunnels, tunnelJSON{
@@ -136,6 +160,7 @@ func printShareJSON(cmd *cobra.Command, tunnels []*tunnel.Tunnel) error {
 			Port:    tun.Port,
 		})
 	}
+	out.Derived = buildDerivedMap(cfg.Derived, resolvedDerived)
 	return writeJSON(cmd, out)
 }
 
@@ -156,6 +181,9 @@ func printShareStyled(cmd *cobra.Command, tunnels []*tunnel.Tunnel) {
 		lipgloss.Fprintln(w, line)
 	}
 
+	lipgloss.Fprintln(w)
+	lipgloss.Fprintln(w, ui.SuccessStyle.Render("Updated .env files with tunnel URLs."))
+	lipgloss.Fprintln(w, ui.DimStyle.Render("Restart your services to pick up the new URLs."))
 	lipgloss.Fprintln(w)
 	lipgloss.Fprintln(w, ui.DimStyle.Render("Press Ctrl+C to stop sharing."))
 }

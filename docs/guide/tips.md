@@ -97,6 +97,21 @@ outport share web          # tunnel a specific service
 
 The command blocks until you press Ctrl+C.
 
+While sharing, `.env` files are rewritten so derived values using `${service.url}` resolve to the tunnel URLs automatically. CORS origins, API base URLs, and other cross-service values just work. Values using `${service.url:direct}` stay as localhost (server-to-server calls still go direct). On exit, `.env` files revert to local URLs. Restart your services after starting and stopping `outport share`.
+
+### Vite/Nuxt blocks the tunnel hostname
+
+If you see "Blocked request" and a message about `server.allowedHosts`, add `.trycloudflare.com` to your Vite/Nuxt config:
+
+```ts
+// nuxt.config.ts
+vite: {
+  server: {
+    allowedHosts: [".test", ".trycloudflare.com"]
+  }
+}
+```
+
 ### Rails blocks the tunnel hostname
 
 If you see a red "Blocked hosts" error page, Rails is rejecting the `.trycloudflare.com` hostname. Add it to your `config/environments/development.rb`:
