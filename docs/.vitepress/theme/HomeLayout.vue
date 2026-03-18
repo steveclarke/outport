@@ -140,6 +140,15 @@ CORS_ORIGINS=<span class="success">https://myapp-frontend.test</span>
       </div>
     </section>
 
+    <section class="adoption-note">
+      <p>
+        <code>outport up</code> works without the daemon — you get deterministic ports
+        and <code>.env</code> integration with zero system changes.
+        Run <code>outport system start</code> when you're ready for
+        <code>.test</code> hostnames and HTTPS.
+      </p>
+    </section>
+
     <hr class="section-divider">
 
     <!-- INSTALL -->
@@ -425,6 +434,25 @@ CORS_ORIGINS=<span class="success">https://myapp-frontend.test</span>
 .example-block .step-code {
   margin-top: 0;
   height: 100%;
+}
+
+/* ADOPTION NOTE */
+.adoption-note {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 0 2rem 2rem;
+  text-align: center;
+}
+.adoption-note p {
+  color: var(--vp-c-text-3);
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+.adoption-note code {
+  background: var(--vp-c-bg-soft);
+  padding: 0.1em 0.4em;
+  border-radius: 4px;
+  font-size: 0.9em;
 }
 
 /* INSTALL */
