@@ -853,7 +853,7 @@ var validModifiers = map[string]map[string]bool{
 Update `validateTemplateRefs` to handle the modifier:
 
 ```go
-func validateTemplateRefs(derivedName, template string, services map[string]Service) error {
+func validateTemplateRefs(computedName, template string, services map[string]Service) error {
 	matches := templateVarRe.FindAllStringSubmatch(template, -1)
 	for _, m := range matches {
 		svcName := m[1]
@@ -864,15 +864,15 @@ func validateTemplateRefs(derivedName, template string, services map[string]Serv
 		}
 
 		if _, ok := services[svcName]; !ok {
-			return fmt.Errorf("derived %q: references unknown service %q", derivedName, svcName)
+			return fmt.Errorf("computed %q: references unknown service %q", computedName, svcName)
 		}
 		if !validFields[field] {
-			return fmt.Errorf("derived %q: unknown field %q (valid: port, hostname, url)", derivedName, field)
+			return fmt.Errorf("computed %q: unknown field %q (valid: port, hostname, url)", computedName, field)
 		}
 		if modifier != "" {
 			mods, ok := validModifiers[field]
 			if !ok || !mods[modifier] {
-				return fmt.Errorf("derived %q: unknown modifier %q for field %q", derivedName, modifier, field)
+				return fmt.Errorf("computed %q: unknown modifier %q for field %q", computedName, modifier, field)
 			}
 		}
 	}

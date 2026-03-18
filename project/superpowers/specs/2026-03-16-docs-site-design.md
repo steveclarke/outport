@@ -109,7 +109,7 @@ The hero terminal demo is a static styled `<pre>` block (not animated, not a scr
 - Full `.outport.yml` schema with annotated example
 - `name` field (required, naming rules)
 - `services` map: `env_var`, `env_file` (string or array), `preferred_port`, `protocol`, `hostname`
-- Derived values: `${service.field}` syntax, `${service.url:direct}` modifier
+- Computed values: `${service.field}` syntax, `${service.url:direct}` modifier
 - Multiple env files for monorepos
 - Content adapted from existing `project/specs/configuration.md` (after move)
 

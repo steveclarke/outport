@@ -134,7 +134,7 @@ Investigated all options:
 | Remote colleague | `outport share` (#16) |
 
 - **Simple apps:** QR with `http://<LAN-IP>:<port>` works if the app doesn't reference `localhost` in computed values
-- **Multi-service apps:** Derived values contain `localhost` URLs → phone resolves `localhost` to itself → API calls fail. Only tunneling (#16) + env var rewriting (#17) solves this.
+- **Multi-service apps:** Computed values contain `localhost` URLs → phone resolves `localhost` to itself → API calls fail. Only tunneling (#16) + env var rewriting (#17) solves this.
 - **Security:** Cloudflare Tunnel URLs are high-entropy, temporary, HTTPS, not indexed. Acceptable for dev environments with test data.
 
 ### QR code (#15) primary role
