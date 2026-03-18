@@ -13,7 +13,7 @@ import (
 // hostnameRe validates hostname stems: lowercase alphanumeric, hyphens, and dots.
 var hostnameRe = regexp.MustCompile(`^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$`)
 
-// templateVarRe matches ${service.field} or ${service.field:modifier} references in derived value templates.
+// templateVarRe matches ${service.field} or ${service.field:modifier} references in computed value templates.
 var templateVarRe = regexp.MustCompile(`\$\{(\w+)\.(\w+)(?::(\w+))?\}`)
 
 // standaloneVarRe matches ${word} references that don't contain a dot (i.e., not service.field).
@@ -37,7 +37,7 @@ var validStandaloneVars = map[string]bool{
 	"instance": true,
 }
 
-func validateTemplateRefs(derivedName, template string, services map[string]Service) error {
+func validateTemplateRefs(computedName, template string, services map[string]Service) error {
 	if template == "" {
 		return nil
 	}
@@ -53,15 +53,15 @@ func validateTemplateRefs(derivedName, template string, services map[string]Serv
 		}
 
 		if _, ok := services[svcName]; !ok {
-			return fmt.Errorf("derived %q: references unknown service %q", derivedName, svcName)
+			return fmt.Errorf("computed %q: references unknown service %q", computedName, svcName)
 		}
 		if !validFields[field] {
-			return fmt.Errorf("derived %q: unknown field %q (valid: port, hostname, url)", derivedName, field)
+			return fmt.Errorf("computed %q: unknown field %q (valid: port, hostname, url)", computedName, field)
 		}
 		if modifier != "" {
 			mods, ok := validModifiers[field]
 			if !ok || !mods[modifier] {
-				return fmt.Errorf("derived %q: unknown modifier %q for field %q", derivedName, modifier, field)
+				return fmt.Errorf("computed %q: unknown modifier %q for field %q", computedName, modifier, field)
 			}
 		}
 	}
@@ -74,19 +74,19 @@ func validateTemplateRefs(derivedName, template string, services map[string]Serv
 			varName = m[2] // from the ${word:[+-] branch
 		}
 		if !validStandaloneVars[varName] {
-			return fmt.Errorf("derived %q: unknown variable %q (valid: instance)", derivedName, varName)
+			return fmt.Errorf("computed %q: unknown variable %q (valid: instance)", computedName, varName)
 		}
 	}
 
 	return nil
 }
 
-// ResolveDerived substitutes ${service.field} references in derived values
+// ResolveComputed substitutes ${service.field} references in computed values
 // with the corresponding values from templateVars.
 // Returns name → file → resolved value.
-func ResolveDerived(derived map[string]DerivedValue, templateVars map[string]string) map[string]map[string]string {
+func ResolveComputed(computed map[string]ComputedValue, templateVars map[string]string) map[string]map[string]string {
 	resolved := make(map[string]map[string]string)
-	for name, dv := range derived {
+	for name, dv := range computed {
 		fileValues := make(map[string]string)
 		for _, file := range dv.EnvFiles {
 			template := dv.Value
@@ -140,26 +140,26 @@ type rawService struct {
 	EnvFile       envFileField `yaml:"env_file"`
 }
 
-type DerivedValue struct {
+type ComputedValue struct {
 	Value    string            `yaml:"value"`
 	EnvFiles []string          `yaml:"-"`
 	PerFile  map[string]string `yaml:"-"` // file → value template (overrides Value)
 }
 
-// derivedEnvFileEntry is a single entry in a derived value's env_file list.
+// computedEnvFileEntry is a single entry in a computed value's env_file list.
 // Can be a plain string or an object with file + value.
-type derivedEnvFileEntry struct {
+type computedEnvFileEntry struct {
 	File  string `yaml:"file"`
 	Value string `yaml:"value"`
 }
 
-// derivedEnvFileField handles YAML that can be a string, []string, or []object.
-type derivedEnvFileField []derivedEnvFileEntry
+// computedEnvFileField handles YAML that can be a string, []string, or []object.
+type computedEnvFileField []computedEnvFileEntry
 
-func (d *derivedEnvFileField) UnmarshalYAML(value *yaml.Node) error {
+func (d *computedEnvFileField) UnmarshalYAML(value *yaml.Node) error {
 	// Single string: "frontend/.env"
 	if value.Kind == yaml.ScalarNode {
-		*d = []derivedEnvFileEntry{{File: value.Value}}
+		*d = []computedEnvFileEntry{{File: value.Value}}
 		return nil
 	}
 	if value.Kind != yaml.SequenceNode {
@@ -168,9 +168,9 @@ func (d *derivedEnvFileField) UnmarshalYAML(value *yaml.Node) error {
 	// List — each item can be a string or an object with file + value
 	for _, item := range value.Content {
 		if item.Kind == yaml.ScalarNode {
-			*d = append(*d, derivedEnvFileEntry{File: item.Value})
+			*d = append(*d, computedEnvFileEntry{File: item.Value})
 		} else if item.Kind == yaml.MappingNode {
-			var entry derivedEnvFileEntry
+			var entry computedEnvFileEntry
 			if err := item.Decode(&entry); err != nil {
 				return fmt.Errorf("invalid env_file entry: %w", err)
 			}
@@ -182,22 +182,22 @@ func (d *derivedEnvFileField) UnmarshalYAML(value *yaml.Node) error {
 	return nil
 }
 
-type rawDerivedValue struct {
-	Value   string              `yaml:"value"`
-	EnvFile derivedEnvFileField `yaml:"env_file"`
+type rawComputedValue struct {
+	Value   string               `yaml:"value"`
+	EnvFile computedEnvFileField `yaml:"env_file"`
 }
 
 // rawConfig is the YAML deserialization target.
 type rawConfig struct {
-	Name        string                     `yaml:"name"`
-	RawServices map[string]rawService      `yaml:"services"`
-	RawDerived  map[string]rawDerivedValue `yaml:"derived"`
+	Name        string                      `yaml:"name"`
+	RawServices map[string]rawService       `yaml:"services"`
+	RawComputed map[string]rawComputedValue `yaml:"computed"`
 }
 
 type Config struct {
 	Name     string
 	Services map[string]Service
-	Derived  map[string]DerivedValue
+	Computed map[string]ComputedValue
 }
 
 // FindDir walks up from startDir looking for .outport.yml.
@@ -239,7 +239,7 @@ func Load(dir string) (*Config, error) {
 	cfg := &Config{
 		Name:     raw.Name,
 		Services: make(map[string]Service),
-		Derived:  make(map[string]DerivedValue),
+		Computed: make(map[string]ComputedValue),
 	}
 
 	if err := cfg.normalize(&raw); err != nil {
@@ -279,8 +279,8 @@ func (c *Config) normalize(raw *rawConfig) error {
 		c.Services[name] = svc
 	}
 
-	for name, rd := range raw.RawDerived {
-		dv := DerivedValue{
+	for name, rd := range raw.RawComputed {
+		dv := ComputedValue{
 			Value:   rd.Value,
 			PerFile: make(map[string]string),
 		}
@@ -290,7 +290,7 @@ func (c *Config) normalize(raw *rawConfig) error {
 				dv.PerFile[entry.File] = entry.Value
 			}
 		}
-		c.Derived[name] = dv
+		c.Computed[name] = dv
 	}
 
 	return nil
@@ -336,21 +336,21 @@ func (c *Config) validate() error {
 		serviceEnvVars[svc.EnvVar] = true
 	}
 
-	for name, dv := range c.Derived {
+	for name, dv := range c.Computed {
 		if len(dv.EnvFiles) == 0 {
-			return fmt.Errorf("Derived value %q in %s is missing the 'env_file' field.", name, FileName)
+			return fmt.Errorf("Computed value %q in %s is missing the 'env_file' field.", name, FileName)
 		}
 
 		// Check if any env_file entries need the top-level value
 		for _, file := range dv.EnvFiles {
 			if _, hasPerFile := dv.PerFile[file]; !hasPerFile && dv.Value == "" {
-				return fmt.Errorf("Derived value %q in %s is missing the 'value' field (required for entries without per-file values).", name, FileName)
+				return fmt.Errorf("Computed value %q in %s is missing the 'value' field (required for entries without per-file values).", name, FileName)
 			}
 		}
 
 		// Name must not collide with any service env_var
 		if serviceEnvVars[name] {
-			return fmt.Errorf("Derived value %q in %s conflicts with a service env_var of the same name.", name, FileName)
+			return fmt.Errorf("Computed value %q in %s conflicts with a service env_var of the same name.", name, FileName)
 		}
 
 		// Validate ${service.field} references in top-level value
