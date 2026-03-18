@@ -89,13 +89,13 @@ func runShare(cmd *cobra.Command, args []string) error {
 		tunnelURLs[tun.Service] = tun.URL
 	}
 
-	resolvedDerived, err := mergeEnvFiles(ctx.Dir, ctx.Cfg, ctx.Instance, alloc.Ports, alloc.Hostnames, httpsEnabled, tunnelURLs)
+	resolvedComputed, err := mergeEnvFiles(ctx.Dir, ctx.Cfg, ctx.Instance, alloc.Ports, alloc.Hostnames, httpsEnabled, tunnelURLs)
 	if err != nil {
 		return fmt.Errorf("writing tunnel URLs to .env: %w", err)
 	}
 
 	if jsonFlag {
-		if err := printShareJSON(cmd, tunnels, ctx.Cfg, resolvedDerived); err != nil {
+		if err := printShareJSON(cmd, tunnels, ctx.Cfg, resolvedComputed); err != nil {
 			return err
 		}
 	} else {
@@ -147,11 +147,11 @@ type tunnelJSON struct {
 }
 
 type shareJSON struct {
-	Tunnels []tunnelJSON           `json:"tunnels"`
-	Derived map[string]derivedJSON `json:"derived,omitempty"`
+	Tunnels  []tunnelJSON            `json:"tunnels"`
+	Computed map[string]computedJSON `json:"computed,omitempty"`
 }
 
-func printShareJSON(cmd *cobra.Command, tunnels []*tunnel.Tunnel, cfg *config.Config, resolvedDerived map[string]map[string]string) error {
+func printShareJSON(cmd *cobra.Command, tunnels []*tunnel.Tunnel, cfg *config.Config, resolvedComputed map[string]map[string]string) error {
 	out := shareJSON{}
 	for _, tun := range tunnels {
 		out.Tunnels = append(out.Tunnels, tunnelJSON{
@@ -160,7 +160,7 @@ func printShareJSON(cmd *cobra.Command, tunnels []*tunnel.Tunnel, cfg *config.Co
 			Port:    tun.Port,
 		})
 	}
-	out.Derived = buildDerivedMap(cfg.Derived, resolvedDerived)
+	out.Computed = buildComputedMap(cfg.Computed, resolvedComputed)
 	return writeJSON(cmd, out)
 }
 
