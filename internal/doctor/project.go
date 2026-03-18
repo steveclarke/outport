@@ -9,14 +9,14 @@ import (
 	"github.com/outport-app/outport/internal/registry"
 )
 
-// checkPortAvailable checks if an allocated port is in use.
-// Returns Warn (not Fail) because the service itself may be running.
-func checkPortAvailable(port int, serviceName string) *Result {
+// checkPortStatus reports whether an allocated port is in use (service running)
+// or not (service stopped). Both are Pass — this is informational, not a problem.
+func checkPortStatus(port int, serviceName string) *Result {
 	name := fmt.Sprintf("Port %d (%s)", port, serviceName)
 	if portcheck.IsUp(port) {
-		return &Result{Name: name, Status: Warn, Message: fmt.Sprintf("Port %d (%s) is in use", port, serviceName)}
+		return &Result{Name: name, Status: Pass, Message: fmt.Sprintf("Port %d (%s) in use", port, serviceName)}
 	}
-	return &Result{Name: name, Status: Pass, Message: fmt.Sprintf("Port %d (%s) available", port, serviceName)}
+	return &Result{Name: name, Status: Pass, Message: fmt.Sprintf("Port %d (%s) not running", port, serviceName)}
 }
 
 // ProjectChecks returns project-level health checks for the given directory.
@@ -83,7 +83,7 @@ func ProjectChecks(dir string, cfg *config.Config, configErr error, regPath stri
 				Name:     fmt.Sprintf("Port %d (%s)", port, svcName),
 				Category: category,
 				Run: func() *Result {
-					return checkPortAvailable(port, svcName)
+					return checkPortStatus(port, svcName)
 				},
 			})
 		}
