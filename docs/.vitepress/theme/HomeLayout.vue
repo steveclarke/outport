@@ -73,29 +73,29 @@
       </div>
       <div class="feature-grid">
         <div class="feature-card">
-          <div class="feature-icon">#</div>
-          <h3>Deterministic Ports</h3>
-          <p>Same project, same ports — every time, on every machine. No more "is 3000 free?" guessing games.</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon">.t</div>
-          <h3>.test Domains</h3>
-          <p>Real hostnames like <code>myapp.test</code> instead of <code>localhost:3000</code>. Built-in DNS, reverse proxy, and automatic HTTPS.</p>
+          <div class="feature-icon">.e</div>
+          <h3>.env Integration</h3>
+          <p>Ports, URLs, and computed values written directly to your <code>.env</code> files. Your app reads them natively — no wrapper, no SDK.</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon">&gt;_</div>
           <h3>Multi-Instance</h3>
-          <p>Worktrees, branches, or multiple checkouts — each gets its own ports and hostnames. No collisions.</p>
+          <p>Worktrees, branches, AI agents — each gets isolated ports and hostnames automatically.</p>
         </div>
         <div class="feature-card">
-          <div class="feature-icon">.e</div>
-          <h3>.env Integration</h3>
-          <p>Ports, URLs, and computed values written directly to your <code>.env</code> files. Your app reads them natively.</p>
+          <div class="feature-icon computed-icon">${}</div>
+          <h3>Computed Values</h3>
+          <p>Services discover each other. <code>CORS_ORIGINS=${frontend.url}</code> resolves automatically across your stack.</p>
         </div>
         <div class="feature-card">
-          <div class="feature-icon">S</div>
-          <h3>Automatic HTTPS</h3>
-          <p>Local Certificate Authority trusted by your OS and browsers. Every <code>.test</code> domain gets HTTPS — zero configuration per service.</p>
+          <div class="feature-icon">#</div>
+          <h3>Deterministic Ports</h3>
+          <p>Same project, same ports — every time, on every machine.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">.t</div>
+          <h3>.test Domains with HTTPS</h3>
+          <p>Real hostnames like <code>myapp.test</code> with automatic HTTPS. Built-in DNS and reverse proxy.</p>
         </div>
       </div>
     </section>
@@ -353,6 +353,9 @@ MYAPP_URL=<span class="success">https://myapp.test</span></pre>
   color: #031C54;
   font-weight: 700;
   font-family: var(--vp-font-family-mono);
+}
+.feature-icon.computed-icon {
+  font-size: 0.9rem;
 }
 .feature-card h3 {
   font-family: 'Barlow', ui-sans-serif, system-ui, sans-serif;
