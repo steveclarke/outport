@@ -423,6 +423,10 @@ holds the ports you want, run `outport down` in it first, then
 Run `outport share` to tunnel all HTTP services to public Cloudflare URLs.
 Requires `cloudflared` (`brew install cloudflared`). Press Ctrl+C to stop.
 
+### Something isn't working
+Run `outport doctor` to check DNS, daemon, certificates, registry, and
+project config. Each check shows pass/fail with a fix suggestion.
+
 ### .test domain not resolving
-Run `outport system status` to verify the daemon is configured. If
-`outport system start` was never run, run it now.
+Run `outport doctor` to diagnose. Common causes: daemon not running
+(`outport system start`) or DNS resolver missing (`outport system start`).
