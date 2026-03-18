@@ -102,14 +102,13 @@
 
     <hr class="section-divider">
 
-    <!-- HOW IT WORKS -->
-    <section class="how-it-works">
-      <h2>Get up and running</h2>
-      <div class="steps">
-        <div class="step">
-          <div class="step-number">1</div>
-          <h3>Configure</h3>
-          <p class="step-desc">Define your services in <code>.outport.yml</code></p>
+    <!-- MONOREPO EXAMPLE -->
+    <section class="example">
+      <h2>One config, fully wired</h2>
+      <p class="example-caption">Cross-service URLs resolve automatically. Change nothing when switching between main and worktrees.</p>
+      <div class="example-pair">
+        <div class="example-block">
+          <div class="example-label">.outport.yml</div>
           <pre class="step-code"><span class="dim"># .outport.yml</span>
 name: myapp
 services:
@@ -117,34 +116,26 @@ services:
     env_var: PORT
     hostname: myapp
     protocol: http
+  frontend:
+    env_var: NUXT_PORT
+    hostname: myapp-frontend
+    protocol: http
   postgres:
-    env_var: PGPORT
-  redis:
-    env_var: REDIS_PORT</pre>
+    env_var: DATABASE_PORT
+computed:
+  API_URL: <span class="value">${rails.url}</span>
+  CORS_ORIGINS: <span class="value">${frontend.url}</span></pre>
         </div>
-        <div class="step">
-          <div class="step-number">2</div>
-          <h3>Apply</h3>
-          <p class="step-desc">Run <code>outport up</code> and ports are allocated</p>
-          <pre class="step-code"><span class="prompt">$</span> <span class="cmd">outport up</span>
-
-<span class="dim">myapp &middot; main</span>
-
-  rails      <span class="value">13842</span>  <span class="success">myapp.test</span>
-  postgres   <span class="value">28391</span>
-  redis      <span class="value">19204</span>
-
-<span class="dim">&rarr; .env updated</span></pre>
-        </div>
-        <div class="step">
-          <div class="step-number">3</div>
-          <h3>Develop</h3>
-          <p class="step-desc">Your <code>.env</code> has everything. Start coding.</p>
+        <div class="example-block">
+          <div class="example-label">Resulting .env</div>
           <pre class="step-code"><span class="dim"># .env</span>
+<span class="dim"># --- begin outport.dev ---</span>
 PORT=<span class="value">13842</span>
-PGPORT=<span class="value">28391</span>
-REDIS_PORT=<span class="value">19204</span>
-MYAPP_URL=<span class="success">https://myapp.test</span></pre>
+NUXT_PORT=<span class="value">24519</span>
+DATABASE_PORT=<span class="value">28391</span>
+API_URL=<span class="success">https://myapp.test</span>
+CORS_ORIGINS=<span class="success">https://myapp-frontend.test</span>
+<span class="dim"># --- end outport.dev ---</span></pre>
         </div>
       </div>
     </section>
@@ -376,65 +367,7 @@ MYAPP_URL=<span class="success">https://myapp.test</span></pre>
   font-size: 0.9em;
 }
 
-/* HOW IT WORKS */
-.how-it-works {
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 4rem 2rem;
-}
-.how-it-works h2 {
-  font-family: 'Barlow', ui-sans-serif, system-ui, sans-serif;
-  font-weight: 700;
-  font-size: 2rem;
-  color: #031C54;
-  text-align: center;
-  margin-bottom: 2.5rem;
-}
-.steps {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  grid-template-rows: auto auto auto 1fr;
-  gap: 0 1.5rem;
-}
-.step {
-  background: #ffffff;
-  border: 1px solid var(--vp-c-divider);
-  border-radius: 10px;
-  padding: 1.75rem;
-  display: grid;
-  grid-row: span 4;
-  grid-template-rows: subgrid;
-  row-gap: 0;
-}
-.step-number {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px; height: 28px;
-  border-radius: 50%;
-  background: #031C54;
-  color: white;
-  font-family: 'Barlow', sans-serif;
-  font-weight: 700;
-  font-size: 0.85rem;
-  margin-bottom: 1rem;
-}
-.step h3 {
-  font-family: 'Barlow', ui-sans-serif, system-ui, sans-serif;
-  font-weight: 700;
-  color: #031C54;
-  margin-bottom: 0.5rem;
-}
-.step-desc {
-  color: var(--vp-c-text-3);
-  font-size: 0.9rem;
-}
-.step-desc code {
-  background: var(--vp-c-bg-soft);
-  padding: 0.1em 0.4em;
-  border-radius: 4px;
-  font-size: 0.9em;
-}
+/* CODE BLOCKS (shared between sections) */
 .step-code {
   display: block;
   background: #1a1b26;
@@ -442,17 +375,57 @@ MYAPP_URL=<span class="success">https://myapp.test</span></pre>
   padding: 0.75rem 1rem;
   border-radius: 6px;
   font-size: 0.8rem;
-  margin-top: 0.75rem;
   font-family: var(--vp-font-family-mono);
   white-space: pre;
   overflow-x: auto;
-  align-self: stretch;
 }
 .step-code .prompt { color: #7aa2f7; }
 .step-code .cmd { color: #c0caf5; }
 .step-code .success { color: #9ece6a; }
 .step-code .value { color: #e0af68; }
 .step-code .dim { color: #565f89; }
+
+/* MONOREPO EXAMPLE */
+.example {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 4rem 2rem;
+}
+.example h2 {
+  font-family: 'Barlow', ui-sans-serif, system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 2rem;
+  color: #031C54;
+  text-align: center;
+  margin-bottom: 0.75rem;
+}
+.example-caption {
+  text-align: center;
+  color: var(--vp-c-text-3);
+  font-size: 1rem;
+  max-width: 600px;
+  margin: 0 auto 2rem;
+}
+.example-pair {
+  display: flex;
+  gap: 1.25rem;
+}
+.example-block {
+  flex: 1;
+  min-width: 0;
+}
+.example-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--vp-c-text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.5rem;
+}
+.example-block .step-code {
+  margin-top: 0;
+  height: 100%;
+}
 
 /* INSTALL */
 .install {
@@ -502,8 +475,8 @@ MYAPP_URL=<span class="success">https://myapp.test</span></pre>
 @media (max-width: 768px) {
   .hero h1 { font-size: 2.25rem; }
   .feature-card { flex: 0 1 100%; }
-  .steps { grid-template-columns: 1fr; }
   .hero-ctas { flex-direction: column; align-items: center; }
   .terminal-pair { flex-direction: column; }
+  .example-pair { flex-direction: column; }
 }
 </style>
