@@ -84,6 +84,7 @@ All commands support `--json` for machine-readable output. Each command has pair
 - **Command structure** — Project commands (`setup`, `up`, `down`, `init`, `ports`, `open`, `rename`, `promote`) are top-level. Machine-wide operations (`start`, `stop`, `restart`, `status`, `gc`, `uninstall`) live under `outport system`. `setup` is the recommended first-run command (interactive, delegates to `system start`). `up`/`down` follow the Docker Compose mental model (project-scoped).
 - **XDG directory layout** — Registry at `~/.local/share/outport/registry.json`, CA at `~/.local/share/outport/`, cert cache at `~/.cache/outport/certs/`. `~/.config/outport/` reserved for future global config.
 - **Error wrapping** — Uses `fmt.Errorf("context: %w", err)` throughout.
+- **External env file safety** — Env file paths outside the project directory (where `.outport.yml` lives) require explicit developer approval. Paths are resolved through symlinks using `filepath.EvalSymlinks` before boundary checking. Approval can be interactive (prompt), auto (`-y` flag), or persisted (approved paths stored in registry allocation). All write commands (`up`, `down`, `rename`, `promote`, `share`) enforce this through `writeEnvFiles`/`removeEnvFiles` wrappers. A persistent warning is shown after every write that touches external files.
 
 ## Testing
 
