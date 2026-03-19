@@ -73,8 +73,11 @@ func runShare(cmd *cobra.Command, args []string) error {
 
 	defer func() {
 		mgr.StopAll()
-		_, _ = writeEnvFiles(ctx.Dir, ctx.Cfg, ctx.Instance, alloc.Ports, alloc.Hostnames, httpsEnabled, nil,
-			true, alloc.ApprovedExternalFiles, nil, os.Stderr)
+		// Revert .env files to local URLs (best-effort; user can run 'outport up' if this fails)
+		if _, err := writeEnvFiles(ctx.Dir, ctx.Cfg, ctx.Instance, alloc.Ports, alloc.Hostnames, httpsEnabled, nil,
+			true, alloc.ApprovedExternalFiles, nil, os.Stderr); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: failed to restore .env files: %v\n", err)
+		}
 		fmt.Fprintln(cmd.OutOrStdout())
 		fmt.Fprintln(cmd.OutOrStdout(), ui.SuccessStyle.Render("Restored .env files to local URLs."))
 		fmt.Fprintln(cmd.OutOrStdout(), ui.DimStyle.Render("Restart your services to revert to local development."))

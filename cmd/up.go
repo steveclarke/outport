@@ -36,7 +36,7 @@ var upCmd = &cobra.Command{
 }
 
 func init() {
-	upCmd.Flags().BoolVar(&forceFlag, "force", false, "ignore existing allocations and re-allocate all ports")
+	upCmd.Flags().BoolVar(&forceFlag, "force", false, "re-allocate all ports and reset external file approvals")
 	rootCmd.AddCommand(upCmd)
 }
 

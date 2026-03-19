@@ -59,6 +59,28 @@ func collectEnvFiles(cfg *config.Config) []string {
 	return sortedMapKeys(seen)
 }
 
+// classifyAndConfirm collects env file paths from config, classifies them as
+// internal/external, and confirms any unapproved external paths.
+func classifyAndConfirm(
+	dir string, cfg *config.Config,
+	autoApprove bool, approvedPaths []string,
+	stdin io.Reader, stderr io.Writer,
+) ([]envpath.EnvFilePath, []string, error) {
+	allFiles := collectEnvFiles(cfg)
+
+	classified, err := envpath.ClassifyEnvFiles(dir, allFiles)
+	if err != nil {
+		return nil, nil, fmt.Errorf("classifying env file paths: %w", err)
+	}
+
+	newlyApproved, err := envpath.ConfirmExternalFiles(classified, approvedPaths, dir, autoApprove, stdin, stderr)
+	if err != nil {
+		return nil, nil, handleConfirmError(err)
+	}
+
+	return classified, newlyApproved, nil
+}
+
 // writeEnvFiles classifies, confirms, and writes env files for an allocation.
 func writeEnvFiles(
 	dir string, cfg *config.Config, instanceName string,
@@ -67,16 +89,9 @@ func writeEnvFiles(
 	autoApprove bool, approvedPaths []string,
 	stdin io.Reader, stderr io.Writer,
 ) (*WriteResult, error) {
-	allFiles := collectEnvFiles(cfg)
-
-	classified, err := envpath.ClassifyEnvFiles(dir, allFiles)
+	classified, newlyApproved, err := classifyAndConfirm(dir, cfg, autoApprove, approvedPaths, stdin, stderr)
 	if err != nil {
-		return nil, fmt.Errorf("classifying env file paths: %w", err)
-	}
-
-	newlyApproved, err := envpath.ConfirmExternalFiles(classified, approvedPaths, dir, autoApprove, stdin, stderr)
-	if err != nil {
-		return nil, handleConfirmError(err)
+		return nil, err
 	}
 
 	resolvedComputed, err := mergeEnvFiles(dir, cfg, instanceName, ports, hostnames, httpsEnabled, tunnelURLs)
@@ -109,16 +124,9 @@ func removeEnvFiles(
 	autoApprove bool, approvedPaths []string,
 	stdin io.Reader, stderr io.Writer,
 ) (*RemoveResult, error) {
-	allFiles := collectEnvFiles(cfg)
-
-	classified, err := envpath.ClassifyEnvFiles(dir, allFiles)
+	classified, newlyApproved, err := classifyAndConfirm(dir, cfg, autoApprove, approvedPaths, stdin, stderr)
 	if err != nil {
-		return nil, fmt.Errorf("classifying env file paths: %w", err)
-	}
-
-	newlyApproved, err := envpath.ConfirmExternalFiles(classified, approvedPaths, dir, autoApprove, stdin, stderr)
-	if err != nil {
-		return nil, handleConfirmError(err)
+		return nil, err
 	}
 
 	cleanedFiles := cleanEnvFiles(dir, cfg)

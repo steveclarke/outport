@@ -92,8 +92,7 @@ func runRename(cmd *cobra.Command, args []string) error {
 }
 
 // mergeEnvFiles rebuilds and writes env file vars for an allocation.
-// This is used by rename and promote to update .env files after hostnames change.
-// mergeEnvFiles rebuilds and writes env file vars for an allocation.
+// Called by writeEnvFiles after external file confirmation.
 // Returns the resolved computed values so callers can reuse them for display.
 func mergeEnvFiles(dir string, cfg *config.Config, instanceName string, ports map[string]int, hostnames map[string]string, httpsEnabled bool, tunnelURLs map[string]string) (map[string]map[string]string, error) {
 	envFileVars := make(map[string]map[string]string)

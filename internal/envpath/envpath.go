@@ -97,35 +97,29 @@ func ConfirmExternalFiles(
 		return nil, nil
 	}
 
-	if autoApprove {
-		newly := make([]string, len(unapproved))
-		for i, p := range unapproved {
-			newly[i] = p.ResolvedPath
+	if !autoApprove {
+		isInteractive := false
+		if f, ok := stdin.(interface{ Fd() uintptr }); ok {
+			isInteractive = term.IsTerminal(f.Fd())
 		}
-		return newly, nil
-	}
 
-	isInteractive := false
-	if f, ok := stdin.(interface{ Fd() uintptr }); ok {
-		isInteractive = term.IsTerminal(f.Fd())
-	}
+		if !isInteractive {
+			return nil, ErrNonInteractive
+		}
 
-	if !isInteractive {
-		return nil, ErrNonInteractive
-	}
+		fmt.Fprintf(stderr, "\n⚠ External env files detected:\n")
+		for _, p := range unapproved {
+			fmt.Fprintf(stderr, "  %s  →  %s\n", p.ConfigPath, p.ResolvedPath)
+		}
+		fmt.Fprintf(stderr, "\nThese files are outside the project directory (%s).\n", projectDir)
+		fmt.Fprintf(stderr, "Allow writing to these files? [y/N] ")
 
-	fmt.Fprintf(stderr, "\n⚠ External env files detected:\n")
-	for _, p := range unapproved {
-		fmt.Fprintf(stderr, "  %s  →  %s\n", p.ConfigPath, p.ResolvedPath)
-	}
-	fmt.Fprintf(stderr, "\nThese files are outside the project directory (%s).\n", projectDir)
-	fmt.Fprintf(stderr, "Allow writing to these files? [y/N] ")
+		var response string
+		_, _ = fmt.Fscanln(stdin, &response)
 
-	var response string
-	_, _ = fmt.Fscanln(stdin, &response)
-
-	if response != "y" && response != "Y" {
-		return nil, ErrUserDenied
+		if response != "y" && response != "Y" {
+			return nil, ErrUserDenied
+		}
 	}
 
 	newly := make([]string, len(unapproved))
