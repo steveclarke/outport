@@ -2007,3 +2007,17 @@ func TestDoctor_WithProject(t *testing.T) {
 		t.Error("expected .outport.yml validity check in project checks")
 	}
 }
+
+func TestSetup_HelpOutput(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Chdir(t.TempDir())
+	jsonFlag = false
+
+	// Verify the command exists and is wired up
+	rootCmd.SetArgs([]string{"setup", "--help"})
+	err := rootCmd.Execute()
+	if err != nil {
+		t.Fatalf("setup --help failed: %v", err)
+	}
+}
