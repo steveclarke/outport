@@ -4,9 +4,6 @@ import (
 	"fmt"
 
 	"charm.land/huh/v2"
-	"charm.land/lipgloss/v2"
-	"github.com/outport-app/outport/internal/certmanager"
-	"github.com/outport-app/outport/internal/platform"
 	"github.com/outport-app/outport/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -26,29 +23,25 @@ func init() {
 
 // setupTheme returns a huh ThemeFunc styled with Outport brand colors.
 func setupTheme() huh.ThemeFunc {
-	brand := lipgloss.Color("#2E86AB")
 	return func(isDark bool) *huh.Styles {
 		t := huh.ThemeBase(isDark)
-		t.Focused.Title = t.Focused.Title.Foreground(brand).Bold(true)
-		t.Focused.FocusedButton = t.Focused.FocusedButton.Background(brand)
-		t.Focused.Description = t.Focused.Description.Foreground(lipgloss.Color("245"))
+		t.Focused.Title = t.Focused.Title.Foreground(ui.Brand).Bold(true)
+		t.Focused.FocusedButton = t.Focused.FocusedButton.Background(ui.Brand)
+		t.Focused.Description = t.Focused.Description.Foreground(ui.Gray)
 		return t
 	}
+}
+
+func printSetupNextStep(cmd *cobra.Command) {
+	w := cmd.OutOrStdout()
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, "Run "+ui.ServiceStyle.Render("outport init")+" in any project to get started.")
 }
 
 func runSetup(cmd *cobra.Command, args []string) error {
 	w := cmd.OutOrStdout()
 
-	// Already fully set up — nothing to do
-	if platform.IsSetup() && certmanager.IsCAInstalled() && platform.IsAgentLoaded() {
-		if jsonFlag {
-			return printSystemStatusJSON(w, "already_running")
-		}
-		fmt.Fprintln(w, ui.SuccessStyle.Render("✓ Already set up. Nothing to do."))
-		return nil
-	}
-
-	// JSON mode: non-interactive, run full setup (same as system start)
+	// JSON mode: non-interactive, delegate entirely to system start
 	if jsonFlag {
 		return runSystemStart(cmd, args)
 	}
@@ -77,10 +70,9 @@ func runSetup(cmd *cobra.Command, args []string) error {
 
 	if !enableDNS {
 		fmt.Fprintln(w)
-		fmt.Fprintln(w, ui.SuccessStyle.Render("Setup complete.")+
-			" Run "+ui.ServiceStyle.Render("outport init")+" in any project to get started.")
-		fmt.Fprintln(w)
+		fmt.Fprintln(w, ui.SuccessStyle.Render("Setup complete."))
 		fmt.Fprintln(w, ui.DimStyle.Render("Tip: You can enable .test domains later with outport system start."))
+		printSetupNextStep(cmd)
 		return nil
 	}
 
@@ -91,7 +83,6 @@ func runSetup(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Fprintln(w)
-	fmt.Fprintln(w, "Run "+ui.ServiceStyle.Render("outport init")+" in any project to get started.")
+	printSetupNextStep(cmd)
 	return nil
 }

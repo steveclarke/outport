@@ -5,6 +5,7 @@ import (
 )
 
 var (
+	Brand     = lipgloss.Color("#2E86AB")
 	Purple    = lipgloss.Color("99")
 	Green     = lipgloss.Color("42")
 	Gray      = lipgloss.Color("245")
