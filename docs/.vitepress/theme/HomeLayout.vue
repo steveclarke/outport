@@ -152,7 +152,7 @@ CORS_ORIGINS=<span class="success">https://myapp-frontend.test</span>
       <p>
         <code>outport up</code> works without the daemon — you get deterministic ports
         and <code>.env</code> integration with zero system changes.
-        Run <code>outport system start</code> when you're ready for
+        Run <code>outport setup</code> to optionally enable
         <code>.test</code> hostnames and HTTPS.
       </p>
     </section>
@@ -164,6 +164,9 @@ CORS_ORIGINS=<span class="success">https://myapp-frontend.test</span>
       <h2>Try it</h2>
       <div class="install-cmd">
         <span class="dollar">$</span> brew install steveclarke/tap/outport
+      </div>
+      <div class="install-cmd install-cmd-next">
+        <span class="dollar">$</span> outport setup
       </div>
       <p class="install-note">macOS only. Linux support is experimental.</p>
     </section>
@@ -507,6 +510,9 @@ CORS_ORIGINS=<span class="success">https://myapp-frontend.test</span>
   box-shadow: 0 4px 16px rgba(3,28,84,0.08);
 }
 .install-cmd .dollar { color: #7aa2f7; }
+.install-cmd-next {
+  margin-top: 0.75rem;
+}
 .install-note {
   color: var(--vp-c-text-3);
   font-size: 0.8rem;
