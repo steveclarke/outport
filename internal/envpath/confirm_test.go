@@ -2,7 +2,7 @@ package envpath
 
 import (
 	"bytes"
-	"strings"
+	"errors"
 	"testing"
 )
 
@@ -56,8 +56,8 @@ func TestConfirmExternalFiles_NonInteractiveReturnsError(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for non-interactive stdin with unapproved paths")
 	}
-	if !strings.Contains(err.Error(), "-y") {
-		t.Errorf("error should mention -y flag, got: %v", err)
+	if !errors.Is(err, ErrNonInteractive) {
+		t.Errorf("expected ErrNonInteractive, got: %v", err)
 	}
 }
 

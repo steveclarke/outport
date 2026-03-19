@@ -1,6 +1,7 @@
 package envpath
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -9,6 +10,12 @@ import (
 
 	"github.com/charmbracelet/x/term"
 )
+
+// ErrUserDenied is returned when the user explicitly denies the external file approval prompt.
+var ErrUserDenied = errors.New("external env file write denied by user")
+
+// ErrNonInteractive is returned when external files need approval but stdin is not a terminal.
+var ErrNonInteractive = errors.New("external env files require interactive approval; use -y to allow or move files inside the project directory")
 
 // EnvFilePath holds a classified env file path.
 type EnvFilePath struct {
@@ -104,7 +111,7 @@ func ConfirmExternalFiles(
 	}
 
 	if !isInteractive {
-		return nil, fmt.Errorf("external env files require interactive approval; use -y to allow or move files inside the project directory")
+		return nil, ErrNonInteractive
 	}
 
 	fmt.Fprintf(stderr, "\n⚠ External env files detected:\n")
@@ -118,7 +125,7 @@ func ConfirmExternalFiles(
 	_, _ = fmt.Fscanln(stdin, &response)
 
 	if response != "y" && response != "Y" {
-		return nil, fmt.Errorf("external env file write denied by user")
+		return nil, ErrUserDenied
 	}
 
 	newly := make([]string, len(unapproved))

@@ -2052,8 +2052,8 @@ func TestUp_ExternalEnvFile_RequiresApproval(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for external env file without -y")
 	}
-	if !strings.Contains(err.Error(), "-y") {
-		t.Errorf("error should mention -y, got: %v", err)
+	if !IsFlagError(err) {
+		t.Errorf("expected FlagError, got: %v", err)
 	}
 }
 

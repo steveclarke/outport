@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"path/filepath"
@@ -11,6 +12,22 @@ import (
 	"github.com/outport-app/outport/internal/envpath"
 	"github.com/outport-app/outport/internal/ui"
 )
+
+// handleConfirmError translates envpath confirmation errors into cmd-layer errors.
+// User denial becomes ErrSilent (no redundant error message).
+// Non-interactive errors become FlagErrors (trigger usage display).
+func handleConfirmError(err error) error {
+	if err == nil {
+		return nil
+	}
+	if errors.Is(err, envpath.ErrUserDenied) {
+		return ErrSilent
+	}
+	if errors.Is(err, envpath.ErrNonInteractive) {
+		return &FlagError{err: err}
+	}
+	return fmt.Errorf("confirming external env files: %w", err)
+}
 
 // WriteResult bundles the results of writeEnvFiles.
 type WriteResult struct {
@@ -59,12 +76,12 @@ func writeEnvFiles(
 
 	newlyApproved, err := envpath.ConfirmExternalFiles(classified, approvedPaths, dir, autoApprove, stdin, stderr)
 	if err != nil {
-		return nil, err
+		return nil, handleConfirmError(err)
 	}
 
 	resolvedComputed, err := mergeEnvFiles(dir, cfg, instanceName, ports, hostnames, httpsEnabled, tunnelURLs)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("writing env files: %w", err)
 	}
 
 	return &WriteResult{
@@ -101,7 +118,7 @@ func removeEnvFiles(
 
 	newlyApproved, err := envpath.ConfirmExternalFiles(classified, approvedPaths, dir, autoApprove, stdin, stderr)
 	if err != nil {
-		return nil, err
+		return nil, handleConfirmError(err)
 	}
 
 	cleanedFiles := cleanEnvFiles(dir, cfg)
