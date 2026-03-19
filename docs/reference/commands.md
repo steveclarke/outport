@@ -6,6 +6,20 @@ All commands support `--json` for machine-readable output.
 
 These commands operate on the current project (the directory containing `.outport.yml`).
 
+### `outport setup`
+
+Interactive first-run system setup.
+
+```bash
+outport setup
+```
+
+Guides you through enabling `.test` domains with HTTPS. The `.test` domain setup is optional — without it, `outport up` still works for deterministic ports and `.env` files.
+
+| Flag | Description |
+|------|-------------|
+| `--json` | Non-interactive, runs full setup |
+
 ### `outport init`
 
 Create `.outport.yml` for this project.
@@ -150,6 +164,8 @@ Install the DNS resolver, daemon, and local Certificate Authority.
 ```bash
 outport system start
 ```
+
+For first-time setup, prefer `outport setup` — it provides a guided interactive experience. Use `outport system start` directly to start the daemon on machines where setup has already been completed.
 
 On first run, installs the `.test` DNS resolver (`/etc/resolver/test`, requires sudo), a LaunchAgent that runs a DNS server (port 15353) and reverse proxy (ports 80 and 443), and generates a local Certificate Authority that is added to the macOS trust store. After setup, `*.test` hostnames resolve to your local services with full HTTPS support. HTTP requests are automatically redirected to HTTPS via 307.
 
