@@ -5,9 +5,13 @@ import (
 	"fmt"
 
 	"charm.land/huh/v2"
+	"github.com/outport-app/outport/internal/certmanager"
+	"github.com/outport-app/outport/internal/platform"
 	"github.com/outport-app/outport/internal/ui"
 	"github.com/spf13/cobra"
 )
+
+var resetFlag bool
 
 var setupCmd = &cobra.Command{
 	Use:     "setup",
@@ -19,6 +23,7 @@ var setupCmd = &cobra.Command{
 }
 
 func init() {
+	setupCmd.Flags().BoolVar(&resetFlag, "reset", false, "tear down and re-run setup from scratch")
 	rootCmd.AddCommand(setupCmd)
 }
 
@@ -41,6 +46,25 @@ func printSetupNextStep(cmd *cobra.Command) {
 
 func runSetup(cmd *cobra.Command, args []string) error {
 	w := cmd.OutOrStdout()
+
+	// --reset: tear down first, then proceed with fresh setup
+	if resetFlag {
+		fmt.Fprintln(w, "Resetting system...")
+		if err := runSystemUninstall(cmd, args); err != nil {
+			return fmt.Errorf("reset: %w", err)
+		}
+		fmt.Fprintln(w)
+	}
+
+	// Already fully set up — skip the prompt entirely
+	if platform.IsSetup() && certmanager.IsCAInstalled() && platform.IsAgentLoaded() {
+		if jsonFlag {
+			return printSystemStatusJSON(w, "already_running")
+		}
+		fmt.Fprintln(w, ui.SuccessStyle.Render("✓ Already set up. Nothing to do."))
+		fmt.Fprintln(w, ui.DimStyle.Render("  Run outport setup --reset to tear down and re-run setup."))
+		return nil
+	}
 
 	// JSON mode: non-interactive, delegate entirely to system start
 	if jsonFlag {
