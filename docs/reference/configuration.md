@@ -103,6 +103,8 @@ services:
 
 Where to write the environment variable. Defaults to `.env` in the project root. Can be a string or array.
 
+Paths outside the project directory (e.g., `../sibling/.env`) require explicit approval. Outport will prompt before writing to external paths. Use `--yes`/`-y` to auto-approve in scripts or CI. Approved paths are remembered so subsequent runs don't re-prompt. Use `--force` to clear saved approvals.
+
 ```yaml
 services:
   rails:
