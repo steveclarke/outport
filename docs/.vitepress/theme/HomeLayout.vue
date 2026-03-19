@@ -496,9 +496,8 @@ CORS_ORIGINS=<span class="success">https://myapp-frontend.test</span>
   margin-bottom: 2rem;
 }
 .install-cmd {
-  display: inline-flex;
-  align-items: center;
-  gap: 1rem;
+  display: inline-block;
+  text-align: left;
   background: #1a1b26;
   color: #c0caf5;
   padding: 1rem 1.5rem;
