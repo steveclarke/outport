@@ -101,6 +101,11 @@
           <h3>.test Domains with HTTPS</h3>
           <p>Real hostnames like <code>myapp.test</code> with automatic HTTPS. Built-in DNS and reverse proxy.</p>
         </div>
+        <div class="feature-card">
+          <div class="feature-icon computed-icon">VS</div>
+          <h3>VS Code Extension</h3>
+          <p>Sidebar panel with ports, URLs, health indicators, and one-click actions. <a href="/guide/vscode">Install it →</a></p>
+        </div>
       </div>
     </section>
 
