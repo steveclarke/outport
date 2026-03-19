@@ -396,6 +396,15 @@ CORS_ORIGINS=<span class="success">https://myapp-frontend.test</span>
   font-size: 0.9rem;
   line-height: 1.6;
 }
+.feature-card a {
+  color: #2E86AB;
+  text-decoration: none;
+  font-weight: 500;
+  cursor: pointer;
+}
+.feature-card a:hover {
+  text-decoration: underline;
+}
 .feature-card code {
   background: var(--vp-c-bg-soft);
   padding: 0.1em 0.4em;
