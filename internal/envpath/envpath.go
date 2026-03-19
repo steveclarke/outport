@@ -117,7 +117,7 @@ func ConfirmExternalFiles(
 		var response string
 		_, _ = fmt.Fscanln(stdin, &response)
 
-		if response != "y" && response != "Y" {
+		if !strings.HasPrefix(strings.ToLower(response), "y") {
 			return nil, ErrUserDenied
 		}
 	}
