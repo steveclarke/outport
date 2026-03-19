@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 
 	"charm.land/huh/v2"
@@ -65,6 +66,9 @@ func runSetup(cmd *cobra.Command, args []string) error {
 		WithShowHelp(false).
 		Run()
 	if err != nil {
+		if errors.Is(err, huh.ErrUserAborted) {
+			return ErrSilent
+		}
 		return err
 	}
 
