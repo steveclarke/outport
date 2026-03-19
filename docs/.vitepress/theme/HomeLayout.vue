@@ -62,6 +62,10 @@
           </div>
         </div>
       </div>
+      <p class="hero-callout">
+        Built for parallel development — worktrees, AI agents, and multiple checkouts.
+        <a href="/guide/work-with-ai">Learn more →</a>
+      </p>
     </section>
 
     <hr class="section-divider">
@@ -161,6 +165,7 @@ CORS_ORIGINS=<span class="success">https://myapp-frontend.test</span>
       <div class="install-cmd">
         <span class="dollar">$</span> brew install steveclarke/tap/outport
       </div>
+      <p class="install-note">macOS only. Linux support is experimental.</p>
     </section>
 
     <!-- FOOTER -->
@@ -301,6 +306,18 @@ CORS_ORIGINS=<span class="success">https://myapp-frontend.test</span>
   margin-bottom: 0.5rem;
   text-align: center;
 }
+.hero-callout {
+  text-align: center;
+  color: var(--vp-c-text-3);
+  font-size: 0.9rem;
+  margin-top: 2rem;
+}
+.hero-callout a {
+  color: #2E86AB;
+  text-decoration: none;
+  font-weight: 500;
+}
+.hero-callout a:hover { text-decoration: underline; }
 
 /* SECTION DIVIDER */
 .section-divider {
@@ -490,6 +507,11 @@ CORS_ORIGINS=<span class="success">https://myapp-frontend.test</span>
   box-shadow: 0 4px 16px rgba(3,28,84,0.08);
 }
 .install-cmd .dollar { color: #7aa2f7; }
+.install-note {
+  color: var(--vp-c-text-3);
+  font-size: 0.8rem;
+  margin-top: 1rem;
+}
 
 /* FOOTER */
 .home-footer {

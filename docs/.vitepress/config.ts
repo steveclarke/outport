@@ -37,6 +37,7 @@ export default defineConfig({
         items: [
           { text: 'Getting Started', link: '/guide/getting-started' },
           { text: 'Installation', link: '/guide/installation' },
+          { text: 'Why Outport?', link: '/guide/why-outport' },
           { text: 'Examples', link: '/guide/examples' },
           { text: 'VS Code Extension', link: '/guide/vscode' },
           { text: 'Work with AI', link: '/guide/work-with-ai' },
