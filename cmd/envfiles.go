@@ -77,22 +77,9 @@ func writeEnvFiles(
 // cleanEnvFiles removes the outport fenced block from all .env files
 // referenced by the config. Returns the list of files that were cleaned.
 func cleanEnvFiles(dir string, cfg *config.Config) []string {
-	seen := make(map[string]bool)
-	for _, svc := range cfg.Services {
-		for _, f := range svc.EnvFiles {
-			seen[f] = true
-		}
-	}
-	for _, dv := range cfg.Computed {
-		for _, f := range dv.EnvFiles {
-			seen[f] = true
-		}
-	}
-
 	var cleaned []string
-	for f := range seen {
-		envPath := filepath.Join(dir, f)
-		if err := dotenv.RemoveBlock(envPath); err == nil {
+	for _, f := range collectEnvFiles(cfg) {
+		if err := dotenv.RemoveBlock(filepath.Join(dir, f)); err == nil {
 			cleaned = append(cleaned, f)
 		}
 	}
