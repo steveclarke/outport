@@ -19,7 +19,7 @@ Outport fixes this. Declare your services once, run `outport up`, and never thin
 ## Quick Start
 
 ```bash
-outport system start  # One-time setup: DNS, CA, daemon
+outport setup         # One-time setup (optional .test domains)
 outport init          # Create .outport.yml
 outport up            # Allocate ports, write .env
 ```
@@ -174,6 +174,7 @@ Outport preserves your existing `.env` variables. It only manages variables decl
 ### Project Commands
 
 ```
+outport setup                  Interactive first-run system setup
 outport init                   Create .outport.yml for this project
 outport up                     Allocate ports, assign hostnames, write .env
 outport up --force             Clear and re-allocate all ports
