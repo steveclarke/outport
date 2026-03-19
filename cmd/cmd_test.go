@@ -38,6 +38,7 @@ func setupProject(t *testing.T, configYAML string) string {
 	// Reset flags and disable port-busy checks so tests aren't affected
 	// by locally running services (e.g., postgres on 5432)
 	jsonFlag = false
+	yesFlag = false
 	isPortBusy = func(int) bool { return false }
 
 	return dir

@@ -1,0 +1,153 @@
+package cmd
+
+import (
+	"fmt"
+	"io"
+
+	"charm.land/lipgloss/v2"
+	"github.com/outport-app/outport/internal/config"
+	"github.com/outport-app/outport/internal/envpath"
+	"github.com/outport-app/outport/internal/ui"
+)
+
+// WriteResult bundles the results of writeEnvFiles.
+type WriteResult struct {
+	ResolvedComputed map[string]map[string]string
+	ExternalFiles    []envpath.EnvFilePath
+	NewlyApproved    []string
+}
+
+// RemoveResult bundles the results of removeEnvFiles.
+type RemoveResult struct {
+	CleanedFiles  []string // config-relative paths
+	ExternalFiles []envpath.EnvFilePath
+	NewlyApproved []string
+}
+
+// collectEnvFiles gathers all env file paths from config (services + computed).
+func collectEnvFiles(cfg *config.Config) []string {
+	seen := make(map[string]bool)
+	for _, svc := range cfg.Services {
+		for _, f := range svc.EnvFiles {
+			seen[f] = true
+		}
+	}
+	for _, dv := range cfg.Computed {
+		for _, f := range dv.EnvFiles {
+			seen[f] = true
+		}
+	}
+	return sortedMapKeys(seen)
+}
+
+// writeEnvFiles classifies, confirms, and writes env files for an allocation.
+func writeEnvFiles(
+	dir string, cfg *config.Config, instanceName string,
+	ports map[string]int, hostnames map[string]string,
+	httpsEnabled bool, tunnelURLs map[string]string,
+	autoApprove bool, approvedPaths []string,
+	stdin io.Reader, stderr io.Writer,
+) (*WriteResult, error) {
+	allFiles := collectEnvFiles(cfg)
+
+	classified, err := envpath.ClassifyEnvFiles(dir, allFiles)
+	if err != nil {
+		return nil, fmt.Errorf("classifying env file paths: %w", err)
+	}
+
+	newlyApproved, err := envpath.ConfirmExternalFiles(classified, approvedPaths, dir, autoApprove, stdin, stderr)
+	if err != nil {
+		return nil, err
+	}
+
+	resolvedComputed, err := mergeEnvFiles(dir, cfg, instanceName, ports, hostnames, httpsEnabled, tunnelURLs)
+	if err != nil {
+		return nil, err
+	}
+
+	return &WriteResult{
+		ResolvedComputed: resolvedComputed,
+		ExternalFiles:    envpath.ExternalPaths(classified),
+		NewlyApproved:    newlyApproved,
+	}, nil
+}
+
+// removeEnvFiles classifies, confirms, and removes the outport fenced block from env files.
+//
+//nolint:unused
+func removeEnvFiles(
+	dir string, cfg *config.Config,
+	autoApprove bool, approvedPaths []string,
+	stdin io.Reader, stderr io.Writer,
+) (*RemoveResult, error) {
+	allFiles := collectEnvFiles(cfg)
+
+	classified, err := envpath.ClassifyEnvFiles(dir, allFiles)
+	if err != nil {
+		return nil, fmt.Errorf("classifying env file paths: %w", err)
+	}
+
+	newlyApproved, err := envpath.ConfirmExternalFiles(classified, approvedPaths, dir, autoApprove, stdin, stderr)
+	if err != nil {
+		return nil, err
+	}
+
+	cleanedFiles := cleanEnvFiles(dir, cfg)
+
+	return &RemoveResult{
+		CleanedFiles:  cleanedFiles,
+		ExternalFiles: envpath.ExternalPaths(classified),
+		NewlyApproved: newlyApproved,
+	}, nil
+}
+
+// mergeApprovedPaths merges two slices of approved paths, deduplicating by value.
+func mergeApprovedPaths(existing, newly []string) []string {
+	seen := make(map[string]bool, len(existing)+len(newly))
+	var merged []string
+	for _, p := range existing {
+		if !seen[p] {
+			seen[p] = true
+			merged = append(merged, p)
+		}
+	}
+	for _, p := range newly {
+		if !seen[p] {
+			seen[p] = true
+			merged = append(merged, p)
+		}
+	}
+	return merged
+}
+
+// printExternalFilesWarning prints a warning about env files written outside the project directory.
+func printExternalFilesWarning(w io.Writer, external []envpath.EnvFilePath) {
+	if len(external) == 0 {
+		return
+	}
+	lipgloss.Fprintln(w)
+	warnStyle := lipgloss.NewStyle().Foreground(ui.Yellow)
+	lipgloss.Fprintln(w, warnStyle.Render("⚠ Note: env files written outside the project directory:"))
+	for _, f := range external {
+		lipgloss.Fprintln(w, warnStyle.Render(fmt.Sprintf("  %s  →  %s", f.ConfigPath, f.ResolvedPath)))
+	}
+}
+
+type externalFileJSON struct {
+	ConfigPath   string `json:"config_path"`
+	ResolvedPath string `json:"resolved_path"`
+}
+
+func toExternalFileJSON(paths []envpath.EnvFilePath) []externalFileJSON {
+	if len(paths) == 0 {
+		return nil
+	}
+	result := make([]externalFileJSON, len(paths))
+	for i, p := range paths {
+		result[i] = externalFileJSON{
+			ConfigPath:   p.ConfigPath,
+			ResolvedPath: p.ResolvedPath,
+		}
+	}
+	return result
+}
