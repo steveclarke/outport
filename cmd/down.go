@@ -1,12 +1,10 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
-	"path/filepath"
+	"os"
 
-	"github.com/outport-app/outport/internal/config"
-	"github.com/outport-app/outport/internal/dotenv"
+	"github.com/outport-app/outport/internal/envpath"
 	"github.com/outport-app/outport/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -31,13 +29,17 @@ func runDown(cmd *cobra.Command, args []string) error {
 	}
 	cfg, reg := ctx.Cfg, ctx.Reg
 
-	_, ok := reg.Get(cfg.Name, ctx.Instance)
+	alloc, ok := reg.Get(cfg.Name, ctx.Instance)
 	if !ok {
 		return fmt.Errorf("project %q (instance %q) is not registered", cfg.Name, ctx.Instance)
 	}
 
 	// Clean managed blocks from .env files
-	cleanedFiles := cleanEnvFiles(ctx.Dir, cfg)
+	result, err := removeEnvFiles(ctx.Dir, cfg,
+		yesFlag, alloc.ApprovedExternalFiles, os.Stdin, os.Stderr)
+	if err != nil {
+		return err
+	}
 
 	reg.Remove(cfg.Name, ctx.Instance)
 	if err := reg.Save(); err != nil {
@@ -45,54 +47,31 @@ func runDown(cmd *cobra.Command, args []string) error {
 	}
 
 	if jsonFlag {
-		return printDownJSON(cmd, cfg.Name, ctx.Instance, cleanedFiles)
+		return printDownJSON(cmd, cfg.Name, ctx.Instance, result.CleanedFiles, result.ExternalFiles)
 	}
-	return printDownStyled(cmd, cfg.Name, ctx.Instance, cleanedFiles)
-}
-
-// cleanEnvFiles removes the outport fenced block from all .env files
-// referenced by the config. Returns the list of files that were cleaned.
-func cleanEnvFiles(dir string, cfg *config.Config) []string {
-	seen := make(map[string]bool)
-	for _, svc := range cfg.Services {
-		for _, f := range svc.EnvFiles {
-			seen[f] = true
-		}
-	}
-	for _, dv := range cfg.Computed {
-		for _, f := range dv.EnvFiles {
-			seen[f] = true
-		}
-	}
-
-	var cleaned []string
-	for f := range seen {
-		envPath := filepath.Join(dir, f)
-		if err := dotenv.RemoveBlock(envPath); err == nil {
-			cleaned = append(cleaned, f)
-		}
-	}
-	return cleaned
-}
-
-func printDownJSON(cmd *cobra.Command, project, instance string, cleanedFiles []string) error {
-	out := struct {
-		Project      string   `json:"project"`
-		Instance     string   `json:"instance"`
-		Status       string   `json:"status"`
-		CleanedFiles []string `json:"cleaned_files"`
-	}{
-		Project:      project,
-		Instance:     instance,
-		Status:       "removed",
-		CleanedFiles: cleanedFiles,
-	}
-	data, err := json.MarshalIndent(out, "", "  ")
+	err = printDownStyled(cmd, cfg.Name, ctx.Instance, result.CleanedFiles)
 	if err != nil {
 		return err
 	}
-	fmt.Fprintln(cmd.OutOrStdout(), string(data))
+	printExternalFilesWarning(cmd.OutOrStdout(), result.ExternalFiles)
 	return nil
+}
+
+func printDownJSON(cmd *cobra.Command, project, instance string, cleanedFiles []string, externalFiles []envpath.EnvFilePath) error {
+	out := struct {
+		Project       string             `json:"project"`
+		Instance      string             `json:"instance"`
+		Status        string             `json:"status"`
+		CleanedFiles  []string           `json:"cleaned_files"`
+		ExternalFiles []externalFileJSON `json:"external_files,omitempty"`
+	}{
+		Project:       project,
+		Instance:      instance,
+		Status:        "removed",
+		CleanedFiles:  cleanedFiles,
+		ExternalFiles: toExternalFileJSON(externalFiles),
+	}
+	return writeJSON(cmd, out)
 }
 
 func printDownStyled(cmd *cobra.Command, project, instanceName string, cleanedFiles []string) error {

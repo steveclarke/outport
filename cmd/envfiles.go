@@ -3,9 +3,11 @@ package cmd
 import (
 	"fmt"
 	"io"
+	"path/filepath"
 
 	"charm.land/lipgloss/v2"
 	"github.com/outport-app/outport/internal/config"
+	"github.com/outport-app/outport/internal/dotenv"
 	"github.com/outport-app/outport/internal/envpath"
 	"github.com/outport-app/outport/internal/ui"
 )
@@ -72,9 +74,32 @@ func writeEnvFiles(
 	}, nil
 }
 
+// cleanEnvFiles removes the outport fenced block from all .env files
+// referenced by the config. Returns the list of files that were cleaned.
+func cleanEnvFiles(dir string, cfg *config.Config) []string {
+	seen := make(map[string]bool)
+	for _, svc := range cfg.Services {
+		for _, f := range svc.EnvFiles {
+			seen[f] = true
+		}
+	}
+	for _, dv := range cfg.Computed {
+		for _, f := range dv.EnvFiles {
+			seen[f] = true
+		}
+	}
+
+	var cleaned []string
+	for f := range seen {
+		envPath := filepath.Join(dir, f)
+		if err := dotenv.RemoveBlock(envPath); err == nil {
+			cleaned = append(cleaned, f)
+		}
+	}
+	return cleaned
+}
+
 // removeEnvFiles classifies, confirms, and removes the outport fenced block from env files.
-//
-//nolint:unused
 func removeEnvFiles(
 	dir string, cfg *config.Config,
 	autoApprove bool, approvedPaths []string,
