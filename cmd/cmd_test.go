@@ -39,6 +39,7 @@ func setupProject(t *testing.T, configYAML string) string {
 	// by locally running services (e.g., postgres on 5432)
 	jsonFlag = false
 	yesFlag = false
+	forceFlag = false
 	isPortBusy = func(int) bool { return false }
 
 	return dir
@@ -2020,5 +2021,165 @@ func TestSetup_HelpOutput(t *testing.T) {
 	err := rootCmd.Execute()
 	if err != nil {
 		t.Fatalf("setup --help failed: %v", err)
+	}
+}
+
+// --- external env file safety ---
+
+const testConfigExternal = `name: testapp
+services:
+  web:
+    preferred_port: 3000
+    env_var: PORT
+    env_file: ../external/.env
+`
+
+func TestUp_ExternalEnvFile_RequiresApproval(t *testing.T) {
+	dir := setupProject(t, testConfigExternal)
+
+	// Create the external directory
+	externalDir := filepath.Join(filepath.Dir(dir), "external")
+	if err := os.MkdirAll(externalDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Without -y, non-interactive stdin should fail
+	rootCmd.SetOut(new(bytes.Buffer))
+	rootCmd.SetErr(new(bytes.Buffer))
+	rootCmd.SetArgs([]string{"up"})
+
+	err := rootCmd.Execute()
+	if err == nil {
+		t.Fatal("expected error for external env file without -y")
+	}
+	if !strings.Contains(err.Error(), "-y") {
+		t.Errorf("error should mention -y, got: %v", err)
+	}
+}
+
+func TestUp_ExternalEnvFile_WithYesFlag(t *testing.T) {
+	dir := setupProject(t, testConfigExternal)
+
+	externalDir := filepath.Join(filepath.Dir(dir), "external")
+	if err := os.MkdirAll(externalDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	yesFlag = true
+	output := executeCmd(t, "up", "--json")
+
+	var result upJSON
+	if err := json.Unmarshal([]byte(output), &result); err != nil {
+		t.Fatalf("invalid JSON: %v\nOutput: %s", err, output)
+	}
+
+	if result.Services["web"].Port == 0 {
+		t.Error("web port should be allocated")
+	}
+
+	// Check external file was written
+	envData, err := os.ReadFile(filepath.Join(externalDir, ".env"))
+	if err != nil {
+		t.Fatalf("reading external .env: %v", err)
+	}
+	if !bytes.Contains(envData, []byte("PORT=")) {
+		t.Errorf("external .env missing PORT, got:\n%s", envData)
+	}
+
+	// Check JSON includes external_files
+	if len(result.ExternalFiles) == 0 {
+		t.Error("JSON output should include external_files")
+	}
+}
+
+func TestUp_ExternalEnvFile_ApprovalPersists(t *testing.T) {
+	dir := setupProject(t, testConfigExternal)
+
+	externalDir := filepath.Join(filepath.Dir(dir), "external")
+	if err := os.MkdirAll(externalDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	// First run with -y to approve
+	yesFlag = true
+	executeCmd(t, "up", "--json")
+
+	// Second run without -y — should succeed because paths are approved
+	yesFlag = false
+	output := executeCmd(t, "up", "--json")
+
+	var result upJSON
+	if err := json.Unmarshal([]byte(output), &result); err != nil {
+		t.Fatalf("invalid JSON: %v\nOutput: %s", err, output)
+	}
+	if result.Services["web"].Port == 0 {
+		t.Error("web port should be allocated on second run")
+	}
+}
+
+func TestUp_ExternalEnvFile_ForceResetsApproval(t *testing.T) {
+	dir := setupProject(t, testConfigExternal)
+
+	externalDir := filepath.Join(filepath.Dir(dir), "external")
+	if err := os.MkdirAll(externalDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	// First run with -y
+	yesFlag = true
+	executeCmd(t, "up", "--json")
+
+	// Force run without -y — should fail because force clears approvals
+	yesFlag = false
+	forceFlag = true
+	rootCmd.SetOut(new(bytes.Buffer))
+	rootCmd.SetErr(new(bytes.Buffer))
+	rootCmd.SetArgs([]string{"up", "--force"})
+
+	err := rootCmd.Execute()
+	forceFlag = false
+	if err == nil {
+		t.Fatal("expected error for --force without -y with external files")
+	}
+}
+
+func TestDown_ExternalEnvFile_WithYesFlag(t *testing.T) {
+	dir := setupProject(t, testConfigExternal)
+
+	externalDir := filepath.Join(filepath.Dir(dir), "external")
+	if err := os.MkdirAll(externalDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Set up with up first
+	yesFlag = true
+	executeCmd(t, "up", "--json")
+
+	// Down should also work with -y
+	executeCmd(t, "down", "--json")
+
+	// External .env should have outport block removed
+	envData, err := os.ReadFile(filepath.Join(externalDir, ".env"))
+	if err != nil {
+		t.Fatalf("reading external .env: %v", err)
+	}
+	if bytes.Contains(envData, []byte("PORT=")) {
+		t.Errorf("external .env should not contain PORT after down, got:\n%s", envData)
+	}
+}
+
+func TestUp_ExternalEnvFile_StyledWarning(t *testing.T) {
+	dir := setupProject(t, testConfigExternal)
+
+	externalDir := filepath.Join(filepath.Dir(dir), "external")
+	if err := os.MkdirAll(externalDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	yesFlag = true
+	output := executeCmd(t, "up")
+
+	if !strings.Contains(output, "outside the project directory") {
+		t.Errorf("styled output should warn about external files, got:\n%s", output)
 	}
 }

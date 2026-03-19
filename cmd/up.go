@@ -118,10 +118,10 @@ func runUp(cmd *cobra.Command, args []string) error {
 
 	httpsEnabled := certmanager.IsCAInstalled()
 
-	// Get approved paths from allocation (clear if --force)
-	approvedPaths := alloc.ApprovedExternalFiles
-	if forceFlag {
-		approvedPaths = nil
+	// Get approved paths from existing allocation; clear if --force.
+	var approvedPaths []string
+	if !forceFlag && hasExisting {
+		approvedPaths = existing.ApprovedExternalFiles
 	}
 
 	result, err := writeEnvFiles(dir, cfg, ctx.Instance, ports, alloc.Hostnames, httpsEnabled, nil,
