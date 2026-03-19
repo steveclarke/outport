@@ -1845,7 +1845,7 @@ func TestPrintShareJSON_IncludesComputedValues(t *testing.T) {
 	cmd := &cobra.Command{}
 	cmd.SetOut(&buf)
 
-	if err := printShareJSON(cmd, tunnels, cfg, resolvedComputed); err != nil {
+	if err := printShareJSON(cmd, tunnels, cfg, resolvedComputed, nil); err != nil {
 		t.Fatal(err)
 	}
 

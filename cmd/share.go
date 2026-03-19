@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"os"
 	"os/signal"
 	"sort"
 	"syscall"
@@ -11,6 +12,7 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/outport-app/outport/internal/certmanager"
 	"github.com/outport-app/outport/internal/config"
+	"github.com/outport-app/outport/internal/envpath"
 	"github.com/outport-app/outport/internal/tunnel"
 	"github.com/outport-app/outport/internal/tunnel/cloudflare"
 	"github.com/outport-app/outport/internal/ui"
@@ -71,8 +73,8 @@ func runShare(cmd *cobra.Command, args []string) error {
 
 	defer func() {
 		mgr.StopAll()
-		// Revert .env files to local URLs (best-effort; user can run 'outport up' if this fails)
-		_, _ = mergeEnvFiles(ctx.Dir, ctx.Cfg, ctx.Instance, alloc.Ports, alloc.Hostnames, httpsEnabled, nil)
+		_, _ = writeEnvFiles(ctx.Dir, ctx.Cfg, ctx.Instance, alloc.Ports, alloc.Hostnames, httpsEnabled, nil,
+			true, alloc.ApprovedExternalFiles, nil, os.Stderr)
 		fmt.Fprintln(cmd.OutOrStdout())
 		fmt.Fprintln(cmd.OutOrStdout(), ui.SuccessStyle.Render("Restored .env files to local URLs."))
 		fmt.Fprintln(cmd.OutOrStdout(), ui.DimStyle.Render("Restart your services to revert to local development."))
@@ -89,17 +91,27 @@ func runShare(cmd *cobra.Command, args []string) error {
 		tunnelURLs[tun.Service] = tun.URL
 	}
 
-	resolvedComputed, err := mergeEnvFiles(ctx.Dir, ctx.Cfg, ctx.Instance, alloc.Ports, alloc.Hostnames, httpsEnabled, tunnelURLs)
+	result, err := writeEnvFiles(ctx.Dir, ctx.Cfg, ctx.Instance, alloc.Ports, alloc.Hostnames, httpsEnabled, tunnelURLs,
+		yesFlag, alloc.ApprovedExternalFiles, os.Stdin, os.Stderr)
 	if err != nil {
 		return fmt.Errorf("writing tunnel URLs to .env: %w", err)
 	}
 
+	if len(result.NewlyApproved) > 0 {
+		alloc.ApprovedExternalFiles = mergeApprovedPaths(alloc.ApprovedExternalFiles, result.NewlyApproved)
+		ctx.Reg.Set(ctx.Cfg.Name, ctx.Instance, alloc)
+		if err := ctx.Reg.Save(); err != nil {
+			return err
+		}
+	}
+
 	if jsonFlag {
-		if err := printShareJSON(cmd, tunnels, ctx.Cfg, resolvedComputed); err != nil {
+		if err := printShareJSON(cmd, tunnels, ctx.Cfg, result.ResolvedComputed, result.ExternalFiles); err != nil {
 			return err
 		}
 	} else {
 		printShareStyled(cmd, tunnels)
+		printExternalFilesWarning(cmd.OutOrStdout(), result.ExternalFiles)
 	}
 
 	// Block until signal
@@ -147,11 +159,12 @@ type tunnelJSON struct {
 }
 
 type shareJSON struct {
-	Tunnels  []tunnelJSON            `json:"tunnels"`
-	Computed map[string]computedJSON `json:"computed,omitempty"`
+	Tunnels       []tunnelJSON            `json:"tunnels"`
+	Computed      map[string]computedJSON `json:"computed,omitempty"`
+	ExternalFiles []externalFileJSON      `json:"external_files,omitempty"`
 }
 
-func printShareJSON(cmd *cobra.Command, tunnels []*tunnel.Tunnel, cfg *config.Config, resolvedComputed map[string]map[string]string) error {
+func printShareJSON(cmd *cobra.Command, tunnels []*tunnel.Tunnel, cfg *config.Config, resolvedComputed map[string]map[string]string, externalFiles []envpath.EnvFilePath) error {
 	out := shareJSON{}
 	for _, tun := range tunnels {
 		out.Tunnels = append(out.Tunnels, tunnelJSON{
@@ -161,6 +174,7 @@ func printShareJSON(cmd *cobra.Command, tunnels []*tunnel.Tunnel, cfg *config.Co
 		})
 	}
 	out.Computed = buildComputedMap(cfg.Computed, resolvedComputed)
+	out.ExternalFiles = toExternalFileJSON(externalFiles)
 	return writeJSON(cmd, out)
 }
 
