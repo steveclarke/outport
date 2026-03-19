@@ -45,6 +45,7 @@ Entry point: `main.go` → `cmd.Execute()` (Cobra CLI).
 
 Project commands (top-level):
 
+- **setup** — Interactive first-run system setup. Uses charmbracelet/huh for a branded confirm prompt asking whether to enable `.test` domains with HTTPS. If yes, delegates to `runSystemStart`. If no, prints a tip about enabling later. JSON mode delegates entirely to `system start`.
 - **up** — Main workflow: load config → resolve instance → load registry → allocate ports → compute hostnames → check hostname uniqueness → resolve computed values → merge `.env` → display results. Use `--force` to re-allocate all ports from scratch.
 - **down** — Reverse of up: clean managed blocks from all `.env` files and remove the project/instance from the registry.
 - **init** — Creates a commented `.outport.yml` template in the current directory.
@@ -80,7 +81,7 @@ All commands support `--json` for machine-readable output. Each command has pair
 - **Fenced .env blocks** — Managed variables are written in a `# --- begin/end outport.dev ---` fenced section. User content outside the block is never touched. Vars claimed by Outport are removed from the user section and relocated into the block.
 - **Daemon architecture** — A LaunchAgent runs a DNS server (port 15353, `*.test` -> 127.0.0.1), HTTP reverse proxy (port 80), and TLS reverse proxy (port 443). When the CA is installed, port 80 issues 307 redirects to HTTPS. The daemon watches the registry file and rebuilds routes on changes.
 - **Automatic HTTPS** — When the CA is installed (after `outport system start`), all `.test` hostnames automatically get HTTPS. Port 80 redirects to HTTPS via 307. Port 443 terminates TLS and proxies to the backend over plain HTTP. `${service.url}` produces `https://` URLs when the CA exists. No per-service opt-in required.
-- **Command structure** — Project commands (`up`, `down`, `init`, `ports`, `open`, `rename`, `promote`) are top-level. Machine-wide operations (`start`, `stop`, `restart`, `status`, `gc`, `uninstall`) live under `outport system`. `up`/`down` follow the Docker Compose mental model (project-scoped). `system start` auto-runs setup on first use.
+- **Command structure** — Project commands (`setup`, `up`, `down`, `init`, `ports`, `open`, `rename`, `promote`) are top-level. Machine-wide operations (`start`, `stop`, `restart`, `status`, `gc`, `uninstall`) live under `outport system`. `setup` is the recommended first-run command (interactive, delegates to `system start`). `up`/`down` follow the Docker Compose mental model (project-scoped).
 - **XDG directory layout** — Registry at `~/.local/share/outport/registry.json`, CA at `~/.local/share/outport/`, cert cache at `~/.cache/outport/certs/`. `~/.config/outport/` reserved for future global config.
 - **Error wrapping** — Uses `fmt.Errorf("context: %w", err)` throughout.
 

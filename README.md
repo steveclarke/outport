@@ -174,6 +174,7 @@ Outport preserves your existing `.env` variables. It only manages variables decl
 ### Project Commands
 
 ```
+outport setup                  Interactive first-run system setup
 outport init                   Create .outport.yml for this project
 outport up                     Allocate ports, assign hostnames, write .env
 outport up --force             Clear and re-allocate all ports
