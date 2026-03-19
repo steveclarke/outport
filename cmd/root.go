@@ -7,6 +7,7 @@ import (
 var (
 	version  = "dev"
 	jsonFlag bool
+	yesFlag  bool
 )
 
 var rootCmd = &cobra.Command{
@@ -29,6 +30,7 @@ func Execute() error {
 func init() {
 	rootCmd.Version = version
 	rootCmd.PersistentFlags().BoolVar(&jsonFlag, "json", false, "output in JSON format")
+	rootCmd.PersistentFlags().BoolVarP(&yesFlag, "yes", "y", false, "auto-approve external env file writes")
 
 	rootCmd.AddGroup(
 		&cobra.Group{ID: "project", Title: "Project Commands:"},
