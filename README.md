@@ -201,7 +201,7 @@ outport system gc              Remove stale registry entries
 outport system uninstall       Remove DNS resolver, daemon, and CA
 ```
 
-All commands support `--json` for machine-readable output.
+All commands support `--json` for machine-readable output. Use `--yes`/`-y` to auto-approve writing env files outside the project directory.
 
 ## Install
 

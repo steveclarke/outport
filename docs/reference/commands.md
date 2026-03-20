@@ -1,6 +1,6 @@
 # Commands
 
-All commands support `--json` for machine-readable output.
+All commands support `--json` for machine-readable output. Use `--yes`/`-y` to auto-approve writing env files outside the project directory.
 
 ## Project Commands
 

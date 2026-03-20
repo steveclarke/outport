@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 	"sort"
 	"strings"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/outport-app/outport/internal/allocator"
 	"github.com/outport-app/outport/internal/certmanager"
 	"github.com/outport-app/outport/internal/config"
+	"github.com/outport-app/outport/internal/envpath"
 	"github.com/outport-app/outport/internal/platform"
 	"github.com/outport-app/outport/internal/portcheck"
 	"github.com/outport-app/outport/internal/registry"
@@ -34,7 +36,7 @@ var upCmd = &cobra.Command{
 }
 
 func init() {
-	upCmd.Flags().BoolVar(&forceFlag, "force", false, "ignore existing allocations and re-allocate all ports")
+	upCmd.Flags().BoolVar(&forceFlag, "force", false, "re-allocate all ports and reset external file approvals")
 	rootCmd.AddCommand(upCmd)
 }
 
@@ -113,25 +115,42 @@ func runUp(cmd *cobra.Command, args []string) error {
 	}
 
 	reg.Set(cfg.Name, ctx.Instance, alloc)
+
+	httpsEnabled := certmanager.IsCAInstalled()
+
+	// Get approved paths from existing allocation; clear if --force.
+	var approvedPaths []string
+	if !forceFlag && hasExisting {
+		approvedPaths = existing.ApprovedExternalFiles
+	}
+
+	result, err := writeEnvFiles(dir, cfg, ctx.Instance, ports, alloc.Hostnames, httpsEnabled, nil,
+		yesFlag, approvedPaths, os.Stdin, os.Stderr)
+	if err != nil {
+		return err
+	}
+
+	// Update allocation with newly approved paths and save
+	if len(result.NewlyApproved) > 0 {
+		alloc.ApprovedExternalFiles = mergeApprovedPaths(approvedPaths, result.NewlyApproved)
+		reg.Set(cfg.Name, ctx.Instance, alloc)
+	}
+
 	if err := reg.Save(); err != nil {
 		return err
 	}
 
-	httpsEnabled := certmanager.IsCAInstalled()
-
-	resolvedComputed, err := mergeEnvFiles(dir, cfg, ctx.Instance, ports, alloc.Hostnames, httpsEnabled, nil)
-	if err != nil {
-		return err
-	}
-	envFiles := mergedEnvFileList(cfg, resolvedComputed)
+	envFiles := mergedEnvFileList(cfg, result.ResolvedComputed)
 
 	if jsonFlag {
-		return printUpJSON(cmd, cfg, ctx.Instance, ports, alloc.Hostnames, resolvedComputed, envFiles, httpsEnabled)
+		return printUpJSON(cmd, cfg, ctx.Instance, ports, alloc.Hostnames, result.ResolvedComputed, envFiles, httpsEnabled, result.ExternalFiles)
 	}
 
-	if err := printUpStyled(cmd, cfg, ctx.Instance, serviceNames, ports, alloc.Hostnames, resolvedComputed, envFiles, httpsEnabled); err != nil {
+	if err := printUpStyled(cmd, cfg, ctx.Instance, serviceNames, ports, alloc.Hostnames, result.ResolvedComputed, envFiles, httpsEnabled); err != nil {
 		return err
 	}
+
+	printExternalFilesWarning(cmd.OutOrStdout(), result.ExternalFiles)
 
 	if !platform.IsAgentLoaded() {
 		w := cmd.OutOrStdout()
@@ -301,11 +320,12 @@ type computedJSON struct {
 }
 
 type upJSON struct {
-	Project  string                  `json:"project"`
-	Instance string                  `json:"instance"`
-	Services map[string]svcJSON      `json:"services"`
-	Computed map[string]computedJSON `json:"computed,omitempty"`
-	EnvFiles []string                `json:"env_files"`
+	Project       string                  `json:"project"`
+	Instance      string                  `json:"instance"`
+	Services      map[string]svcJSON      `json:"services"`
+	Computed      map[string]computedJSON `json:"computed,omitempty"`
+	EnvFiles      []string                `json:"env_files"`
+	ExternalFiles []externalFileJSON      `json:"external_files,omitempty"`
 }
 
 func serviceURL(protocol, hostname string, port int, httpsEnabled bool) string {
@@ -374,13 +394,14 @@ func buildComputedMap(computed map[string]config.ComputedValue, resolved map[str
 	return m
 }
 
-func printUpJSON(cmd *cobra.Command, cfg *config.Config, instanceName string, ports map[string]int, hostnames map[string]string, resolvedComputed map[string]map[string]string, envFiles []string, httpsEnabled bool) error {
+func printUpJSON(cmd *cobra.Command, cfg *config.Config, instanceName string, ports map[string]int, hostnames map[string]string, resolvedComputed map[string]map[string]string, envFiles []string, httpsEnabled bool, externalFiles []envpath.EnvFilePath) error {
 	out := upJSON{
-		Project:  cfg.Name,
-		Instance: instanceName,
-		Services: buildServiceMap(cfg, ports, hostnames, httpsEnabled),
-		Computed: buildComputedMap(cfg.Computed, resolvedComputed),
-		EnvFiles: envFiles,
+		Project:       cfg.Name,
+		Instance:      instanceName,
+		Services:      buildServiceMap(cfg, ports, hostnames, httpsEnabled),
+		Computed:      buildComputedMap(cfg.Computed, resolvedComputed),
+		EnvFiles:      envFiles,
+		ExternalFiles: toExternalFileJSON(externalFiles),
 	}
 	data, err := json.MarshalIndent(out, "", "  ")
 	if err != nil {

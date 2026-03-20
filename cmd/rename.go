@@ -1,13 +1,14 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"github.com/outport-app/outport/internal/certmanager"
 	"github.com/outport-app/outport/internal/config"
 	"github.com/outport-app/outport/internal/dotenv"
+	"github.com/outport-app/outport/internal/envpath"
 	"github.com/outport-app/outport/internal/instance"
 	"github.com/outport-app/outport/internal/ui"
 	"github.com/spf13/cobra"
@@ -59,12 +60,20 @@ func runRename(cmd *cobra.Command, args []string) error {
 	reg.Remove(cfg.Name, oldName)
 
 	newAlloc := buildAllocation(cfg, newName, oldAlloc.ProjectDir, oldAlloc.Ports)
+	newAlloc.ApprovedExternalFiles = oldAlloc.ApprovedExternalFiles
 	reg.Set(cfg.Name, newName, newAlloc)
 
 	// Re-merge .env files with updated hostnames
 	httpsEnabled := certmanager.IsCAInstalled()
-	if _, err := mergeEnvFiles(ctx.Dir, cfg, newName, oldAlloc.Ports, newAlloc.Hostnames, httpsEnabled, nil); err != nil {
+	result, err := writeEnvFiles(ctx.Dir, cfg, newName, oldAlloc.Ports, newAlloc.Hostnames, httpsEnabled, nil,
+		yesFlag, newAlloc.ApprovedExternalFiles, os.Stdin, os.Stderr)
+	if err != nil {
 		return fmt.Errorf("updating .env files: %w", err)
+	}
+
+	if len(result.NewlyApproved) > 0 {
+		newAlloc.ApprovedExternalFiles = mergeApprovedPaths(newAlloc.ApprovedExternalFiles, result.NewlyApproved)
+		reg.Set(cfg.Name, newName, newAlloc)
 	}
 
 	if err := reg.Save(); err != nil {
@@ -72,14 +81,18 @@ func runRename(cmd *cobra.Command, args []string) error {
 	}
 
 	if jsonFlag {
-		return printRenameJSON(cmd, cfg.Name, oldName, newName)
+		return printRenameJSON(cmd, cfg.Name, oldName, newName, result.ExternalFiles)
 	}
-	return printRenameStyled(cmd, cfg.Name, oldName, newName)
+	err = printRenameStyled(cmd, cfg.Name, oldName, newName)
+	if err != nil {
+		return err
+	}
+	printExternalFilesWarning(cmd.OutOrStdout(), result.ExternalFiles)
+	return nil
 }
 
 // mergeEnvFiles rebuilds and writes env file vars for an allocation.
-// This is used by rename and promote to update .env files after hostnames change.
-// mergeEnvFiles rebuilds and writes env file vars for an allocation.
+// Called by writeEnvFiles after external file confirmation.
 // Returns the resolved computed values so callers can reuse them for display.
 func mergeEnvFiles(dir string, cfg *config.Config, instanceName string, ports map[string]int, hostnames map[string]string, httpsEnabled bool, tunnelURLs map[string]string) (map[string]map[string]string, error) {
 	envFileVars := make(map[string]map[string]string)
@@ -116,24 +129,21 @@ func mergeEnvFiles(dir string, cfg *config.Config, instanceName string, ports ma
 	return resolvedComputed, nil
 }
 
-func printRenameJSON(cmd *cobra.Command, project, oldName, newName string) error {
+func printRenameJSON(cmd *cobra.Command, project, oldName, newName string, externalFiles []envpath.EnvFilePath) error {
 	out := struct {
-		Project     string `json:"project"`
-		OldInstance string `json:"old_instance"`
-		NewInstance string `json:"new_instance"`
-		Status      string `json:"status"`
+		Project       string             `json:"project"`
+		OldInstance   string             `json:"old_instance"`
+		NewInstance   string             `json:"new_instance"`
+		Status        string             `json:"status"`
+		ExternalFiles []externalFileJSON `json:"external_files,omitempty"`
 	}{
-		Project:     project,
-		OldInstance: oldName,
-		NewInstance: newName,
-		Status:      "renamed",
+		Project:       project,
+		OldInstance:   oldName,
+		NewInstance:   newName,
+		Status:        "renamed",
+		ExternalFiles: toExternalFileJSON(externalFiles),
 	}
-	data, err := json.MarshalIndent(out, "", "  ")
-	if err != nil {
-		return err
-	}
-	fmt.Fprintln(cmd.OutOrStdout(), string(data))
-	return nil
+	return writeJSON(cmd, out)
 }
 
 func printRenameStyled(cmd *cobra.Command, project, oldName, newName string) error {

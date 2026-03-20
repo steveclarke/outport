@@ -1,10 +1,11 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
+	"os"
 
 	"github.com/outport-app/outport/internal/certmanager"
+	"github.com/outport-app/outport/internal/envpath"
 	"github.com/outport-app/outport/internal/instance"
 	"github.com/outport-app/outport/internal/registry"
 	"github.com/outport-app/outport/internal/ui"
@@ -43,6 +44,7 @@ func runPromote(cmd *cobra.Command, args []string) error {
 
 	httpsEnabled := certmanager.IsCAInstalled()
 	var demotedTo string
+	var allExternalFiles []envpath.EnvFilePath
 
 	// If a "main" instance exists, demote it
 	if mainAlloc, hasMain := reg.Get(cfg.Name, "main"); hasMain {
@@ -59,53 +61,75 @@ func runPromote(cmd *cobra.Command, args []string) error {
 		reg.Remove(cfg.Name, "main")
 
 		demotedAlloc := buildAllocation(cfg, demotedTo, mainAlloc.ProjectDir, mainAlloc.Ports)
+		demotedAlloc.ApprovedExternalFiles = mainAlloc.ApprovedExternalFiles
 		reg.Set(cfg.Name, demotedTo, demotedAlloc)
 
 		// Re-merge .env files for the demoted instance
-		if _, err := mergeEnvFiles(mainAlloc.ProjectDir, cfg, demotedTo, mainAlloc.Ports, demotedAlloc.Hostnames, httpsEnabled, nil); err != nil {
+		demotedResult, err := writeEnvFiles(mainAlloc.ProjectDir, cfg, demotedTo, mainAlloc.Ports, demotedAlloc.Hostnames, httpsEnabled, nil,
+			yesFlag, demotedAlloc.ApprovedExternalFiles, os.Stdin, os.Stderr)
+		if err != nil {
 			return fmt.Errorf("updating .env files for demoted instance: %w", err)
 		}
+
+		if len(demotedResult.NewlyApproved) > 0 {
+			demotedAlloc.ApprovedExternalFiles = mergeApprovedPaths(demotedAlloc.ApprovedExternalFiles, demotedResult.NewlyApproved)
+			reg.Set(cfg.Name, demotedTo, demotedAlloc)
+		}
+
+		allExternalFiles = append(allExternalFiles, demotedResult.ExternalFiles...)
 	}
 
 	// Promote current instance → main
 	reg.Remove(cfg.Name, ctx.Instance)
 
 	promotedAlloc := buildAllocation(cfg, "main", currentAlloc.ProjectDir, currentAlloc.Ports)
+	promotedAlloc.ApprovedExternalFiles = currentAlloc.ApprovedExternalFiles
 	reg.Set(cfg.Name, "main", promotedAlloc)
 
 	// Re-merge .env files for the promoted instance
-	if _, err := mergeEnvFiles(ctx.Dir, cfg, "main", currentAlloc.Ports, promotedAlloc.Hostnames, httpsEnabled, nil); err != nil {
+	promotedResult, err := writeEnvFiles(ctx.Dir, cfg, "main", currentAlloc.Ports, promotedAlloc.Hostnames, httpsEnabled, nil,
+		yesFlag, promotedAlloc.ApprovedExternalFiles, os.Stdin, os.Stderr)
+	if err != nil {
 		return fmt.Errorf("updating .env files for promoted instance: %w", err)
 	}
+
+	if len(promotedResult.NewlyApproved) > 0 {
+		promotedAlloc.ApprovedExternalFiles = mergeApprovedPaths(promotedAlloc.ApprovedExternalFiles, promotedResult.NewlyApproved)
+		reg.Set(cfg.Name, "main", promotedAlloc)
+	}
+
+	allExternalFiles = append(allExternalFiles, promotedResult.ExternalFiles...)
 
 	if err := reg.Save(); err != nil {
 		return err
 	}
 
 	if jsonFlag {
-		return printPromoteJSON(cmd, cfg.Name, ctx.Instance, demotedTo)
+		return printPromoteJSON(cmd, cfg.Name, ctx.Instance, demotedTo, allExternalFiles)
 	}
-	return printPromoteStyled(cmd, cfg.Name, ctx.Instance, demotedTo)
-}
-
-func printPromoteJSON(cmd *cobra.Command, project, promoted, demotedTo string) error {
-	out := struct {
-		Project   string `json:"project"`
-		Promoted  string `json:"promoted"`
-		DemotedTo string `json:"demoted_to,omitempty"`
-		Status    string `json:"status"`
-	}{
-		Project:   project,
-		Promoted:  promoted,
-		DemotedTo: demotedTo,
-		Status:    "promoted",
-	}
-	data, err := json.MarshalIndent(out, "", "  ")
+	err = printPromoteStyled(cmd, cfg.Name, ctx.Instance, demotedTo)
 	if err != nil {
 		return err
 	}
-	fmt.Fprintln(cmd.OutOrStdout(), string(data))
+	printExternalFilesWarning(cmd.OutOrStdout(), allExternalFiles)
 	return nil
+}
+
+func printPromoteJSON(cmd *cobra.Command, project, promoted, demotedTo string, externalFiles []envpath.EnvFilePath) error {
+	out := struct {
+		Project       string             `json:"project"`
+		Promoted      string             `json:"promoted"`
+		DemotedTo     string             `json:"demoted_to,omitempty"`
+		Status        string             `json:"status"`
+		ExternalFiles []externalFileJSON `json:"external_files,omitempty"`
+	}{
+		Project:       project,
+		Promoted:      promoted,
+		DemotedTo:     demotedTo,
+		Status:        "promoted",
+		ExternalFiles: toExternalFileJSON(externalFiles),
+	}
+	return writeJSON(cmd, out)
 }
 
 func printPromoteStyled(cmd *cobra.Command, project, promoted, demotedTo string) error {
