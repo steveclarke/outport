@@ -16,7 +16,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// setupProject creates a temp directory with .outport.yml and .git,
+// setupProject creates a temp directory with outport.yml and .git,
 // sets HOME to isolate the registry, and chdir into the project.
 // Returns the project dir path.
 func setupProject(t *testing.T, configYAML string) string {
@@ -26,7 +26,7 @@ func setupProject(t *testing.T, configYAML string) string {
 	t.Setenv("HOME", home)
 
 	dir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, ".outport.yml"), []byte(configYAML), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "outport.yml"), []byte(configYAML), 0644); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.Mkdir(filepath.Join(dir, ".git"), 0755); err != nil {
@@ -192,7 +192,7 @@ func TestUp_NoConfig(t *testing.T) {
 
 	err := rootCmd.Execute()
 	if err == nil {
-		t.Fatal("expected error when no .outport.yml exists")
+		t.Fatal("expected error when no outport.yml exists")
 	}
 }
 
@@ -559,7 +559,7 @@ func TestSystemGC_NoStaleEntries(t *testing.T) {
 
 	projectDir := t.TempDir()
 	// Add a config file so gc doesn't consider it stale
-	_ = os.WriteFile(filepath.Join(projectDir, ".outport.yml"), []byte("name: validapp\nservices:\n  web:\n    env_var: PORT\n"), 0644)
+	_ = os.WriteFile(filepath.Join(projectDir, "outport.yml"), []byte("name: validapp\nservices:\n  web:\n    env_var: PORT\n"), 0644)
 	t.Chdir(projectDir)
 	jsonFlag = false
 
@@ -588,7 +588,7 @@ func TestSystemGC_RemovesMissingConfig(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 
-	// Directory exists but has no .outport.yml
+	// Directory exists but has no outport.yml
 	projectDir := t.TempDir()
 	t.Chdir(projectDir)
 	jsonFlag = false
@@ -652,7 +652,7 @@ func TestSystemStatus_MissingConfigMarkedStale(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 
-	// Directory exists but no .outport.yml
+	// Directory exists but no outport.yml
 	projectDir := t.TempDir()
 	t.Chdir(projectDir)
 	jsonFlag = false
@@ -698,7 +698,7 @@ func TestInit_ErrorWhenConfigExists(t *testing.T) {
 	t.Setenv("HOME", home)
 
 	dir := t.TempDir()
-	_ = os.WriteFile(filepath.Join(dir, ".outport.yml"), []byte("name: existing\n"), 0644)
+	_ = os.WriteFile(filepath.Join(dir, "outport.yml"), []byte("name: existing\n"), 0644)
 	t.Chdir(dir)
 	jsonFlag = false
 
@@ -978,7 +978,7 @@ func TestRename_CollisionFails(t *testing.T) {
 
 	// Create main project directory
 	dir1 := t.TempDir()
-	_ = os.WriteFile(filepath.Join(dir1, ".outport.yml"), []byte(testConfig), 0644)
+	_ = os.WriteFile(filepath.Join(dir1, "outport.yml"), []byte(testConfig), 0644)
 	if err := os.Mkdir(filepath.Join(dir1, ".git"), 0755); err != nil {
 		t.Fatalf("mkdir .git: %v", err)
 	}
@@ -989,7 +989,7 @@ func TestRename_CollisionFails(t *testing.T) {
 
 	// Create a second directory for the same project
 	dir2 := t.TempDir()
-	_ = os.WriteFile(filepath.Join(dir2, ".outport.yml"), []byte(testConfig), 0644)
+	_ = os.WriteFile(filepath.Join(dir2, "outport.yml"), []byte(testConfig), 0644)
 	if err := os.Mkdir(filepath.Join(dir2, ".git"), 0755); err != nil {
 		t.Fatalf("mkdir .git: %v", err)
 	}
@@ -1035,7 +1035,7 @@ func TestPromote_Success(t *testing.T) {
 
 	// Create main project directory
 	dir1 := t.TempDir()
-	_ = os.WriteFile(filepath.Join(dir1, ".outport.yml"), []byte(testConfigWithHostnames), 0644)
+	_ = os.WriteFile(filepath.Join(dir1, "outport.yml"), []byte(testConfigWithHostnames), 0644)
 	_ = os.Mkdir(filepath.Join(dir1, ".git"), 0755)
 
 	// Apply from dir1 to create "main" instance
@@ -1044,7 +1044,7 @@ func TestPromote_Success(t *testing.T) {
 
 	// Create a second directory for the same project
 	dir2 := t.TempDir()
-	_ = os.WriteFile(filepath.Join(dir2, ".outport.yml"), []byte(testConfigWithHostnames), 0644)
+	_ = os.WriteFile(filepath.Join(dir2, "outport.yml"), []byte(testConfigWithHostnames), 0644)
 	_ = os.Mkdir(filepath.Join(dir2, ".git"), 0755)
 
 	// Apply from dir2 to create a code-based instance
@@ -1241,7 +1241,7 @@ func TestUp_HostnameUniquenessConflict(t *testing.T) {
 
 	// Project 1: "myapp" with hostname "myapp"
 	dir1 := t.TempDir()
-	_ = os.WriteFile(filepath.Join(dir1, ".outport.yml"), []byte(`name: myapp
+	_ = os.WriteFile(filepath.Join(dir1, "outport.yml"), []byte(`name: myapp
 services:
   web:
     env_var: PORT
@@ -1256,7 +1256,7 @@ services:
 
 	// Project 2: different project name but same hostname stem
 	dir2 := t.TempDir()
-	_ = os.WriteFile(filepath.Join(dir2, ".outport.yml"), []byte(`name: myapp2
+	_ = os.WriteFile(filepath.Join(dir2, "outport.yml"), []byte(`name: myapp2
 services:
   web:
     env_var: PORT
@@ -1271,7 +1271,7 @@ services:
 
 	// Project 3: a different project that conflicts with project 1's hostname
 	dir3 := t.TempDir()
-	_ = os.WriteFile(filepath.Join(dir3, ".outport.yml"), []byte(`name: otherapp
+	_ = os.WriteFile(filepath.Join(dir3, "outport.yml"), []byte(`name: otherapp
 services:
   web:
     env_var: PORT
@@ -1282,7 +1282,7 @@ services:
 
 	// This one won't conflict because "myapp.otherapp.test" != "myapp.test".
 	// Now make a real conflict by matching project 1's exact hostname.
-	_ = os.WriteFile(filepath.Join(dir3, ".outport.yml"), []byte(`name: clash
+	_ = os.WriteFile(filepath.Join(dir3, "outport.yml"), []byte(`name: clash
 services:
   web:
     env_var: PORT
@@ -1305,7 +1305,7 @@ services:
     protocol: http
     hostname: myapp.fakeapp
 `
-	_ = os.WriteFile(filepath.Join(dir4, ".outport.yml"), []byte(configWithConflict), 0644)
+	_ = os.WriteFile(filepath.Join(dir4, "outport.yml"), []byte(configWithConflict), 0644)
 	_ = os.Mkdir(filepath.Join(dir4, ".git"), 0755)
 
 	// Directly set up a registry entry that will cause a conflict
@@ -1326,7 +1326,7 @@ services:
 
 	// Create project that tries to use the same hostname "collider"
 	dir5 := t.TempDir()
-	_ = os.WriteFile(filepath.Join(dir5, ".outport.yml"), []byte(`name: collider
+	_ = os.WriteFile(filepath.Join(dir5, "outport.yml"), []byte(`name: collider
 services:
   web:
     env_var: PORT
@@ -1550,7 +1550,7 @@ func TestShare_NoConfig(t *testing.T) {
 
 	err := rootCmd.Execute()
 	if err == nil {
-		t.Fatal("expected error when no .outport.yml exists")
+		t.Fatal("expected error when no outport.yml exists")
 	}
 }
 
@@ -1992,21 +1992,21 @@ func TestDoctor_WithProject(t *testing.T) {
 		}
 	}
 	if !hasProjectCheck {
-		t.Error("expected project checks when .outport.yml exists and project is registered")
+		t.Error("expected project checks when outport.yml exists and project is registered")
 	}
 
 	// Should have config valid check
 	hasConfigCheck := false
 	for _, r := range result.Results {
-		if strings.Contains(r.Name, ".outport.yml") {
+		if strings.Contains(r.Name, "outport.yml") {
 			hasConfigCheck = true
 			if r.Status != "pass" {
-				t.Errorf(".outport.yml check should pass, got %q", r.Status)
+				t.Errorf("outport.yml check should pass, got %q", r.Status)
 			}
 		}
 	}
 	if !hasConfigCheck {
-		t.Error("expected .outport.yml validity check in project checks")
+		t.Error("expected outport.yml validity check in project checks")
 	}
 }
 
