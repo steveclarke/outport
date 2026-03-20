@@ -33,20 +33,20 @@ func ProjectChecks(dir string, cfg *config.Config, configErr error, regPath stri
 	// Config validity check
 	if configErr != nil {
 		checks = append(checks, Check{
-			Name:     ".outport.yml valid",
+			Name:     "outport.yml valid",
 			Category: category,
 			Run: func() *Result {
-				return &Result{Name: ".outport.yml valid", Status: Fail, Message: fmt.Sprintf(".outport.yml: %v", configErr)}
+				return &Result{Name: "outport.yml valid", Status: Fail, Message: fmt.Sprintf("outport.yml: %v", configErr)}
 			},
 		})
 		return checks // Skip remaining project checks
 	}
 
 	checks = append(checks, Check{
-		Name:     ".outport.yml valid",
+		Name:     "outport.yml valid",
 		Category: category,
 		Run: func() *Result {
-			return &Result{Name: ".outport.yml valid", Status: Pass, Message: ".outport.yml valid"}
+			return &Result{Name: "outport.yml valid", Status: Pass, Message: "outport.yml valid"}
 		},
 	})
 

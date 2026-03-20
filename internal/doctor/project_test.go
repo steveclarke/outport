@@ -18,7 +18,7 @@ services:
   web:
     env_var: PORT
 `
-	_ = os.WriteFile(filepath.Join(dir, ".outport.yml"), []byte(cfgYAML), 0644)
+	_ = os.WriteFile(filepath.Join(dir, "outport.yml"), []byte(cfgYAML), 0644)
 	cfg, err := config.Load(dir)
 	if err != nil {
 		t.Fatalf("unexpected config error: %v", err)
@@ -70,7 +70,7 @@ services:
   web:
     env_var: PORT
 `
-	_ = os.WriteFile(filepath.Join(dir, ".outport.yml"), []byte(cfgYAML), 0644)
+	_ = os.WriteFile(filepath.Join(dir, "outport.yml"), []byte(cfgYAML), 0644)
 	cfg, err := config.Load(dir)
 	if err != nil {
 		t.Fatalf("unexpected config error: %v", err)
