@@ -115,5 +115,6 @@ This tunnels all HTTP services to public Cloudflare URLs and rewrites `.env` fil
 
 ## Next Steps
 
+- [VS Code Extension](/guide/vscode) — ports, URLs, and service health right in the editor
 - [Configuration Reference](/reference/configuration) — full `.outport.yml` schema
 - [Commands Reference](/reference/commands) — all CLI commands
