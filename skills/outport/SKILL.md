@@ -1,6 +1,6 @@
 ---
 name: outport
-description: Manage dev ports with Outport. Use when setting up a new project, adding services, resolving port conflicts, configuring monorepo cross-service URLs, or working with worktrees and multiple instances. Triggers on "outport", "port conflict", "port allocation", "dev ports", ".outport.yml", "port management", "env var ports", "computed values", "cross-service URLs", "CORS origins from ports", ".test domains", "local DNS", "reverse proxy", "cookie isolation", "tunnel", "share localhost", "public URL", "cloudflare tunnel", "outport doctor", "health check", "diagnose outport". Also use when the user mentions running multiple instances of a project, worktree port setup, or when services need to discover each other's URLs.
+description: Manage dev ports with Outport. Use when setting up a new project, adding services, resolving port conflicts, configuring monorepo cross-service URLs, or working with worktrees and multiple instances. Triggers on "outport", "port conflict", "port allocation", "dev ports", "outport.yml", "port management", "env var ports", "computed values", "cross-service URLs", "CORS origins from ports", ".test domains", "local DNS", "reverse proxy", "cookie isolation", "tunnel", "share localhost", "public URL", "cloudflare tunnel", "outport doctor", "health check", "diagnose outport". Also use when the user mentions running multiple instances of a project, worktree port setup, or when services need to discover each other's URLs.
 ---
 
 # Outport — Dev Port Manager
@@ -14,7 +14,7 @@ URLs just work without manual configuration.
 
 ```bash
 # Project commands
-outport init              # Create .outport.yml (interactive)
+outport init              # Create outport.yml (interactive)
 outport up                # Allocate ports, assign hostnames, write .env
 outport up --force        # Clear and re-allocate all ports from scratch
 outport down              # Remove ports and clean .env files
@@ -47,7 +47,7 @@ All commands support `--json` for machine-readable output.
 
 ## Setting Up a New Project
 
-### 1. Create `.outport.yml`
+### 1. Create `outport.yml`
 
 Run `outport init` for interactive setup, or create manually:
 
@@ -84,9 +84,9 @@ Most frameworks read `.env` natively or with minimal setup:
   if [ -f .env ]; then set -a; source .env; set +a; fi
   ```
 
-### 4. Commit `.outport.yml`, gitignore `.env`
+### 4. Commit `outport.yml`, gitignore `.env`
 
-`.outport.yml` is project config — commit it so worktrees and teammates
+`outport.yml` is project config — commit it so worktrees and teammates
 inherit it. `.env` contains allocated ports — gitignore it. Each checkout
 gets its own.
 
@@ -343,7 +343,7 @@ NUXT_API_BASE_URL=http://localhost:24920/api/v1
 ```
 
 On each `outport up`, the fenced block is replaced with current values.
-Variables removed from `.outport.yml` disappear from the block. Everything
+Variables removed from `outport.yml` disappear from the block. Everything
 outside the block is preserved.
 
 ## Multiple Instances
@@ -407,7 +407,7 @@ Run `outport up --force` to clear and re-allocate.
 Run `outport down` to remove from registry and free all ports.
 
 ### Adding a new service to an existing project
-Add it to `.outport.yml` and run `outport up`. Existing allocations
+Add it to `outport.yml` and run `outport up`. Existing allocations
 are preserved — only the new service gets a port.
 
 ### Agent needs to know the project's URLs

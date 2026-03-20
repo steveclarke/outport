@@ -24,7 +24,7 @@ Summarize the changes in one sentence. Classify:
 |------|---------|
 | **New command** | Added `outport open` |
 | **Command change** | New flag, changed output format |
-| **Config change** | New field in `.outport.yml` |
+| **Config change** | New field in `outport.yml` |
 | **Infrastructure** | Build, CI, dependency changes |
 | **Bug fix** | Fixed registry save race condition |
 
@@ -37,7 +37,7 @@ Go through every location below. For each one, check whether it's current.
 | Check | What to look for |
 |-------|-----------------|
 | Commands list | Does it match actual commands in `cmd/*.go`? |
-| Config example | Does `.outport.yml` example match current schema? |
+| Config example | Does `outport.yml` example match current schema? |
 | "How It Works" section | Does it reflect current allocation behavior? |
 | Install instructions | Are they still accurate? |
 
@@ -76,7 +76,7 @@ Go through every location below. For each one, check whether it's current.
 | Check | What to look for |
 |-------|-----------------|
 | `docs/reference/commands.md` | Does it list all commands in `cmd/*.go`? |
-| `docs/reference/configuration.md` | Does it cover all `.outport.yml` fields? |
+| `docs/reference/configuration.md` | Does it cover all `outport.yml` fields? |
 | `docs/guide/getting-started.md` | Does it reflect current workflow? |
 | `docs/guide/examples.md` | Are examples using current config syntax? |
 | `docs/guide/tips.md` | Are troubleshooting tips still accurate? |

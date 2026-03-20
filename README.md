@@ -20,7 +20,7 @@ Outport fixes this. Declare your services once, run `outport up`, and never thin
 
 ```bash
 outport setup         # One-time setup (optional .test domains)
-outport init          # Create .outport.yml
+outport init          # Create outport.yml
 outport up            # Allocate ports, write .env
 ```
 
@@ -36,7 +36,7 @@ myapp [main]
 
 ## How It Works
 
-Drop a `.outport.yml` in your project:
+Drop a `outport.yml` in your project:
 
 ```yaml
 name: myapp
@@ -167,7 +167,7 @@ Outport writes to `.env` because everything already reads it:
 - **Rails** (dotenv-rails), **Nuxt**, **Phoenix**, **Django** — all have dotenv support
 - **Any framework** that reads environment variables works with zero configuration
 
-Outport preserves your existing `.env` variables. It only manages variables declared in `.outport.yml` — everything else is untouched.
+Outport preserves your existing `.env` variables. It only manages variables declared in `outport.yml` — everything else is untouched.
 
 ## Commands
 
@@ -175,7 +175,7 @@ Outport preserves your existing `.env` variables. It only manages variables decl
 
 ```
 outport setup                  Interactive first-run system setup
-outport init                   Create .outport.yml for this project
+outport init                   Create outport.yml for this project
 outport up                     Allocate ports, assign hostnames, write .env
 outport up --force             Clear and re-allocate all ports
 outport down                   Remove ports, clean .env files
@@ -233,7 +233,7 @@ Install the Outport skill so your AI coding agent knows how to configure ports:
 npx skills add steveclarke/outport/skills
 ```
 
-The agent can run `outport up` in any instance, read `outport ports --json` for structured output, and configure `.outport.yml` for new services.
+The agent can run `outport up` in any instance, read `outport ports --json` for structured output, and configure `outport.yml` for new services.
 
 ## How Outport Compares
 
@@ -259,7 +259,7 @@ If you're a single developer running one Rails app, most of these tools work fin
 - **Multiple projects at once** — three Rails apps all defaulting to port 3000, each with their own Postgres and Redis. You need them all running simultaneously, completely segregated.
 - **Parallel AI agents** — you tell three agents to work on three features, each in its own instance. Every instance gets non-conflicting ports and a unique `.test` hostname — complete isolation.
 - **Multi-service apps** — your Nuxt frontend needs your Rails backend's URL. Your backend needs the frontend's URL for CORS. Outport's [computed values](#computed-values) wire this up declaratively — one config file, and every `.env` gets finished URLs.
-- **Declare once, apply anywhere** — check `.outport.yml` into your repo. Every developer, every machine, every instance gets deterministic ports with `outport up`.
+- **Declare once, apply anywhere** — check `outport.yml` into your repo. Every developer, every machine, every instance gets deterministic ports with `outport up`.
 
 ## FAQ
 

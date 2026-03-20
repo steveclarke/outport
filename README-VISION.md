@@ -30,7 +30,7 @@ Outport is designed to solve all of this — from port allocation to hostnames, 
 
 ```bash
 cd ~/src/myapp
-outport init              # Create .outport.yml
+outport init              # Create outport.yml
 outport up             # Allocate ports, write .env
 ```
 
@@ -38,7 +38,7 @@ That's it. Your services have deterministic ports. Once DNS and SSL are enabled,
 
 ## How It Works
 
-Drop a `.outport.yml` in your project that declares your services:
+Drop a `outport.yml` in your project that declares your services:
 
 ```yaml
 name: myapp
@@ -215,12 +215,12 @@ Outport writes to `.env` because everything already reads it:
 - **Rails** (dotenv-rails), **Nuxt**, **Phoenix**, **Django** — all have dotenv support
 - **Any framework** that reads environment variables
 
-Outport only updates variables declared in your `.outport.yml` — everything else in your `.env` is preserved.
+Outport only updates variables declared in your `outport.yml` — everything else in your `.env` is preserved.
 
 ## Commands
 
 ```
-outport init              Create .outport.yml for this project
+outport init              Create outport.yml for this project
 outport up                Apply port configuration, write .env
 outport up --force        Clear and re-allocate all ports
 outport down              Remove from registry, free ports
