@@ -67,7 +67,7 @@ setup() {
     # internal — basic project, no external files
     cd "$WORKDIR/internal"
     git init -q
-    cat > .outport.yml << 'YAML'
+    cat > outport.yml << 'YAML'
 name: qa-internal
 services:
   web:
@@ -78,7 +78,7 @@ YAML
     # external — writes to ../target/.env
     cd "$WORKDIR/external"
     git init -q
-    cat > .outport.yml << 'YAML'
+    cat > outport.yml << 'YAML'
 name: qa-external
 services:
   web:
@@ -91,7 +91,7 @@ YAML
     cd "$WORKDIR/symlink"
     git init -q
     ln -sf /tmp/outport-qa-symlink-target linked
-    cat > .outport.yml << 'YAML'
+    cat > outport.yml << 'YAML'
 name: qa-symlink
 services:
   web:
@@ -114,7 +114,7 @@ teardown() {
 
     # Run outport down in each project that might be registered
     for dir in "$WORKDIR"/internal "$WORKDIR"/external "$WORKDIR"/symlink; do
-        if [ -d "$dir" ] && [ -f "$dir/.outport.yml" ]; then
+        if [ -d "$dir" ] && [ -f "$dir/outport.yml" ]; then
             (cd "$dir" && outport down -y 2>/dev/null || true)
         fi
     done
