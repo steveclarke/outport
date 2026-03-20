@@ -19,7 +19,7 @@ var ErrNonInteractive = errors.New("external env files require interactive appro
 
 // EnvFilePath holds a classified env file path.
 type EnvFilePath struct {
-	ConfigPath   string // as written in .outport.yml, e.g. "../sibling/.env"
+	ConfigPath   string // as written in outport.yml, e.g. "../sibling/.env"
 	ResolvedPath string // absolute real path after symlink resolution
 	External     bool   // true if outside the project directory tree
 }

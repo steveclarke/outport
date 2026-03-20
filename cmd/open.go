@@ -66,7 +66,7 @@ func runOpen(cmd *cobra.Command, args []string) error {
 	}
 
 	if opened == 0 {
-		fmt.Fprintln(cmd.OutOrStdout(), "No HTTP services found. Add 'protocol: http' to services in .outport.yml.")
+		fmt.Fprintln(cmd.OutOrStdout(), "No HTTP services found. Add 'protocol: http' to services in outport.yml.")
 	}
 
 	return nil
@@ -75,7 +75,7 @@ func runOpen(cmd *cobra.Command, args []string) error {
 func openService(cmd *cobra.Command, cfg *config.Config, alloc registry.Allocation, name string, httpsEnabled bool) error {
 	svc, ok := cfg.Services[name]
 	if !ok {
-		return fmt.Errorf("Service %q not found in .outport.yml.", name)
+		return fmt.Errorf("Service %q not found in outport.yml.", name)
 	}
 
 	port, ok := alloc.Ports[name]

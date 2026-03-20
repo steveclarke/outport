@@ -34,7 +34,7 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 		r.Add(c)
 	}
 
-	// Project checks (when .outport.yml found)
+	// Project checks (when outport.yml found)
 	cwd, err := os.Getwd()
 	if err == nil {
 		if dir, findErr := config.FindDir(cwd); findErr == nil {

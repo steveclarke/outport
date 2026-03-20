@@ -147,7 +147,7 @@ func resolveShareServices(ctx *projectContext, args []string) ([]string, error) 
 		}
 	}
 	if len(services) == 0 {
-		return nil, fmt.Errorf("no shareable services found. Add 'protocol: http' to a service in .outport.yml")
+		return nil, fmt.Errorf("no shareable services found. Add 'protocol: http' to a service in outport.yml")
 	}
 	sort.Strings(services)
 	return services, nil

@@ -46,7 +46,7 @@ func (p *ProxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	port, ok := p.routes.Lookup(hostname)
 	if !ok {
 		writeErrorPage(w, http.StatusBadGateway, hostname,
-			"No project is configured for this hostname.<br>Add a matching hostname to your <code>.outport.yml</code> and run:",
+			"No project is configured for this hostname.<br>Add a matching hostname to your <code>outport.yml</code> and run:",
 			`<div class="hint">outport up</div>`)
 		return
 	}
