@@ -148,6 +148,54 @@ The `${instance:+-${instance}}` syntax uses bash-style parameter expansion:
 
 Each checkout gets its own Docker Compose stack with separate containers and volumes.
 
+## Cross-Project Dependencies
+
+Outport isn't limited to monorepos. You can write environment variables to any file on your system — even in a completely separate project. This is useful when two independent repos need to know about each other's ports.
+
+For example, a Rails API and a separate Nuxt frontend in different directories:
+
+```yaml
+# In ~/src/api/.outport.yml
+name: myapi
+services:
+  rails:
+    env_var: RAILS_PORT
+    protocol: http
+    hostname: api.myapi.test
+    env_file:
+      - .env
+      - ../frontend/.env
+  postgres:
+    env_var: DB_PORT
+
+computed:
+  API_URL:
+    value: "${rails.url}"
+    env_file: ../frontend/.env
+```
+
+When you run `outport up`, Outport detects that `../frontend/.env` is outside the project directory and asks for approval:
+
+```
+⚠ External env files detected:
+  ../frontend/.env  →  /Users/you/src/frontend/.env
+
+These files are outside the project directory (/Users/you/src/api).
+Allow writing to these files? [y/N]
+```
+
+Type `y` and the frontend's `.env` gets the API port and URL. The approval is remembered — subsequent `outport up` runs won't re-prompt. Use `--force` to reset approvals, or `-y` to skip the prompt in scripts and CI.
+
+Every run shows a reminder at the bottom of the output listing which files are written outside the project directory, so you always know what's happening.
+
+This works with absolute paths too:
+
+```yaml
+env_file: /Users/you/src/frontend/.env
+```
+
+Outport resolves all paths through symlinks before checking boundaries, so tricks like symlinking an external directory into your project won't bypass the approval check.
+
 ## Component Library
 
 A Ruby gem with Lookbook (component preview), docs site, and demo app:
