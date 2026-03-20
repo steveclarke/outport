@@ -155,7 +155,7 @@ Outport isn't limited to monorepos. You can write environment variables to any f
 For example, a Rails API and a separate Nuxt frontend in different directories:
 
 ```yaml
-# In ~/src/api/.outport.yml
+# In ~/src/api/outport.yml
 name: myapi
 services:
   rails:

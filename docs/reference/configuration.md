@@ -1,6 +1,6 @@
 # Configuration
 
-Outport is configured with a `.outport.yml` file in your project root. This file declares your services and how their ports are exposed.
+Outport is configured with a `outport.yml` file in your project root. This file declares your services and how their ports are exposed.
 
 ## Minimal Example
 
@@ -198,4 +198,4 @@ REDIS_PORT=29454
 # --- end outport.dev ---
 ```
 
-Variables declared in `.outport.yml` are managed by Outport — if they appear outside the fenced block, they're automatically relocated into it.
+Variables declared in `outport.yml` are managed by Outport — if they appear outside the fenced block, they're automatically relocated into it.

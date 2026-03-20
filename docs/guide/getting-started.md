@@ -34,7 +34,7 @@ cd myapp
 outport init
 ```
 
-This creates `.outport.yml`. Edit it to declare your services:
+This creates `outport.yml`. Edit it to declare your services:
 
 ```yaml
 name: myapp
@@ -87,7 +87,7 @@ Run `outport up` again — you'll get the same ports every time. It's idempotent
 
 When you run `outport up`:
 
-1. **Config loaded** — `.outport.yml` is read from the current directory (or nearest parent).
+1. **Config loaded** — `outport.yml` is read from the current directory (or nearest parent).
 2. **Instance resolved** — The first checkout of a project is "main". Additional checkouts (worktrees, clones) get auto-generated codes like "bxcf".
 3. **Ports allocated** — Each service gets a deterministic port via FNV-32a hash on `"{project}/{instance}/{service}"`. Range: 10000–39999.
 4. **Registry updated** — Allocations are saved to `~/.local/share/outport/registry.json`.
@@ -116,5 +116,5 @@ This tunnels all HTTP services to public Cloudflare URLs and rewrites `.env` fil
 ## Next Steps
 
 - [VS Code Extension](/guide/vscode) — ports, URLs, and service health right in the editor
-- [Configuration Reference](/reference/configuration) — full `.outport.yml` schema
+- [Configuration Reference](/reference/configuration) — full `outport.yml` schema
 - [Commands Reference](/reference/commands) — all CLI commands

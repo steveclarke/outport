@@ -8,7 +8,7 @@ If something isn't working, start here:
 outport doctor
 ```
 
-This checks DNS, the daemon, TLS certificates, the registry, and (if you're in a project directory) your `.outport.yml` and port status. Each check shows pass/fail with a fix suggestion.
+This checks DNS, the daemon, TLS certificates, the registry, and (if you're in a project directory) your `outport.yml` and port status. Each check shows pass/fail with a fix suggestion.
 
 ## protocol: http vs https
 
@@ -55,7 +55,7 @@ If `outport system status` shows stale entries (projects whose directories no lo
 outport system gc
 ```
 
-This removes entries where the project directory or `.outport.yml` is missing.
+This removes entries where the project directory or `outport.yml` is missing.
 
 ## Multiple worktrees of the same project
 

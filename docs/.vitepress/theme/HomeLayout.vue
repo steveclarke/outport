@@ -117,8 +117,8 @@
       <p class="example-caption">Cross-service URLs resolve automatically. Change nothing when switching between main and worktrees.</p>
       <div class="example-pair">
         <div class="example-block">
-          <div class="example-label">.outport.yml</div>
-          <pre class="step-code"><span class="dim"># .outport.yml</span>
+          <div class="example-label">outport.yml</div>
+          <pre class="step-code"><span class="dim"># outport.yml</span>
 name: myapp
 services:
   rails:

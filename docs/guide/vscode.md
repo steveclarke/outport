@@ -40,7 +40,7 @@ A status bar item shows your project name and instance at a glance. Click it to 
 
 ### Config Authoring
 
-When editing `.outport.yml`, you get:
+When editing `outport.yml`, you get:
 
 - **Autocomplete** for service fields (`env_var`, `hostname`, `protocol`, `preferred_port`, `env_file`)
 - **Validation** for required fields and value formats
@@ -67,4 +67,4 @@ All commands are available from the Command Palette (`Cmd+Shift+P`):
 
 ## Multi-Root Workspaces
 
-In multi-root VS Code workspaces, Outport detects `.outport.yml` in each workspace folder independently. Each folder shows its own project in the sidebar.
+In multi-root VS Code workspaces, Outport detects `outport.yml` in each workspace folder independently. Each folder shows its own project in the sidebar.

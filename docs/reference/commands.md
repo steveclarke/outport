@@ -4,7 +4,7 @@ All commands support `--json` for machine-readable output. Use `--yes`/`-y` to a
 
 ## Project Commands
 
-These commands operate on the current project (the directory containing `.outport.yml`).
+These commands operate on the current project (the directory containing `outport.yml`).
 
 ### `outport setup`
 
@@ -22,7 +22,7 @@ Guides you through enabling `.test` domains with HTTPS. The `.test` domain setup
 
 ### `outport init`
 
-Create `.outport.yml` for this project.
+Create `outport.yml` for this project.
 
 ```bash
 outport init
@@ -39,7 +39,7 @@ outport up
 outport up --force  # re-allocate all ports from scratch
 ```
 
-Reads `.outport.yml`, allocates deterministic ports, saves to the registry, and writes them to `.env`. Idempotent — running again reuses existing allocations.
+Reads `outport.yml`, allocates deterministic ports, saves to the registry, and writes them to `.env`. Idempotent — running again reuses existing allocations.
 
 | Flag | Description |
 |------|-------------|
@@ -145,7 +145,7 @@ Runs diagnostic checks on all Outport infrastructure and project configuration. 
 
 **System checks** (always run): DNS resolver file, resolver content, LaunchAgent plist, plist binary validity, daemon agent loaded, DNS resolution, HTTP proxy (port 80), HTTPS proxy (port 443), CA certificate and key existence, CA expiry, CA trust, registry validity, cloudflared availability.
 
-**Project checks** (when `.outport.yml` found): config file validation, project registration in the registry, per-service port status (running or not — both are informational, not failures).
+**Project checks** (when `outport.yml` found): config file validation, project registration in the registry, per-service port status (running or not — both are informational, not failures).
 
 Exit code 0 if all checks pass or warn. Exit code 1 if any check fails.
 

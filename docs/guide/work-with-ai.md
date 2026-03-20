@@ -1,6 +1,6 @@
 # Work with AI
 
-Outport provides an official skill for AI coding agents, so they know how to configure ports, set up `.outport.yml`, and troubleshoot your dev environment.
+Outport provides an official skill for AI coding agents, so they know how to configure ports, set up `outport.yml`, and troubleshoot your dev environment.
 
 ## Install the Skill
 
@@ -18,7 +18,7 @@ Once installed, your AI agent understands Outport's config format, commands, and
 > "Set up outport for this project. We have a Rails API, Postgres, and Redis."
 
 **Add a service to an existing config:**
-> "Add a Nuxt frontend to our .outport.yml. It needs to know the Rails API URL for server-side fetches and the browser-facing URL for CORS."
+> "Add a Nuxt frontend to our outport.yml. It needs to know the Rails API URL for server-side fetches and the browser-facing URL for CORS."
 
 **Diagnose issues:**
 > "My .test domains stopped working. Can you figure out what's wrong?"
@@ -33,7 +33,7 @@ Once installed, your AI agent understands Outport's config format, commands, and
 
 The skill covers:
 
-- `.outport.yml` configuration — services, hostnames, protocols, preferred ports, env files
+- `outport.yml` configuration — services, hostnames, protocols, preferred ports, env files
 - Computed values — template syntax, `url` vs `url:direct`, per-file overrides, `${instance}` variable
 - All CLI commands — `up`, `down`, `ports`, `open`, `share`, `doctor`, `system start/stop/restart`
 - Multi-instance workflows — worktrees, renaming, promoting
