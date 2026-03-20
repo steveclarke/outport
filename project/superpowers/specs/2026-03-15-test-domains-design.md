@@ -24,7 +24,7 @@ The registry becomes the single source of truth for instance identity. The `inte
 
 **Instance resolution in `outport apply`:**
 
-1. Load `.outport.yml` → get project name. Resolve the config directory (the directory containing `.outport.yml`, found via `config.FindDir()`). This resolved config directory — not the raw cwd — is what gets matched against `project_dir` in the registry.
+1. Load `outport.yml` → get project name. Resolve the config directory (the directory containing `outport.yml`, found via `config.FindDir()`). This resolved config directory — not the raw cwd — is what gets matched against `project_dir` in the registry.
 2. Search registry for any entry where `project_dir` matches the resolved config directory.
    - **Found** → use that instance name. Done.
 3. Not found → search registry for any other instances of this project (matching project name).
@@ -41,12 +41,12 @@ The registry becomes the single source of truth for instance identity. The `inte
 
 **New commands for instance management:**
 
-- `outport rename <old> <new>` — rename an instance. Must be run from a directory belonging to the target project (so the project name can be resolved from `.outport.yml`). Updates registry key, recomputes hostnames for the renamed instance, and re-merges all `.env` files for that instance (so computed values referencing `${service.url}` or `${service.hostname}` get updated). The new name must not collide with an existing instance of the same project. Ports are unchanged.
+- `outport rename <old> <new>` — rename an instance. Must be run from a directory belonging to the target project (so the project name can be resolved from `outport.yml`). Updates registry key, recomputes hostnames for the renamed instance, and re-merges all `.env` files for that instance (so computed values referencing `${service.url}` or `${service.hostname}` get updated). The new name must not collide with an existing instance of the same project. Ports are unchanged.
 - `outport promote` — run from a non-main instance directory. Swaps it to `"main"`, demotes current main to an auto-generated code. If no current main exists (deleted/gc'd), the instance simply becomes main with no swap. Both instances' `.env` files are re-merged to reflect the new hostnames. Ports stay the same, only hostnames and registry keys change.
 
 ### 2. Registry Extension
 
-The registry expands to store hostnames and protocols alongside port allocations. This makes it the single source of truth for the daemon's routing table — the daemon never reads `.outport.yml` files.
+The registry expands to store hostnames and protocols alongside port allocations. This makes it the single source of truth for the daemon's routing table — the daemon never reads `outport.yml` files.
 
 **Current format:**
 
@@ -74,7 +74,7 @@ The registry expands to store hostnames and protocols alongside port allocations
 
 **Hostname computation (performed by `outport apply`):**
 
-- Each HTTP/HTTPS service declares its `hostname` in `.outport.yml` (e.g., `hostname: unio` or `hostname: portal.unio`). The `hostname` field is now the hostname stem — it does not include the `.test` suffix. This is a breaking change from the previous convention where `hostname` could be set to values like `myapp.localhost`.
+- Each HTTP/HTTPS service declares its `hostname` in `outport.yml` (e.g., `hostname: unio` or `hostname: portal.unio`). The `hostname` field is now the hostname stem — it does not include the `.test` suffix. This is a breaking change from the previous convention where `hostname` could be set to values like `myapp.localhost`.
 - For the `"main"` instance, the hostname is the stem with `.test` appended: `unio.test`, `portal.unio.test`.
 - For other instances, the project name in the hostname stem is replaced with `{project}-{instance}`, then `.test` is appended. Replacement targets the rightmost occurrence of the project name in the stem to handle subdomain patterns correctly (e.g., `portal.unio` → replace `unio` → `portal.unio-bkrm` → `portal.unio-bkrm.test`).
 - Non-HTTP services (postgres, redis) get no hostname entry.
@@ -176,7 +176,7 @@ All new and modified commands support `--json` output. JSON schemas for new comm
 
 ### 6. Config Changes
 
-**`.outport.yml` — no new fields.** The existing `hostname` and `protocol` fields express everything needed. Two changes:
+**`outport.yml` — no new fields.** The existing `hostname` and `protocol` fields express everything needed. Two changes:
 
 1. **Tightened validation:** `hostname` without `protocol: http/https` is now a config error.
 2. **Breaking change to `hostname` semantics:** The `hostname` field is now a stem (e.g., `unio`, `portal.unio`) rather than a full hostname (e.g., `unio.localhost`). The `.test` suffix and instance suffixing are computed by Outport. Existing configs that used `hostname: myapp.localhost` must be updated to `hostname: myapp`.

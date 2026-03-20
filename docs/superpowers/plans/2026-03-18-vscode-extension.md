@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build a VS Code extension that surfaces Outport's runtime state (ports, URLs, health) in a sidebar panel and provides JSON Schema-based config authoring for `.outport.yml`.
+**Goal:** Build a VS Code extension that surfaces Outport's runtime state (ports, URLs, health) in a sidebar panel and provides JSON Schema-based config authoring for `outport.yml`.
 
 **Architecture:** The extension shells out to the `outport` CLI with `--json` flags and parses structured output — it never reimplements Outport logic. A `FileSystemWatcher` on the registry file triggers auto-refresh. The YAML schema is contributed via `package.json` for the Red Hat YAML extension.
 
@@ -30,7 +30,7 @@ outport-vscode/
 │   ├── statusbar.ts          # StatusBarItem — shows project/instance, click to focus sidebar
 │   ├── watcher.ts            # FileSystemWatcher on registry.json, debounced refresh
 │   └── config/
-│       └── schema.json       # JSON Schema for .outport.yml
+│       └── schema.json       # JSON Schema for outport.yml
 ├── src/test/
 │   ├── unit/
 │   │   ├── cli.test.ts       # Tests for CLI output parsing
@@ -39,7 +39,7 @@ outport-vscode/
 │       └── extension.test.ts # Tests extension activation, commands, tree registration
 ├── test-fixtures/
 │   └── workspace/
-│       └── .outport.yml      # Sample config for integration tests
+│       └── outport.yml      # Sample config for integration tests
 ├── schemas/
 │   └── outport.schema.json   # Published schema (copied from src at build time)
 ├── resources/
@@ -62,7 +62,7 @@ outport-vscode/
 - `statusbar.ts` — Exports `createStatusBar()` and `updateStatusBar(data)`. Reads the same CLI data as the sidebar. Shows/hides based on config presence.
 - `watcher.ts` — Exports `createRegistryWatcher(onChanged)`. Watches `~/.local/share/outport/registry.json` with debounce. Returns disposable.
 - `extension.ts` — Wires everything together in `activate()`. Registers commands, providers, watchers. Thin orchestration only.
-- `config/schema.json` — JSON Schema for `.outport.yml`. Contributed via `yamlValidation` in `package.json`.
+- `config/schema.json` — JSON Schema for `outport.yml`. Contributed via `yamlValidation` in `package.json`.
 
 ---
 
@@ -109,7 +109,7 @@ Replace the generated `package.json` with the full extension manifest:
   },
   "categories": ["Other"],
   "activationEvents": [
-    "workspaceContains:.outport.yml",
+    "workspaceContains:outport.yml",
     "workspaceContains:.outport.yaml"
   ],
   "main": "./out/extension.js",
@@ -159,7 +159,7 @@ Replace the generated `package.json` with the full extension manifest:
       }
     },
     "yamlValidation": [
-      { "fileMatch": ".outport.yml", "url": "./schemas/outport.schema.json" },
+      { "fileMatch": "outport.yml", "url": "./schemas/outport.schema.json" },
       { "fileMatch": ".outport.yaml", "url": "./schemas/outport.schema.json" }
     ]
   },
@@ -396,7 +396,7 @@ async function runOutport(args: string[], cwd: string): Promise<CliResult<string
       return { ok: false, error: { kind: 'not-found', message: `outport binary not found at "${bin}"` } };
     }
     const stderr = err.stderr?.trim() || err.message;
-    if (stderr.includes('No .outport.yml found') || stderr.includes('not found in registry')) {
+    if (stderr.includes('No outport.yml found') || stderr.includes('not found in registry')) {
       return { ok: false, error: { kind: 'not-registered', message: stderr } };
     }
     return { ok: false, error: { kind: 'cli-error', message: stderr } };
@@ -762,7 +762,7 @@ export class OutportTreeProvider implements vscode.TreeDataProvider<OutportTreeI
     }
 
     if (items.length === 0) {
-      return [new MessageItem('No .outport.yml found', 'info')];
+      return [new MessageItem('No outport.yml found', 'info')];
     }
 
     return items;
@@ -1045,7 +1045,7 @@ Expected: No errors.
 
 - [ ] **Step 3: Manual test with F5**
 
-Press F5 in VS Code to launch the Extension Development Host. Open a project directory that has `.outport.yml` and verify:
+Press F5 in VS Code to launch the Extension Development Host. Open a project directory that has `outport.yml` and verify:
 - The Outport panel appears in the Explorer sidebar
 - Services are listed with ports and URLs
 - Clicking a URL opens it in the browser
@@ -1061,7 +1061,7 @@ git commit -m "feat: wire sidebar, status bar, watcher, and commands"
 
 ---
 
-## Task 8: JSON Schema for `.outport.yml`
+## Task 8: JSON Schema for `outport.yml`
 
 **Files:**
 - Create: `schemas/outport.schema.json`
@@ -1074,7 +1074,7 @@ Create `schemas/outport.schema.json`:
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Outport Configuration",
-  "description": "Configuration file for Outport port manager (.outport.yml)",
+  "description": "Configuration file for Outport port manager (outport.yml)",
   "type": "object",
   "required": ["name", "services"],
   "additionalProperties": false,
@@ -1185,14 +1185,14 @@ Create a quick test by running:
 
 ```bash
 cd ~/src/outport-vscode
-npx ajv-cli validate -s schemas/outport.schema.json -d test-fixtures/workspace/.outport.yml
+npx ajv-cli validate -s schemas/outport.schema.json -d test-fixtures/workspace/outport.yml
 ```
 
-If `ajv-cli` is not available, just open the Extension Development Host with F5 and verify that `.outport.yml` gets autocomplete and validation from the YAML extension.
+If `ajv-cli` is not available, just open the Extension Development Host with F5 and verify that `outport.yml` gets autocomplete and validation from the YAML extension.
 
 - [ ] **Step 3: Create test fixture**
 
-Create `test-fixtures/workspace/.outport.yml`:
+Create `test-fixtures/workspace/outport.yml`:
 
 ```yaml
 name: testapp
@@ -1216,7 +1216,7 @@ computed:
 
 ```bash
 git add schemas/outport.schema.json test-fixtures/
-git commit -m "feat: add JSON Schema for .outport.yml config authoring"
+git commit -m "feat: add JSON Schema for outport.yml config authoring"
 ```
 
 ---
@@ -1313,7 +1313,7 @@ See your [Outport](https://outport.dev) ports, URLs, and service health right in
 - **Clickable URLs** — Click any HTTP service to open it in your browser
 - **Copy to clipboard** — Right-click to copy ports, URLs, or env var assignments
 - **Status bar** — Shows your project name and instance at a glance
-- **Config authoring** — Autocomplete and validation for `.outport.yml`
+- **Config authoring** — Autocomplete and validation for `outport.yml`
 - **Auto-refresh** — Sidebar updates when you run `outport up` or `outport down`
 
 ## Requirements

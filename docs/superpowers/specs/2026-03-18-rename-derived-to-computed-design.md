@@ -75,9 +75,9 @@ Rename the term "derived" to "computed" throughout the Outport codebase. This is
 
 | Current | New |
 |---------|-----|
-| `derived:` in `.outport.yml` | `computed:` |
+| `derived:` in `outport.yml` | `computed:` |
 
-No fallback or migration. Old configs using `derived:` will get an error from YAML unmarshaling (unknown key). Users update their `.outport.yml` and install the new binary.
+No fallback or migration. Old configs using `derived:` will get an error from YAML unmarshaling (unknown key). Users update their `outport.yml` and install the new binary.
 
 ### Error messages and comments
 

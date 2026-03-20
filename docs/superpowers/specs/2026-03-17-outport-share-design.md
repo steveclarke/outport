@@ -141,11 +141,11 @@ JSON is flushed to stdout immediately after tunnel URLs are captured, so a consu
 
 | Condition | Error |
 |-----------|-------|
-| No `.outport.yml` found | `no outport configuration found. Run 'outport init' first` |
+| No `outport.yml` found | `no outport configuration found. Run 'outport init' first` |
 | No registry entry | `no port allocations found. Run 'outport apply' first` |
 | Named service doesn't exist | `unknown service "foo"` (FlagError, shows usage) |
 | Named service has no protocol | `service "redis" has no protocol and cannot be shared` |
-| No HTTP services in project | `no shareable services found. Add 'protocol: http' to a service in .outport.yml` |
+| No HTTP services in project | `no shareable services found. Add 'protocol: http' to a service in outport.yml` |
 | `cloudflared` not installed | `cloudflared not found. Install with: brew install cloudflared` |
 
 ### Runtime Errors (during tunnel startup)

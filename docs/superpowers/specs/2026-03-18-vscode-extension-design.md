@@ -2,7 +2,7 @@
 
 ## Problem
 
-After running `bin/dev` or `bin/services`, developers have to switch to a terminal and run `outport ports` to find their allocated URLs and ports. There's a gap between where you configure your dev environment and where you use it. New users also find `.outport.yml` authoring intimidating without editor guidance.
+After running `bin/dev` or `bin/services`, developers have to switch to a terminal and run `outport ports` to find their allocated URLs and ports. There's a gap between where you configure your dev environment and where you use it. New users also find `outport.yml` authoring intimidating without editor guidance.
 
 ## Solution
 
@@ -56,18 +56,18 @@ No notifications, no popups, no second status bar item.
 
 ### Workspace Awareness
 
-- **Single-root workspace**: finds `.outport.yml` starting from the workspace folder root and walking up to parent directories (same as the CLI's `FindDir()`). This means a config in a parent of the workspace root will be found. One project, one sidebar tree.
+- **Single-root workspace**: finds `outport.yml` starting from the workspace folder root and walking up to parent directories (same as the CLI's `FindDir()`). This means a config in a parent of the workspace root will be found. One project, one sidebar tree.
 - **Multi-root workspace**: each workspace folder is checked independently. The sidebar shows a section per project. If two folders are different instances of the same project (e.g., main checkout and a worktree), both appear in the sidebar — this is intentional and useful.
 - **Worktree windows**: each VS Code window has its own workspace root, so each gets its own instance resolved automatically. The status bar indicator shows which instance you're in.
-- **Nested configs**: follows the same semantics as the CLI — finds the nearest `.outport.yml` walking up from each workspace folder root. See [#50](https://github.com/steveclarke/outport/issues/50) for future discussion on shadowing warnings.
+- **Nested configs**: follows the same semantics as the CLI — finds the nearest `outport.yml` walking up from each workspace folder root. See [#50](https://github.com/steveclarke/outport/issues/50) for future discussion on shadowing warnings.
 
-### Config Authoring (`.outport.yml` Intelligence)
+### Config Authoring (`outport.yml` Intelligence)
 
 Three layers, shipped incrementally:
 
 **Layer 1: JSON Schema (MVP)**
 
-A JSON Schema for `.outport.yml` consumed by the Red Hat YAML extension (`redhat.vscode-yaml`). Provides:
+A JSON Schema for `outport.yml` consumed by the Red Hat YAML extension (`redhat.vscode-yaml`). Provides:
 
 - Autocomplete for top-level keys (`name`, `services`, `computed`)
 - Autocomplete for service fields (`env_var`, `preferred_port`, `protocol`, `hostname`, `env_file`)
@@ -113,8 +113,8 @@ The extension must handle CLI failures gracefully since it depends entirely on s
 - Sidebar shows the project name with the error message from stderr
 - The error is also logged to the Outport Output channel
 
-**No `.outport.yml` found in workspace:**
-- Sidebar shows "No .outport.yml found" with a hint to run `outport init`
+**No `outport.yml` found in workspace:**
+- Sidebar shows "No outport.yml found" with a hint to run `outport init`
 - Status bar is hidden
 
 ## Technology & Project Structure
@@ -136,7 +136,7 @@ outport-vscode/
 │   │   └── items.ts          # TreeItem types (project, service, computed, action)
 │   ├── statusbar.ts          # Status bar indicator
 │   ├── config/
-│   │   ├── schema.json       # JSON Schema for .outport.yml
+│   │   ├── schema.json       # JSON Schema for outport.yml
 │   │   └── diagnostics.ts    # Layer 2 custom validation diagnostics
 │   ├── cli.ts                # Wrapper: shells out to `outport` CLI, parses JSON
 │   └── watcher.ts            # FileSystemWatcher on registry.json
@@ -153,7 +153,7 @@ outport-vscode/
 **Refresh strategy:**
 
 - Watch `~/.local/share/outport/registry.json` — any `outport up` or `outport down` triggers sidebar refresh. This is the sole refresh trigger; action buttons (Run Up, Run Down) do not separately refresh on completion since the registry write will trigger the watcher.
-- Watch `.outport.yml` in the workspace — changes trigger re-validation diagnostics
+- Watch `outport.yml` in the workspace — changes trigger re-validation diagnostics
 - No polling, no timers
 
 **File watcher note**: The registry file is outside the workspace, so the watcher uses an absolute `GlobPattern`. The registry is written atomically via temp file + rename — the implementer should verify that `FileSystemWatcher` picks up rename events on macOS (FSEvents). If not, a fallback of refreshing on action button completion may be needed.
@@ -171,7 +171,7 @@ outport-vscode/
 - Instance label (`[main]` / `[bxcf]`)
 - Action buttons: Run Up, Run Up --force, Run Down (output to Output channel)
 - Status bar indicator: `$(globe) myapp [main]` / hidden when no config
-- JSON Schema for `.outport.yml` (Layer 1 config authoring)
+- JSON Schema for `outport.yml` (Layer 1 config authoring)
 - Registry file watcher for auto-refresh
 - Multi-root workspace support
 

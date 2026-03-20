@@ -16,7 +16,7 @@ Today, every project has to bridge this gap in its own framework-specific way �
 
 ## The Solution
 
-Let `.outport.yml` express templates that reference allocated ports. Outport resolves them and writes finished values to `.env`.
+Let `outport.yml` express templates that reference allocated ports. Outport resolves them and writes finished values to `.env`.
 
 ```yaml
 name: unio
@@ -75,7 +75,7 @@ The frontend reads `NUXT_API_BASE_URL` from its `.env` — no template logic, no
 - Only service port variables can be referenced (not other computed values)
 - Unresolved references are a config validation error
 
-The `${VAR}` syntax was chosen for familiarity — it matches `.env` file conventions and is immediately recognizable. Since YAML values are always quoted strings in our config, there's no risk of shell expansion during config parsing. However, users should be aware that running `.outport.yml` through `envsubst` or a shell heredoc would expand these references prematurely.
+The `${VAR}` syntax was chosen for familiarity — it matches `.env` file conventions and is immediately recognizable. Since YAML values are always quoted strings in our config, there's no risk of shell expansion during config parsing. However, users should be aware that running `outport.yml` through `envsubst` or a shell heredoc would expand these references prematurely.
 
 ### What can be referenced
 
@@ -265,14 +265,14 @@ Computed values often contain URLs with colons, slashes, and commas. Outport wri
 
 Without computed values, Outport solves port allocation but pushes URL construction into every project. Each project does framework-specific work to bridge "I have a port number" to "I have the URL my app needs."
 
-With computed values, Outport writes finished URLs. The project declares its service topology once in `.outport.yml` and everything works — regardless of framework, language, or how many services talk to each other.
+With computed values, Outport writes finished URLs. The project declares its service topology once in `outport.yml` and everything works — regardless of framework, language, or how many services talk to each other.
 
 This is also the foundation for future features:
 - **`outport share`** (#16) could re-resolve computed values with tunnel URLs instead of `localhost`
 - **DNS/proxy** (#13) could re-resolve computed values with `.test` hostnames
 - **Multi-service orchestration** (#17) relies on computed values to wire services together through tunnels
 
-When `outport share` re-resolves computed values, `outport apply` (without share) always restores the localhost versions. The template lives in `.outport.yml`; the resolved value lives in `.env`. Re-applying always produces the correct local values.
+When `outport share` re-resolves computed values, `outport apply` (without share) always restores the localhost versions. The template lives in `outport.yml`; the resolved value lives in `.env`. Re-applying always produces the correct local values.
 
 Computed values are the connective tissue between port allocation and the networking features in the roadmap.
 

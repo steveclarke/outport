@@ -184,7 +184,7 @@ Source cloned to `/Users/steve/src/portless-research`. Full bookmark with discus
 
 ## Key Design Decisions (Resolved)
 
-1. **Config file format** — `.outport.yml` (YAML) ✅
+1. **Config file format** — `outport.yml` (YAML) ✅
 2. **Port range** — 10000-39999 ✅
 3. **Hash input** — `{project}/{instance}/{service}` via FNV-32 ✅
 4. **Registry format** — JSON (`~/.config/outport/registry.json`) ✅

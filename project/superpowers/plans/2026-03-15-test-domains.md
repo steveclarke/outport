@@ -651,7 +651,7 @@ services:
     hostname: myapp
 `
 	dir := t.TempDir()
-	os.WriteFile(filepath.Join(dir, ".outport.yml"), []byte(yaml), 0644)
+	os.WriteFile(filepath.Join(dir, "outport.yml"), []byte(yaml), 0644)
 	_, err := Load(dir)
 	if err == nil {
 		t.Fatal("expected error for hostname without http protocol")
@@ -684,7 +684,7 @@ services:
     hostname: %s
 `, tt.hostname)
 		dir := t.TempDir()
-		os.WriteFile(filepath.Join(dir, ".outport.yml"), []byte(yaml), 0644)
+		os.WriteFile(filepath.Join(dir, "outport.yml"), []byte(yaml), 0644)
 		_, err := Load(dir)
 		if (err != nil) != tt.wantErr {
 			t.Errorf("hostname %q: err=%v, wantErr=%v", tt.hostname, err, tt.wantErr)
@@ -702,7 +702,7 @@ services:
     hostname: othername
 `
 	dir := t.TempDir()
-	os.WriteFile(filepath.Join(dir, ".outport.yml"), []byte(yaml), 0644)
+	os.WriteFile(filepath.Join(dir, "outport.yml"), []byte(yaml), 0644)
 	_, err := Load(dir)
 	if err == nil {
 		t.Fatal("expected error: hostname must contain project name")
@@ -764,7 +764,7 @@ computed:
     env_file: .env
 `
 	dir := t.TempDir()
-	os.WriteFile(filepath.Join(dir, ".outport.yml"), []byte(yaml), 0644)
+	os.WriteFile(filepath.Join(dir, "outport.yml"), []byte(yaml), 0644)
 	cfg, err := Load(dir)
 	if err != nil {
 		t.Fatalf("Load: %v", err)
@@ -797,7 +797,7 @@ computed:
     env_file: .env
 `
 	dir := t.TempDir()
-	os.WriteFile(filepath.Join(dir, ".outport.yml"), []byte(yaml), 0644)
+	os.WriteFile(filepath.Join(dir, "outport.yml"), []byte(yaml), 0644)
 	_, err := Load(dir)
 	if err == nil {
 		t.Fatal("expected error for unrecognized modifier")
@@ -818,7 +818,7 @@ computed:
     env_file: .env
 `
 	dir := t.TempDir()
-	os.WriteFile(filepath.Join(dir, ".outport.yml"), []byte(yaml), 0644)
+	os.WriteFile(filepath.Join(dir, "outport.yml"), []byte(yaml), 0644)
 	_, err := Load(dir)
 	if err != nil {
 		t.Fatalf("expected no error for url field, got: %v", err)
@@ -2823,7 +2823,7 @@ The rename, promote, and apply commands all need to recompute template vars, res
 
 This implementation makes several breaking changes (all acceptable per Steve's guidance):
 - Registry format adds `hostnames` and `protocols` fields
-- `hostname` field in `.outport.yml` changes from full hostname (e.g., `myapp.localhost`) to stem (e.g., `myapp`)
+- `hostname` field in `outport.yml` changes from full hostname (e.g., `myapp.localhost`) to stem (e.g., `myapp`)
 - `internal/worktree` package removed entirely
 - Instance names sourced from registry, not git worktree detection
 - `${service.hostname}` template resolves to `.test` hostname instead of raw config value

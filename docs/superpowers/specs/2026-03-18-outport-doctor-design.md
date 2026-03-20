@@ -64,7 +64,7 @@ Registers checks and handles output:
 1. Always registers system checks.
 2. Gets the working directory via `os.Getwd()`, then attempts `config.FindDir(cwd)` (matching existing command patterns like `loadProjectContext()`):
    - If found, loads config once via `config.Load(dir)`. If config is valid, registers project checks using the loaded config and dir. If config is invalid, registers a single failing config check and skips remaining project checks.
-   - If no `.outport.yml` found, no project checks are added (no error).
+   - If no `outport.yml` found, no project checks are added (no error).
 3. Runs all checks via the Runner.
 4. Outputs styled or JSON results.
 
@@ -98,7 +98,7 @@ System
   ✓ cloudflared installed
 
 Project (myapp)
-  ✓ .outport.yml valid
+  ✓ outport.yml valid
   ✓ Project registered (myapp/main)
   ✓ Port 12345 (web) available
   ✓ Port 12346 (postgres) available
@@ -172,11 +172,11 @@ Warnings:
 | 13 | Registry file valid | `registry.Load()` — missing file is Warn, parse error is Fail | Warn: no projects yet. Fail: corrupted file. |
 | 14 | cloudflared installed | `exec.LookPath("cloudflared")` | **Warn** → `brew install cloudflared` |
 
-### Project Checks (only when `.outport.yml` found)
+### Project Checks (only when `outport.yml` found)
 
 | # | Check | Implementation | On Failure |
 |---|-------|---------------|------------|
-| 15 | .outport.yml valid | `config.Load(dir)` — reports the validation error directly | Fail |
+| 15 | outport.yml valid | `config.Load(dir)` — reports the validation error directly | Fail |
 | 16 | Project registered | `reg.FindByDir(dir)` | Fail → `outport up` |
 | 17 | Port available (per service) | `portcheck.IsUp(port)` per allocated port | **Warn** — port in use is informational since the service may legitimately be running |
 

@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Evolve .outport.yml to support `preferred_port` (try first, hash fallback), explicit `protocol`, `groups` with shared `env_file`, per-service `env_file` (string or array for multi-file writes), and config validation — while keeping simple configs unchanged.
+**Goal:** Evolve outport.yml to support `preferred_port` (try first, hash fallback), explicit `protocol`, `groups` with shared `env_file`, per-service `env_file` (string or array for multi-file writes), and config validation — while keeping simple configs unchanged.
 
 **Architecture:** Config package gains a normalization step that flattens groups into the Services map with resolved fields. The allocator gains a preferred-port-first strategy. The `up` command groups services by env_file path and writes once per unique file. Output shows URLs for HTTP services and group headers when present. New validation catches env_var collisions, missing env_var, and empty groups.
 
@@ -186,7 +186,7 @@ import (
 func writeConfig(t *testing.T, content string) string {
 	t.Helper()
 	dir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, ".outport.yml"), []byte(content), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "outport.yml"), []byte(content), 0644); err != nil {
 		t.Fatal(err)
 	}
 	return dir
@@ -543,7 +543,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-const FileName = ".outport.yml"
+const FileName = "outport.yml"
 
 // EnvFileField handles YAML that can be a string or []string.
 type EnvFileField []string
@@ -765,7 +765,7 @@ import (
 var upCmd = &cobra.Command{
 	Use:   "up",
 	Short: "Allocate ports and write to .env files",
-	Long:  "Reads .outport.yml, allocates deterministic ports, and writes them to .env files.",
+	Long:  "Reads outport.yml, allocates deterministic ports, and writes them to .env files.",
 	RunE:  runUp,
 }
 
@@ -1271,7 +1271,7 @@ git commit -m "feat: update init presets with preferred_port and protocol"
 
 ```bash
 cd /tmp && rm -rf outport-test-simple && mkdir outport-test-simple && cd outport-test-simple && git init -q
-cat > .outport.yml << 'EOF'
+cat > outport.yml << 'EOF'
 name: simple-app
 services:
   web:
@@ -1293,7 +1293,7 @@ Expected: Web gets 3000 (preferred, available), postgres gets 5432. URLs shown f
 
 ```bash
 cd /tmp && rm -rf outport-test-mono && mkdir -p outport-test-mono/backend && cd outport-test-mono && git init -q
-cat > .outport.yml << 'EOF'
+cat > outport.yml << 'EOF'
 name: unio
 groups:
   backend:
@@ -1336,7 +1336,7 @@ Expected: Two env files written. `backend/.env` has RAILS_PORT, DB_PORT, REDIS_P
 
 ```bash
 cd /tmp && rm -rf outport-test-collision && mkdir outport-test-collision && cd outport-test-collision && git init -q
-cat > .outport.yml << 'EOF'
+cat > outport.yml << 'EOF'
 name: collision-test
 services:
   web:
@@ -1356,7 +1356,7 @@ Expected: One gets 3000, the other falls back to hash-based allocation.
 ```bash
 cd /tmp && rm -rf outport-test-val && mkdir outport-test-val && cd outport-test-val && git init -q
 # Test env_var collision
-cat > .outport.yml << 'EOF'
+cat > outport.yml << 'EOF'
 name: val-test
 services:
   web:

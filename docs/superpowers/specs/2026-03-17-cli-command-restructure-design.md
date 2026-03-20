@@ -31,7 +31,7 @@ Run in a project directory, operate on that project's configuration and registry
 
 | Command | Description | Replaces | Flags |
 |---------|-------------|----------|-------|
-| `outport init` | Create `.outport.yml` template | *(unchanged)* | `--json` |
+| `outport init` | Create `outport.yml` template | *(unchanged)* | `--json` |
 | `outport up` | Register project, allocate ports, write `.env` | `apply` | `--force`, `--json` |
 | `outport down` | Clean `.env` blocks, remove from registry | `unapply` | `--json` |
 | `outport ports` | Show allocated ports for current project | *(unchanged)* | `--check`, `--computed`, `--json` |
@@ -119,8 +119,8 @@ outport system start          # installs DNS, CA, starts daemon
 
 ```bash
 cd ~/src/myapp
-outport init                  # creates .outport.yml
-vim .outport.yml              # configure services
+outport init                  # creates outport.yml
+vim outport.yml              # configure services
 outport up                    # allocate ports, write .env — done
 outport open                  # open in browser
 ```
@@ -166,7 +166,7 @@ Usage:
   outport [command]
 
 Project Commands:
-  init              Create .outport.yml for this project
+  init              Create outport.yml for this project
   up                Bring this project into outport
   down              Remove this project from outport
   ports             Show ports for the current project

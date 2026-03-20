@@ -109,7 +109,7 @@ The thing nothing else does. Positions for AI/worktree growth. Requires reader t
 
 **Problem:** Feature list, not value proposition. "Port orchestration" means nothing to a cold visitor.
 
-**Proposed:** "Declare your services in `.outport.yml`. Every checkout gets deterministic ports, `.test` hostnames with HTTPS, and fully wired `.env` files. Works across projects, worktrees, and parallel AI agents."
+**Proposed:** "Declare your services in `outport.yml`. Every checkout gets deterministic ports, `.test` hostnames with HTTPS, and fully wired `.env` files. Works across projects, worktrees, and parallel AI agents."
 
 ---
 

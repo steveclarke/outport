@@ -4,7 +4,7 @@
 
 **Goal:** Add a top-level `outport doctor` diagnostic command that checks the health of all Outport infrastructure and reports pass/warn/fail with actionable fix suggestions.
 
-**Architecture:** New `internal/doctor/` package with `Check`, `Result`, `Runner` types. System checks always run; project checks run when `.outport.yml` is found. A few exports are added to `internal/platform/` and `internal/certmanager/` so doctor can reuse existing logic without duplication.
+**Architecture:** New `internal/doctor/` package with `Check`, `Result`, `Runner` types. System checks always run; project checks run when `outport.yml` is found. A few exports are added to `internal/platform/` and `internal/certmanager/` so doctor can reuse existing logic without duplication.
 
 **Tech Stack:** Go, Cobra CLI, `miekg/dns` (already a dependency), `portcheck`, `platform`, `certmanager`, `config`, `registry`
 
@@ -874,14 +874,14 @@ services:
   web:
     env_var: PORT
 `
-	os.WriteFile(filepath.Join(dir, ".outport.yml"), []byte(cfg), 0644)
+	os.WriteFile(filepath.Join(dir, "outport.yml"), []byte(cfg), 0644)
 	res := checkConfigValid(dir)
 	if res.Status != Pass {
 		t.Errorf("expected Pass, got %v: %s", res.Status, res.Message)
 	}
 
 	// Invalid config (missing name)
-	os.WriteFile(filepath.Join(dir, ".outport.yml"), []byte("services:\n  web:\n    env_var: PORT\n"), 0644)
+	os.WriteFile(filepath.Join(dir, "outport.yml"), []byte("services:\n  web:\n    env_var: PORT\n"), 0644)
 	res = checkConfigValid(dir)
 	if res.Status != Fail {
 		t.Errorf("expected Fail, got %v", res.Status)
@@ -928,14 +928,14 @@ import (
 	"github.com/outport-app/outport/internal/registry"
 )
 
-// checkConfigValid attempts to load and validate the .outport.yml in dir.
+// checkConfigValid attempts to load and validate the outport.yml in dir.
 func checkConfigValid(dir string) *Result {
-	name := ".outport.yml valid"
+	name := "outport.yml valid"
 	_, err := config.Load(dir)
 	if err != nil {
-		return &Result{Name: name, Status: Fail, Message: fmt.Sprintf(".outport.yml: %v", err)}
+		return &Result{Name: name, Status: Fail, Message: fmt.Sprintf("outport.yml: %v", err)}
 	}
-	return &Result{Name: name, Status: Pass, Message: ".outport.yml valid"}
+	return &Result{Name: name, Status: Pass, Message: "outport.yml valid"}
 }
 
 // checkProjectRegistered checks if the current directory is registered in the registry.
@@ -976,20 +976,20 @@ func ProjectChecks(dir string, cfg *config.Config, configErr error, regPath stri
 	// Config validity check
 	if configErr != nil {
 		checks = append(checks, Check{
-			Name:     ".outport.yml valid",
+			Name:     "outport.yml valid",
 			Category: category,
 			Run: func() *Result {
-				return &Result{Name: ".outport.yml valid", Status: Fail, Message: fmt.Sprintf(".outport.yml: %v", configErr)}
+				return &Result{Name: "outport.yml valid", Status: Fail, Message: fmt.Sprintf("outport.yml: %v", configErr)}
 			},
 		})
 		return checks // Skip remaining project checks
 	}
 
 	checks = append(checks, Check{
-		Name:     ".outport.yml valid",
+		Name:     "outport.yml valid",
 		Category: category,
 		Run: func() *Result {
-			return &Result{Name: ".outport.yml valid", Status: Pass, Message: ".outport.yml valid"}
+			return &Result{Name: "outport.yml valid", Status: Pass, Message: "outport.yml valid"}
 		},
 	})
 
@@ -1115,7 +1115,7 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 		r.Add(c)
 	}
 
-	// Project checks (when .outport.yml found)
+	// Project checks (when outport.yml found)
 	cwd, err := os.Getwd()
 	if err == nil {
 		if dir, findErr := config.FindDir(cwd); findErr == nil {

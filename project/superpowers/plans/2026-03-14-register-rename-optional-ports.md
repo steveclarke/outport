@@ -57,7 +57,7 @@ var registerCmd = &cobra.Command{
 	Use:     "register",
 	Aliases: []string{"reg"},
 	Short:   "Register project and allocate ports",
-	Long:    "Reads .outport.yml, allocates deterministic ports, saves to the central registry, and writes them to .env files.",
+	Long:    "Reads outport.yml, allocates deterministic ports, saves to the central registry, and writes them to .env files.",
 	RunE:    runRegister,
 }
 ```
@@ -570,7 +570,7 @@ In `skills/outport/SKILL.md`, replace `outport up` references with `outport regi
 ## Quick Reference
 
 ```bash
-outport init          # Create .outport.yml (interactive)
+outport init          # Create outport.yml (interactive)
 outport register      # Register project, allocate ports, write .env
 outport reg           # Short alias for register
 outport ports         # Show ports for current project
@@ -590,7 +590,7 @@ outport gc            # Remove stale registry entries
 Remove `preferred_port` from the primary config example. Keep it in an "advanced" section showing it's optional:
 
 ```yaml
-# .outport.yml
+# outport.yml
 name: my-project
 services:
   web:

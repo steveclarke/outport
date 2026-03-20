@@ -2,7 +2,7 @@
 
 ## The Problem
 
-The current `.outport.yml` design assumes a simple model: one project, one `.env` file, ports are the only moving part. Real-world projects like Unio break this in several ways.
+The current `outport.yml` design assumes a simple model: one project, one `.env` file, ports are the only moving part. Real-world projects like Unio break this in several ways.
 
 ## Case Study: Unio
 

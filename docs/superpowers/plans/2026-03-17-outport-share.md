@@ -765,7 +765,7 @@ func resolveShareServices(ctx *projectContext, args []string) ([]string, error) 
 		}
 	}
 	if len(services) == 0 {
-		return nil, fmt.Errorf("no shareable services found. Add 'protocol: http' to a service in .outport.yml")
+		return nil, fmt.Errorf("no shareable services found. Add 'protocol: http' to a service in outport.yml")
 	}
 	sort.Strings(services)
 	return services, nil
@@ -913,7 +913,7 @@ func TestShare_NoConfig(t *testing.T) {
 
 	err := rootCmd.Execute()
 	if err == nil {
-		t.Fatal("expected error when no .outport.yml exists")
+		t.Fatal("expected error when no outport.yml exists")
 	}
 }
 
@@ -1049,7 +1049,7 @@ Expected: No errors
 
 - [ ] **Step 3: Manual smoke test**
 
-Run from a project with `.outport.yml` and allocated ports:
+Run from a project with `outport.yml` and allocated ports:
 
 ```bash
 just run share

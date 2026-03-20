@@ -51,7 +51,7 @@ docs/
 │   ├── getting-started.md   # init → apply → setup walkthrough
 │   └── installation.md      # Homebrew, from source, local build
 └── reference/
-    ├── configuration.md     # .outport.yml schema with annotated examples
+    ├── configuration.md     # outport.yml schema with annotated examples
     └── commands.md          # All CLI commands, grouped logically
 ```
 
@@ -83,7 +83,7 @@ The hero terminal demo is a static styled `<pre>` block (not animated, not a scr
    - .test Domains — real hostnames, built-in DNS and reverse proxy
    - Multi-Instance — worktrees/branches get their own ports
    - .env Integration — ports and URLs written to env files
-3. **How it works** — Three-step flow: Configure (.outport.yml), Apply (outport apply), Develop (.env has everything). Each step shows a code/terminal snippet.
+3. **How it works** — Three-step flow: Configure (outport.yml), Apply (outport apply), Develop (.env has everything). Each step shows a code/terminal snippet.
 4. **Install** — "Get started in seconds" with `brew install steveclarke/tap/outport` in a dark terminal block.
 5. **Footer** — MIT license, GitHub link, author credit.
 
@@ -93,7 +93,7 @@ The hero terminal demo is a static styled `<pre>` block (not animated, not a scr
 
 - Prerequisites (macOS, Homebrew or Go)
 - Install Outport
-- `outport init` — walk through creating `.outport.yml` with a real example
+- `outport init` — walk through creating `outport.yml` with a real example
 - `outport apply` — show the output, explain what happened (registry, .env block)
 - `outport setup` — enable .test domains (DNS + proxy daemon)
 - "What just happened" — brief explanation of registry, fenced .env blocks, DNS resolution
@@ -106,7 +106,7 @@ The hero terminal demo is a static styled `<pre>` block (not animated, not a scr
 
 ### Configuration Reference (`reference/configuration.md`)
 
-- Full `.outport.yml` schema with annotated example
+- Full `outport.yml` schema with annotated example
 - `name` field (required, naming rules)
 - `services` map: `env_var`, `env_file` (string or array), `preferred_port`, `protocol`, `hostname`
 - Computed values: `${service.field}` syntax, `${service.url:direct}` modifier

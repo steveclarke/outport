@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Rewrite the dotenv merge logic to always overwrite variables declared in `.outport.yml`, remove the marker system, and use `github.com/joho/godotenv` for proper `.env` parsing.
+**Goal:** Rewrite the dotenv merge logic to always overwrite variables declared in `outport.yml`, remove the marker system, and use `github.com/joho/godotenv` for proper `.env` parsing.
 
-**Architecture:** Replace the hand-rolled string manipulation in `internal/dotenv/dotenv.go` with `godotenv` for reading `.env` files. Outport always overwrites variables it manages (as declared in the config). Variables NOT in the config are preserved untouched. No markers needed — the `.outport.yml` is the source of truth for what Outport owns.
+**Architecture:** Replace the hand-rolled string manipulation in `internal/dotenv/dotenv.go` with `godotenv` for reading `.env` files. Outport always overwrites variables it manages (as declared in the config). Variables NOT in the config are preserved untouched. No markers needed — the `outport.yml` is the source of truth for what Outport owns.
 
 **Tech Stack:** Go 1.24+, `github.com/joho/godotenv` (https://github.com/joho/godotenv)
 
@@ -470,7 +470,7 @@ git commit -m "feat: rewrite dotenv merge — always overwrite managed vars, rem
 | Before | After |
 |--------|-------|
 | Existing vars without marker silently skipped | Existing vars always overwritten if declared in config |
-| `# managed by outport` marker on every line | No markers — `.outport.yml` is the source of truth |
+| `# managed by outport` marker on every line | No markers — `outport.yml` is the source of truth |
 | Hand-rolled parsing, no `export` handling | Handles `export` prefix, quoted values preserved |
 | `TestMerge_DoesNotClobberUserVar` tested the bug | `TestMerge_OverwritesExistingVar` tests the fix |
 | First run on existing `.env` appeared to work but didn't | First run actually works |

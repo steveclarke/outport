@@ -13,7 +13,7 @@ Local SSL for `.test` domains via a local Certificate Authority. After `outport 
 - **Go `crypto/x509` + `crypto/ecdsa`** — stdlib, no external dependencies. Portless shells out to `openssl` (they're Node.js), but Go has first-class support.
 - **SNI callback for on-demand certs** — per-hostname certs generated lazily as new hostnames appear (worktrees, new projects). No pre-generation needed.
 - **Folded into `outport setup`** — no separate `outport trust` command. Setup already does one-time privileged operations (resolver file, LaunchAgent). Adding the CA to the system trust store fits that pattern. Fewer commands to remember.
-- **Automatic HTTPS** — no per-service opt-in. If SSL is set up and a service has a hostname, it gets HTTPS. `http://` redirects to `https://`. The `protocol` field in `.outport.yml` means "this service has a web hostname," not HTTP vs HTTPS.
+- **Automatic HTTPS** — no per-service opt-in. If SSL is set up and a service has a hostname, it gets HTTPS. `http://` redirects to `https://`. The `protocol` field in `outport.yml` means "this service has a web hostname," not HTTP vs HTTPS.
 - **Dual-port (80 + 443)** — standard ports. Browsers expect HTTPS on 443. The LaunchAgent plist declares two named sockets. Byte-peeking (serving both protocols on one port) only works for non-standard ports and would break `https://myapp.test` (which hits 443 by default).
 - **No HSTS headers** — the proxy does not send `Strict-Transport-Security`. For local dev, HSTS can cause problems if SSL is later removed (browsers cache the directive and refuse plain HTTP).
 
@@ -124,7 +124,7 @@ Idempotent: if the CA already exists and is trusted, these steps are skipped.
 - If present: `buildTemplateVars` uses `https` as the scheme for `${service.url}` regardless of the `protocol` field value. Example: `${rails.url}` → `https://myapp.test`
 - If absent: `buildTemplateVars` uses the `protocol` field as today (`http://myapp.test`)
 - `${service.url:direct}` is unaffected — always `http://localhost:{port}`
-- No changes to `.outport.yml` format — the `protocol` field continues to mean "this service has a web hostname"
+- No changes to `outport.yml` format — the `protocol` field continues to mean "this service has a web hostname"
 
 ## `outport open` Changes
 
@@ -144,7 +144,7 @@ Idempotent: if the CA already exists and is trusted, these steps are skipped.
 
 ## What Doesn't Change
 
-- **`.outport.yml` format** — no new fields needed for SSL
+- **`outport.yml` format** — no new fields needed for SSL
 - **Backend apps** — always receive plain HTTP on localhost
 - **`${service.url:direct}`** — always produces `http://localhost:{port}` (direct bypass)
 - **DNS** — still resolves `*.test` to `127.0.0.1` on port 15353

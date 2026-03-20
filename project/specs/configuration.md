@@ -1,6 +1,6 @@
 # Configuration
 
-> Config format, fields, rules, and edge cases for `.outport.yml`.
+> Config format, fields, rules, and edge cases for `outport.yml`.
 
 ## Status: Draft
 
@@ -14,7 +14,7 @@ Port numbers are an implementation detail that Outport abstracts away — the sa
 
 ## Config File
 
-### `.outport.yml` (committed to repo)
+### `outport.yml` (committed to repo)
 
 The project config declares what services exist and how to expose them via environment variables. It does NOT (by default) specify port numbers.
 
@@ -147,9 +147,9 @@ This needs further validation through real-world setup before finalizing.
 
 ## Services You Don't Put in the Config
 
-If a service's port is managed outside of Outport (e.g., a system service you always run on its default port), you can simply leave it out of `.outport.yml`. Outport only manages what you declare.
+If a service's port is managed outside of Outport (e.g., a system service you always run on its default port), you can simply leave it out of `outport.yml`. Outport only manages what you declare.
 
-The tradeoff: leaving it out means `.outport.yml` isn't a complete picture of your project's services. Including it with `fixed_port` serves as documentation — "this project uses Postgres on 5432" — even if Outport isn't dynamically assigning the port.
+The tradeoff: leaving it out means `outport.yml` isn't a complete picture of your project's services. Including it with `fixed_port` serves as documentation — "this project uses Postgres on 5432" — even if Outport isn't dynamically assigning the port.
 
 This is a developer preference. Both approaches are valid.
 
@@ -157,7 +157,7 @@ This is a developer preference. Both approaches are valid.
 
 _(Design question: do we need a local override file?)_
 
-Use case: the committed `.outport.yml` declares services generically, but on your specific machine or in a specific worktree, you want to override something — lock a port, change an env file path, etc.
+Use case: the committed `outport.yml` declares services generically, but on your specific machine or in a specific worktree, you want to override something — lock a port, change an env file path, etc.
 
 Pattern is familiar from `.env` / `.env.local` in Rails.
 
@@ -168,7 +168,7 @@ services:
     fixed_port: 5432    # on this machine, use system Postgres
 ```
 
-This would be merged on top of `.outport.yml` at load time. Not yet decided whether this is needed — the `fixed_port` field in the main config might be sufficient for most cases.
+This would be merged on top of `outport.yml` at load time. Not yet decided whether this is needed — the `fixed_port` field in the main config might be sufficient for most cases.
 
 ## CLI Commands
 
@@ -176,19 +176,19 @@ Commands should say what they do. No arcane abbreviations.
 
 ### `outport init`
 
-Creates `.outport.yml`. One-time setup. Does NOT register or allocate ports.
+Creates `outport.yml`. One-time setup. Does NOT register or allocate ports.
 
 Interactive setup should:
 
 1. Ask for the project name (default: directory name)
 2. Ask which services to include (from presets: web, postgres, redis, mailpit, vite, etc.)
 3. NOT ask about port numbers — that's the whole point
-4. Generate a clean `.outport.yml` with just names, env vars, and protocols
+4. Generate a clean `outport.yml` with just names, env vars, and protocols
 5. Optionally add `env_file` if the user specifies a non-default location
 
 ### `outport apply`
 
-Reads `.outport.yml`, allocates ports, saves to the central registry, writes `.env`. This is the command that actually does the work. Alias: `outport reg`.
+Reads `outport.yml`, allocates ports, saves to the central registry, writes `.env`. This is the command that actually does the work. Alias: `outport reg`.
 
 - Idempotent — running again reuses existing allocations
 - `--force` flag to re-allocate fresh (replaces the current `outport reset` command)
