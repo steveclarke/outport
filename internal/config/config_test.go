@@ -11,7 +11,7 @@ import (
 func writeConfig(t *testing.T, content string) string {
 	t.Helper()
 	dir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, ".outport.yml"), []byte(content), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "outport.yml"), []byte(content), 0644); err != nil {
 		t.Fatal(err)
 	}
 	return dir
@@ -55,7 +55,7 @@ services:
 }
 
 func TestFindDir_NotFound(t *testing.T) {
-	dir := t.TempDir() // no .outport.yml anywhere
+	dir := t.TempDir() // no outport.yml anywhere
 	_, err := FindDir(dir)
 	if err == nil {
 		t.Fatal("expected error when no config found, got nil")
@@ -728,7 +728,7 @@ services:
     hostname: myapp
 `
 	dir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, ".outport.yml"), []byte(yaml), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "outport.yml"), []byte(yaml), 0644); err != nil {
 		t.Fatal(err)
 	}
 	_, err := Load(dir)
@@ -763,7 +763,7 @@ services:
     hostname: %s
 `, tt.hostname)
 		dir := t.TempDir()
-		if err := os.WriteFile(filepath.Join(dir, ".outport.yml"), []byte(yaml), 0644); err != nil {
+		if err := os.WriteFile(filepath.Join(dir, "outport.yml"), []byte(yaml), 0644); err != nil {
 			t.Fatal(err)
 		}
 		_, err := Load(dir)
@@ -789,7 +789,7 @@ computed:
     env_file: .env
 `
 	dir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, ".outport.yml"), []byte(yaml), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "outport.yml"), []byte(yaml), 0644); err != nil {
 		t.Fatal(err)
 	}
 	cfg, err := Load(dir)
@@ -824,7 +824,7 @@ computed:
     env_file: .env
 `
 	dir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, ".outport.yml"), []byte(yaml), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "outport.yml"), []byte(yaml), 0644); err != nil {
 		t.Fatal(err)
 	}
 	_, err := Load(dir)
@@ -847,7 +847,7 @@ computed:
     env_file: .env
 `
 	dir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, ".outport.yml"), []byte(yaml), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "outport.yml"), []byte(yaml), 0644); err != nil {
 		t.Fatal(err)
 	}
 	_, err := Load(dir)
