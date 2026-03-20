@@ -101,7 +101,7 @@ func ResolveComputed(computed map[string]ComputedValue, templateVars map[string]
 	return resolved
 }
 
-const FileName = ".outport.yml"
+const FileName = "outport.yml"
 
 // envFileField handles YAML that can be a string or []string.
 type envFileField []string
@@ -200,7 +200,7 @@ type Config struct {
 	Computed map[string]ComputedValue
 }
 
-// FindDir walks up from startDir looking for .outport.yml.
+// FindDir walks up from startDir looking for outport.yml.
 // Returns the directory containing the config file.
 func FindDir(startDir string) (string, error) {
 	dir := startDir
