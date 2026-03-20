@@ -6,3 +6,4 @@ docs/superpowers/
 node_modules/
 docs/.vitepress/dist/
 docs/.vitepress/cache/
+test/qa/workdir/
