@@ -14,9 +14,10 @@ import (
 
 // RouteTable is a thread-safe hostname -> port mapping.
 type RouteTable struct {
-	mu       sync.RWMutex
-	routes   map[string]int
-	OnUpdate func() // called after every Update, if non-nil
+	mu          sync.RWMutex
+	routes      map[string]int
+	allocations map[string]registry.Allocation // full registry data for dashboard
+	OnUpdate    func()                         // called after every Update, if non-nil
 }
 
 // Lookup returns the port for a hostname, or 0 if not found.
@@ -35,6 +36,29 @@ func (rt *RouteTable) Update(routes map[string]int) {
 	if rt.OnUpdate != nil {
 		rt.OnUpdate()
 	}
+}
+
+// UpdateWithAllocations swaps both the routing table and the full allocation
+// data atomically, then fires the OnUpdate callback.
+func (rt *RouteTable) UpdateWithAllocations(routes map[string]int, allocs map[string]registry.Allocation) {
+	rt.mu.Lock()
+	rt.routes = routes
+	rt.allocations = allocs
+	rt.mu.Unlock()
+	if rt.OnUpdate != nil {
+		rt.OnUpdate()
+	}
+}
+
+// Allocations returns a shallow copy of the full registry allocation data.
+func (rt *RouteTable) Allocations() map[string]registry.Allocation {
+	rt.mu.RLock()
+	defer rt.mu.RUnlock()
+	result := make(map[string]registry.Allocation, len(rt.allocations))
+	for k, v := range rt.allocations {
+		result[k] = v
+	}
+	return result
 }
 
 // BuildRoutes constructs a hostname -> port routing table from the registry.
@@ -108,6 +132,6 @@ func rebuildFromFile(regPath string, rt *RouteTable) error {
 		return err
 	}
 	routes := BuildRoutes(&reg)
-	rt.Update(routes)
+	rt.UpdateWithAllocations(routes, reg.Projects)
 	return nil
 }

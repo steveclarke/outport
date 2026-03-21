@@ -246,6 +246,31 @@ func TestWatchAndRebuild(t *testing.T) {
 	}
 }
 
+func TestRouteTableAllocations(t *testing.T) {
+	rt := &RouteTable{}
+	allocs := map[string]registry.Allocation{
+		"myapp/main": {
+			ProjectDir: "/src/myapp",
+			Ports:      map[string]int{"web": 10001, "postgres": 5432},
+			Hostnames:  map[string]string{"web": "myapp.test"},
+			Protocols:  map[string]string{"web": "http"},
+		},
+	}
+	rt.UpdateWithAllocations(map[string]int{"myapp.test": 10001}, allocs)
+
+	got := rt.Allocations()
+	if len(got) != 1 {
+		t.Fatalf("expected 1 allocation, got %d", len(got))
+	}
+	a, ok := got["myapp/main"]
+	if !ok {
+		t.Fatal("expected myapp/main allocation")
+	}
+	if a.Ports["web"] != 10001 {
+		t.Errorf("web port: got %d, want 10001", a.Ports["web"])
+	}
+}
+
 func TestWatchAndRebuildMissingFileKeepsRoutes(t *testing.T) {
 	dir := t.TempDir()
 	regPath := filepath.Join(dir, "registry.json")
