@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/outport-app/outport/internal/registry"
@@ -252,5 +254,50 @@ func TestHandlerStatusNoURLForNonWebServices(t *testing.T) {
 	}
 	if svc.Hostname != "" {
 		t.Errorf("redis hostname: got %q, want empty", svc.Hostname)
+	}
+}
+
+func TestHandlerAPIStatusIncludesEnvVar(t *testing.T) {
+	dir := t.TempDir()
+	configYAML := `name: myapp
+services:
+  web:
+    env_var: PORT
+    protocol: http
+    hostname: myapp.test
+  postgres:
+    env_var: DB_PORT
+`
+	if err := os.WriteFile(filepath.Join(dir, "outport.yml"), []byte(configYAML), 0644); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+
+	allocs := map[string]registry.Allocation{
+		"myapp/main": {
+			ProjectDir: dir,
+			Ports:      map[string]int{"web": 10001, "postgres": 15432},
+			Hostnames:  map[string]string{"web": "myapp.test"},
+			Protocols:  map[string]string{"web": "http"},
+		},
+	}
+	provider := &mockAllocProvider{allocs: allocs}
+	h := NewHandler(provider, false)
+
+	req := httptest.NewRequest("GET", "/api/status", nil)
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+
+	var resp StatusResponse
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+
+	web := resp.Projects["myapp"].Instances["main"].Services["web"]
+	if web.EnvVar != "PORT" {
+		t.Errorf("web env_var: got %q, want %q", web.EnvVar, "PORT")
+	}
+	pg := resp.Projects["myapp"].Instances["main"].Services["postgres"]
+	if pg.EnvVar != "DB_PORT" {
+		t.Errorf("postgres env_var: got %q, want %q", pg.EnvVar, "DB_PORT")
 	}
 }

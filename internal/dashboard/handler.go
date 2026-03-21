@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"sort"
 
+	"github.com/outport-app/outport/internal/config"
 	"github.com/outport-app/outport/internal/registry"
 )
 
@@ -35,6 +36,7 @@ type InstanceJSON struct {
 // ServiceJSON describes a single allocated service.
 type ServiceJSON struct {
 	Port     int    `json:"port"`
+	EnvVar   string `json:"env_var,omitempty"`
 	Hostname string `json:"hostname,omitempty"`
 	Protocol string `json:"protocol,omitempty"`
 	URL      string `json:"url,omitempty"`
@@ -210,6 +212,19 @@ func (h *Handler) buildStatus() StatusResponse {
 	allocs := h.provider.Allocations()
 	healthStatus := h.health.CurrentStatus()
 
+	// Load configs for env_var names (best-effort, skip failures).
+	envVars := make(map[string]map[string]string) // registry key -> service name -> env_var
+	for key, alloc := range allocs {
+		cfg, err := config.Load(alloc.ProjectDir)
+		if err == nil {
+			vars := make(map[string]string)
+			for name, svc := range cfg.Services {
+				vars[name] = svc.EnvVar
+			}
+			envVars[key] = vars
+		}
+	}
+
 	resp := StatusResponse{
 		Projects: make(map[string]ProjectJSON),
 	}
@@ -234,12 +249,16 @@ func (h *Handler) buildStatus() StatusResponse {
 		}
 		sort.Strings(svcNames)
 
-		for _, svc := range svcNames {
-			port := alloc.Ports[svc]
+		for _, name := range svcNames {
+			port := alloc.Ports[name]
 			sj := ServiceJSON{Port: port}
 
-			hostname := alloc.Hostnames[svc]
-			protocol := alloc.Protocols[svc]
+			if vars, ok := envVars[key]; ok {
+				sj.EnvVar = vars[name]
+			}
+
+			hostname := alloc.Hostnames[name]
+			protocol := alloc.Protocols[name]
 
 			if hostname != "" {
 				sj.Hostname = hostname
@@ -263,7 +282,7 @@ func (h *Handler) buildStatus() StatusResponse {
 				sj.Up = &upVal
 			}
 
-			ij.Services[svc] = sj
+			ij.Services[name] = sj
 		}
 
 		pj.Instances[instance] = ij

@@ -161,6 +161,13 @@
     port.textContent = ":" + service.port;
     row.appendChild(port);
 
+    if (service.env_var) {
+      var envVar = document.createElement("span");
+      envVar.className = "service-envvar";
+      envVar.textContent = service.env_var;
+      row.appendChild(envVar);
+    }
+
     var spacer = document.createElement("span");
     spacer.className = "service-spacer";
     row.appendChild(spacer);
