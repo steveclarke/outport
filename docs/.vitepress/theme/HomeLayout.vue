@@ -225,6 +225,7 @@ CORS_ORIGINS=<span class="success">https://myapp-frontend.test</span>
 .story-link {
   display: inline-block;
   margin-top: 8px;
+  margin-bottom: 1.5rem;
   font-size: 0.9rem;
   color: var(--vp-c-text-3);
   text-decoration: none;
