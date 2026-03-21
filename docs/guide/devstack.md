@@ -184,6 +184,6 @@ readiness_probe:
 
 If your project has a `bin/dev` or `docker-compose.yml` or `Procfile` — you already have the knowledge needed for a `DEVSTACK.md`. Write it down in a format agents can follow.
 
-The [outport-app `DEVSTACK.md`](https://github.com/myunio/outport-app/blob/master/DEVSTACK.md) is a working reference implementation with process-compose health checks, Docker services, worktree support, and all the gotchas documented. Use it as a starting point.
+The pattern described on this page is a working implementation — process-compose health checks, Docker services, worktree support, and all the gotchas documented above. Use it as a starting point.
 
 Add a `DEVSTACK.md` to your project. Commit it. Your agents will thank you by actually being able to run your code.
