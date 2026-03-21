@@ -1,6 +1,6 @@
 # Why Outport?
 
-I built outport because I needed it — and because nobody else was going to.
+I *wanted* to build this tool for years. I *had* to build it in the agentic era.
 
 ## The agency developer's reality
 
