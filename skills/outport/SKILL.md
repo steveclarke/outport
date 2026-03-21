@@ -430,3 +430,7 @@ project config. Each check shows pass/fail with a fix suggestion.
 ### .test domain not resolving
 Run `outport doctor` to diagnose. Common causes: daemon not running
 (`outport system start`) or DNS resolver missing (`outport system start`).
+
+## Bugs & Feature Requests
+
+Report bugs or request new features at https://github.com/steveclarke/outport/issues
