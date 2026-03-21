@@ -176,7 +176,7 @@ CORS_ORIGINS=<span class="success">https://myapp-frontend.test</span>
     </section>
 
     <!-- FOOTER -->
-    <footer class="home-footer">
+    <footer class="site-footer">
       MIT License &middot;
       <a href="https://github.com/steveclarke/outport" target="_blank" rel="noopener">GitHub</a>
       &middot; Built in outport <a href="https://en.wikipedia.org/wiki/Newfoundland_(island)" target="_blank" rel="noopener">Newfoundland</a>
@@ -533,25 +533,7 @@ CORS_ORIGINS=<span class="success">https://myapp-frontend.test</span>
   margin-top: 1rem;
 }
 
-/* FOOTER */
-.home-footer {
-  max-width: 1100px;
-  margin: 2rem auto 0;
-  padding: 2rem;
-  text-align: center;
-  color: var(--vp-c-text-3);
-  font-size: 0.85rem;
-  border-top: 1px solid var(--vp-c-divider);
-}
-.home-footer a { color: #2E86AB; text-decoration: none; }
-.nfld-flag {
-  display: inline-block;
-  width: 20px;
-  height: 10px;
-  vertical-align: middle;
-  margin: 0 2px;
-  border-radius: 1px;
-}
+/* FOOTER — styles in custom.css (shared with doc pages) */
 
 /* Responsive */
 @media (max-width: 768px) {
