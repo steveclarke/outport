@@ -179,7 +179,7 @@ CORS_ORIGINS=<span class="success">https://myapp-frontend.test</span>
     <footer class="home-footer">
       MIT License &middot;
       <a href="https://github.com/steveclarke/outport" target="_blank" rel="noopener">GitHub</a>
-      &middot; Built by
+      &middot; Built in Outport, Newfoundland by
       <a href="https://github.com/steveclarke" target="_blank" rel="noopener">Steve Clarke</a>
     </footer>
   </div>
