@@ -81,15 +81,6 @@ Why it's the right fit for agents:
 - **TUI dashboard** — when a human runs it interactively, they get a full terminal UI with logs, restarts, and process status.
 - **Unix socket communication** — CLI commands (status, logs, restart) talk to the daemon over unix sockets, not HTTP. Multiple instances can run simultaneously.
 
-### Comparison
-
-| Tool | Headless | Health checks | JSON output | Dependency ordering |
-|------|----------|---------------|-------------|---------------------|
-| process-compose | Yes | Yes (exec + HTTP) | Yes | Yes |
-| Foreman | No | No | No | No |
-| PM2 | Yes | No | Yes | No |
-| Overmind | No (tmux) | No | No | No |
-
 Install:
 
 ```bash
