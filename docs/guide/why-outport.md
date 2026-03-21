@@ -28,9 +28,15 @@ The ROI flipped from "not worth building" to "can't work without it."
 
 Agents also need to know how to run your stack — that's what [DEVSTACK.md](/guide/devstack) solves.
 
-## Complexity is the real test
+## "Just change the port"
 
-Most worktree demos are CLI tools with no services. Real apps have databases, web servers, Docker Compose stacks. Every worktree needs its own isolated environment — its own database, its own web server, its own ports. That's where port management actually matters. That's where agents get stuck.
+That's the response I always get. And sure, you can change the port. But it's never just the port.
+
+Change the Rails port and now your Nuxt frontend is pointing at the wrong API URL. Your CORS config is rejecting requests from the new origin. Your Bruno collections are hitting the old port. Your Docker Compose stack is still trying to bind to 5432 even though another project has it. Your WebSocket URL is wrong. Your asset host is wrong.
+
+A real app might have a Rails API, two frontend apps, Postgres, Redis, Mailpit, and Bruno for API testing. Each one has a port. Each one has config that references other services' ports. Change one and you're chasing a dozen config files across three `.env` files. Now multiply that by worktrees — each checkout needs its own completely isolated set of ports, URLs, CORS origins, and Docker containers.
+
+That's not a port problem. That's an orchestration problem. And it's the kind of thing that's invisible if you've only ever worked on one app at a time.
 
 ## The name
 
