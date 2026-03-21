@@ -8,6 +8,8 @@ import (
 	"net/http"
 
 	"github.com/miekg/dns"
+	"github.com/outport-app/outport/internal/dashboard"
+	"github.com/outport-app/outport/internal/registry"
 )
 
 // DaemonConfig holds configuration for the daemon process.
@@ -33,7 +35,18 @@ type Daemon struct {
 func New(cfg *DaemonConfig) (*Daemon, error) {
 	routes := &RouteTable{}
 	proxyHandler := NewProxy(routes)
-	routes.OnUpdate = proxyHandler.ClearCache
+
+	// Create dashboard handler
+	httpsEnabled := cfg.TLSConfig != nil
+	dashProvider := &routeTableProvider{routes: routes}
+	dashHandler := dashboard.NewHandler(dashProvider, httpsEnabled)
+	proxyHandler.DashboardHandler = dashHandler
+
+	// Chain OnUpdate: clear proxy cache + notify dashboard
+	routes.OnUpdate = func() {
+		proxyHandler.ClearCache()
+		dashHandler.OnRegistryUpdate()
+	}
 
 	dnsSrv := NewDNSServer(cfg.DNSAddr)
 
@@ -146,4 +159,28 @@ func (d *Daemon) shutdown() {
 	if d.tlsProxy != nil {
 		d.tlsProxy.Close()
 	}
+}
+
+// routeTableProvider adapts *RouteTable to the dashboard.AllocProvider interface.
+type routeTableProvider struct {
+	routes *RouteTable
+}
+
+func (p *routeTableProvider) Allocations() map[string]registry.Allocation {
+	return p.routes.Allocations()
+}
+
+func (p *routeTableProvider) AllPorts() []int {
+	allocs := p.routes.Allocations()
+	seen := make(map[int]bool)
+	var ports []int
+	for _, alloc := range allocs {
+		for _, port := range alloc.Ports {
+			if !seen[port] {
+				seen[port] = true
+				ports = append(ports, port)
+			}
+		}
+	}
+	return ports
 }
