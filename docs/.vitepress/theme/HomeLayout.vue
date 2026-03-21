@@ -2,12 +2,13 @@
   <div class="home-layout">
     <!-- HERO -->
     <section class="hero">
-      <h1><code class="hero-code">myapp.test</code> <span class="accent">just works</span></h1>
+      <h1>Nobody needed this until <span class="accent">agents started driving</span></h1>
       <p class="subtitle">
-        Declare your services once. Every project, worktree, and checkout gets
-        deterministic ports, <code>.test</code> hostnames with HTTPS, and fully
-        wired <code>.env</code> files.
+        Deterministic ports, <code>.test</code> hostnames, and wired
+        <code>.env</code> files for every project, worktree, and agent instance.
+        Declare your services once — every checkout is isolated automatically.
       </p>
+      <a href="/guide/why-outport" class="story-link">Read the story →</a>
       <div class="hero-ctas">
         <a href="/guide/getting-started" class="btn-primary">Get Started</a>
         <a
@@ -63,8 +64,8 @@
         </div>
       </div>
       <p class="hero-callout">
-        Built for parallel development — worktrees, AI agents, and multiple checkouts.
-        <a href="/guide/work-with-ai">Learn more →</a>
+        Built for the agentic era — agents, worktrees, and parallel development.
+        <a href="/guide/work-with-ai">Work with AI →</a>
       </p>
     </section>
 
@@ -208,13 +209,6 @@ CORS_ORIGINS=<span class="success">https://myapp-frontend.test</span>
   margin-bottom: 1rem;
 }
 .hero h1 .accent { color: #2E86AB; }
-.hero h1 .hero-code {
-  font-family: var(--vp-font-family-mono);
-  font-size: 0.85em;
-  background: var(--vp-c-bg-soft);
-  padding: 0.05em 0.3em;
-  border-radius: 6px;
-}
 .hero .subtitle {
   font-size: 1.2rem;
   color: var(--vp-c-text-3);
@@ -227,6 +221,16 @@ CORS_ORIGINS=<span class="success">https://myapp-frontend.test</span>
   padding: 0.1em 0.4em;
   border-radius: 4px;
   font-size: 0.9em;
+}
+.story-link {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 0.9rem;
+  color: var(--vp-c-text-3);
+  text-decoration: none;
+}
+.story-link:hover {
+  text-decoration: underline;
 }
 .hero-ctas {
   display: flex;
