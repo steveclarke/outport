@@ -8,7 +8,6 @@
         <code>.env</code> files for every project, worktree, and agent instance.
         Declare your services once — every checkout is isolated automatically.
       </p>
-      <a href="/guide/why-outport" class="story-link">Read the story →</a>
       <div class="hero-ctas">
         <a href="/guide/getting-started" class="btn-primary">Get Started</a>
         <a
@@ -18,6 +17,7 @@
           rel="noopener"
         >View on GitHub</a>
       </div>
+      <a href="/guide/why-outport" class="story-link">Read the story →</a>
 
       <div class="terminal-pair">
         <div class="terminal-wrapper">
@@ -225,8 +225,8 @@ CORS_ORIGINS=<span class="success">https://myapp-frontend.test</span>
 }
 .story-link {
   display: inline-block;
-  margin-top: 8px;
-  margin-bottom: 1.5rem;
+  margin-top: 0;
+  margin-bottom: 2rem;
   font-size: 0.9rem;
   color: var(--vp-c-text-3);
   text-decoration: none;
