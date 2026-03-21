@@ -30,7 +30,7 @@ Agents also need to know how to run your stack — that's what [DEVSTACK.md](/gu
 
 ## "Just change the port"
 
-That's the response I always get. And sure, you can change the port. But it's never just the port.
+And sure, you can change the port. But it's never just the port.
 
 Change the Rails port and now your Nuxt frontend is pointing at the wrong API URL. Your CORS config is rejecting requests from the new origin. Your [Bruno](https://www.usebruno.com/) collections are hitting the old port. Your Docker Compose stack is still trying to bind to 5432 even though another project has it. Your WebSocket URL is wrong. Your asset host is wrong.
 
