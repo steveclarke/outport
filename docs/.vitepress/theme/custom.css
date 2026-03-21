@@ -79,3 +79,23 @@ h1, h2, h3, h4, h5, h6,
 .VPSidebar .is-active > a {
   color: #2E86AB;
 }
+
+/* Site footer */
+.site-footer {
+  max-width: 1100px;
+  margin: 2rem auto 0;
+  padding: 2rem;
+  text-align: center;
+  color: var(--vp-c-text-3);
+  font-size: 0.85rem;
+  border-top: 1px solid var(--vp-c-divider);
+}
+.site-footer a { color: #2E86AB; text-decoration: none; }
+.nfld-flag {
+  display: inline-block;
+  width: 20px;
+  height: 10px;
+  vertical-align: middle;
+  margin: 0 2px;
+  border-radius: 1px;
+}

@@ -2,11 +2,11 @@
   <div class="home-layout">
     <!-- HERO -->
     <section class="hero">
-      <h1><code class="hero-code">myapp.test</code> <span class="accent">just works</span></h1>
+      <h1>Deterministic port orchestration for <span class="accent">the agentic era</span></h1>
       <p class="subtitle">
-        Declare your services once. Every project, worktree, and checkout gets
-        deterministic ports, <code>.test</code> hostnames with HTTPS, and fully
-        wired <code>.env</code> files.
+        Deterministic ports, <code>.test</code> hostnames, and wired
+        <code>.env</code> files for every project, worktree, and agent instance.
+        Declare your services once — every checkout is isolated automatically.
       </p>
       <div class="hero-ctas">
         <a href="/guide/getting-started" class="btn-primary">Get Started</a>
@@ -17,6 +17,7 @@
           rel="noopener"
         >View on GitHub</a>
       </div>
+      <a href="/guide/why-outport" class="story-link">Read the story →</a>
 
       <div class="terminal-pair">
         <div class="terminal-wrapper">
@@ -63,8 +64,8 @@
         </div>
       </div>
       <p class="hero-callout">
-        Built for parallel development — worktrees, AI agents, and multiple checkouts.
-        <a href="/guide/work-with-ai">Learn more →</a>
+        Built for the agentic era — agents, worktrees, and parallel development.
+        <a href="/guide/work-with-ai">Work with AI →</a>
       </p>
     </section>
 
@@ -77,9 +78,9 @@
       </div>
       <div class="feature-grid">
         <div class="feature-card">
-          <div class="feature-icon">.e</div>
-          <h3>.env Integration</h3>
-          <p>Ports, URLs, and computed values written directly to your <code>.env</code> files. Your app reads them natively — no wrapper, no SDK.</p>
+          <div class="feature-icon">#</div>
+          <h3>Deterministic Ports</h3>
+          <p>Same project, same ports — every time, on every machine.</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon">&gt;_</div>
@@ -87,14 +88,14 @@
           <p>Worktrees, branches, AI agents — each gets isolated ports and hostnames automatically.</p>
         </div>
         <div class="feature-card">
+          <div class="feature-icon">.e</div>
+          <h3>.env Integration</h3>
+          <p>Ports, URLs, and computed values written directly to your <code>.env</code> files. Your app reads them natively — no wrapper, no SDK.</p>
+        </div>
+        <div class="feature-card">
           <div class="feature-icon computed-icon">${}</div>
           <h3>Computed Values</h3>
           <p>Services discover each other. <code>CORS_ORIGINS=${frontend.url}</code> resolves automatically across your stack.</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon">#</div>
-          <h3>Deterministic Ports</h3>
-          <p>Same project, same ports — every time, on every machine.</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon">.t</div>
@@ -175,11 +176,12 @@ CORS_ORIGINS=<span class="success">https://myapp-frontend.test</span>
     </section>
 
     <!-- FOOTER -->
-    <footer class="home-footer">
+    <footer class="site-footer">
       MIT License &middot;
       <a href="https://github.com/steveclarke/outport" target="_blank" rel="noopener">GitHub</a>
-      &middot; Built by
-      <a href="https://github.com/steveclarke" target="_blank" rel="noopener">Steve Clarke</a>
+      &middot; Built in <a href="https://en.wikipedia.org/wiki/Newfoundland_(island)" target="_blank" rel="noopener">Newfoundland</a>
+      <a href="https://en.wikipedia.org/wiki/Flag_of_Newfoundland_and_Labrador" target="_blank" rel="noopener" title="Flag of Newfoundland and Labrador"><svg class="nfld-flag" viewBox="0 0 43200 21600" xmlns="http://www.w3.org/2000/svg"><path fill="#fff" d="m0 0h43200v21600H0z"/><path fill="#003865" d="m3159 900h13547v7822zm0 19800h13547v-7822zm-1559-948v-8152h14121zm0-17904v8152h14121z"/><path fill="#ba0c2f" d="m18706 8722V900h23094zm0 1154h17894l3000 924-3000 924H18706l1600-924zm0 3002v7822h23094zm17631 6922H19606v-5667zm0-18000H19606v5667z"/><path fill="#ffa400" d="m20199 10276h16341l1701 524-1701 524H20199l907-524z"/></svg></a>
+      by <a href="https://github.com/steveclarke" target="_blank" rel="noopener">Steve Clarke</a>
     </footer>
   </div>
 </template>
@@ -208,13 +210,6 @@ CORS_ORIGINS=<span class="success">https://myapp-frontend.test</span>
   margin-bottom: 1rem;
 }
 .hero h1 .accent { color: #2E86AB; }
-.hero h1 .hero-code {
-  font-family: var(--vp-font-family-mono);
-  font-size: 0.85em;
-  background: var(--vp-c-bg-soft);
-  padding: 0.05em 0.3em;
-  border-radius: 6px;
-}
 .hero .subtitle {
   font-size: 1.2rem;
   color: var(--vp-c-text-3);
@@ -227,6 +222,17 @@ CORS_ORIGINS=<span class="success">https://myapp-frontend.test</span>
   padding: 0.1em 0.4em;
   border-radius: 4px;
   font-size: 0.9em;
+}
+.story-link {
+  display: inline-block;
+  margin-top: 0;
+  margin-bottom: 2rem;
+  font-size: 0.9rem;
+  color: var(--vp-c-text-3);
+  text-decoration: none;
+}
+.story-link:hover {
+  text-decoration: underline;
 }
 .hero-ctas {
   display: flex;
@@ -527,17 +533,7 @@ CORS_ORIGINS=<span class="success">https://myapp-frontend.test</span>
   margin-top: 1rem;
 }
 
-/* FOOTER */
-.home-footer {
-  max-width: 1100px;
-  margin: 2rem auto 0;
-  padding: 2rem;
-  text-align: center;
-  color: var(--vp-c-text-3);
-  font-size: 0.85rem;
-  border-top: 1px solid var(--vp-c-divider);
-}
-.home-footer a { color: #2E86AB; text-decoration: none; }
+/* FOOTER — styles in custom.css (shared with doc pages) */
 
 /* Responsive */
 @media (max-width: 768px) {
