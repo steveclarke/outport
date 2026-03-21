@@ -2,7 +2,7 @@ import { defineConfig } from 'vitepress'
 
 export default defineConfig({
   title: 'Outport',
-  description: 'Deterministic port management for multi-project development',
+  description: 'Deterministic ports for the agentic era',
   appearance: false,
   cleanUrls: true,
   srcExclude: ['superpowers/**'],
@@ -17,7 +17,7 @@ export default defineConfig({
     ['meta', { property: 'og:url', content: 'https://outport.dev' }],
     ['meta', { property: 'og:image', content: 'https://outport.dev/og-image-1280x640.png' }],
     ['meta', { property: 'og:title', content: 'Outport' }],
-    ['meta', { property: 'og:description', content: 'Deterministic port management for multi-project development' }],
+    ['meta', { property: 'og:description', content: 'Deterministic ports for the agentic era' }],
     ['link', { rel: 'preload', href: '/fonts/Barlow-Bold.ttf', as: 'font', type: 'font/ttf', crossorigin: '' }],
     ['link', { rel: 'preload', href: '/fonts/Inter.ttf', as: 'font', type: 'font/ttf', crossorigin: '' }],
   ],
@@ -41,6 +41,7 @@ export default defineConfig({
           { text: 'Examples', link: '/guide/examples' },
           { text: 'VS Code Extension', link: '/guide/vscode' },
           { text: 'Work with AI', link: '/guide/work-with-ai' },
+          { text: 'DEVSTACK.md', link: '/guide/devstack' },
           { text: 'Tips & Troubleshooting', link: '/guide/tips' },
         ],
       },
