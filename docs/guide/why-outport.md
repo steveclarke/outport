@@ -1,12 +1,42 @@
 # Why Outport?
 
-## The Problem
+I built outport because I needed it — and because nobody else was going to.
 
-You're running Rails on 3000, a Nuxt frontend on 5173, Postgres on 5432. You start a second project — port conflict. You switch to a worktree — same ports. You change a port, and now your CORS config, API URLs, and Docker Compose port mappings are all wrong.
+## The agency developer's reality
 
-Most developers solve this with a mental spreadsheet and `kill -9`. It works until it doesn't.
+I work at a small company in rural Newfoundland. We're essentially an agency — web apps, client projects, internal tools. On any given day I'm switching between three or four projects. Different Rails versions, different stacks, different databases. Project A is on port 3000 with Postgres on 5432. A client calls needing a quick fix on another app. Shut everything down, spin up Project B, maybe go 3001 or 3002 to avoid conflicts. Come back a month later — "what port was this on again?"
 
-Outport replaces that with a single config file. Declare your services once and every checkout gets deterministic ports, `.test` hostnames, and fully wired `.env` files.
+Meanwhile I want things running simultaneously. I'm waiting for tests on one project while working on another. But that means picking ports that don't collide, updating every config that references them, and hoping I remember what I changed. All work stops when ports conflict. It's a small thing, but it compounds.
+
+## The forgotten middle
+
+Hobbyists don't have this problem. One project at a time, `rails s`, done. Big companies don't have it either — they have dedicated devtools engineers who build internal tooling for exactly this kind of thing.
+
+The people who juggle the most projects have the fewest tools. Every developer tool on the internet assumes you're a Silicon Valley startup with one product or a hobbyist with one side project. Nobody builds for the people in the middle — the small shops and agencies who'd benefit the most.
+
+## Living with the pain
+
+For years, this was manageable friction. Not a crisis. I changed ports manually, kept mental notes, shut things down and spun them back up. It was never worth building a tool over. The time to build it would have exceeded the time saved by years. "Just change the port, Steve." That's one of the downsides of working at a small shop. You live with things.
+
+## The agentic era changed the math
+
+Two shifts happened at once. First: AI coding agents can build the tool. What would have taken months of solo dev time is now feasible. Second, and more important: agents *need* the tool.
+
+With four or five Claude Code sessions open, working on multiple projects and multiple instances of the same project simultaneously, port conflicts went from occasional annoyance to constant blocker. Agents can't read an error message and pick a different port. They can't keep a mental spreadsheet. They need deterministic, non-conflicting ports — declared once and guaranteed.
+
+The ROI flipped from "not worth building" to "can't work without it."
+
+Agents also need to know how to run your stack — that's what [DEVSTACK.md](/guide/devstack) solves.
+
+## Complexity is the real test
+
+Most worktree demos are CLI tools with no services. Real apps have databases, web servers, Docker Compose stacks. Every worktree needs its own isolated environment — its own database, its own web server, its own ports. That's where port management actually matters. That's where agents get stuck.
+
+## The name
+
+An outport is a small, isolated community on the coast of Newfoundland. That's where this was built, and that's who it's for — developers working outside the big-company bubble where these problems get solved by dedicated teams.
+
+---
 
 ## How Outport Compares
 
