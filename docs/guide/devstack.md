@@ -1,3 +1,7 @@
+---
+description: A convention for telling AI agents how to start, stop, and health-check your dev environment using process-compose and Outport.
+---
+
 # DEVSTACK.md
 
 `DEVSTACK.md` is a convention — a file committed to your project root that tells agents how to run your dev environment. `CLAUDE.md` tells agents how to work in a codebase. `DEVSTACK.md` tells them how to start it, stop it, and check if it's healthy.

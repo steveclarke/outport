@@ -1,3 +1,7 @@
+---
+description: Troubleshooting Outport issues including DNS, daemon, port conflicts, worktree setup, Docker Compose isolation, and sharing via Cloudflare tunnels.
+---
+
 # Tips & Troubleshooting
 
 ## Diagnose issues with outport doctor

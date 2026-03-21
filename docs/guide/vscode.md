@@ -1,3 +1,7 @@
+---
+description: The Outport VS Code extension shows ports, URLs, and service health in the editor sidebar with clickable links and config authoring support.
+---
+
 # VS Code Extension
 
 The [Outport for VS Code](https://marketplace.visualstudio.com/items?itemName=steveclarke.outport) extension puts your ports, URLs, and service health right in the editor.

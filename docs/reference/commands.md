@@ -1,3 +1,7 @@
+---
+description: All Outport CLI commands — setup, init, up, down, ports, open, share, rename, promote, doctor, and system management.
+---
+
 # Commands
 
 All commands support `--json` for machine-readable output. Use `--yes`/`-y` to auto-approve writing env files outside the project directory.

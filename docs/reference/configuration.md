@@ -1,3 +1,7 @@
+---
+description: Complete outport.yml reference — services, env_var, hostname, protocol, preferred_port, env_file, computed values, and template syntax.
+---
+
 # Configuration
 
 Outport is configured with a `outport.yml` file in your project root. This file declares your services and how their ports are exposed.

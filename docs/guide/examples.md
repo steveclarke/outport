@@ -1,3 +1,7 @@
+---
+description: Real-world outport.yml configurations for Rails apps, monorepos, Docker Compose multi-instance setups, and cross-project dependencies.
+---
+
 # Examples
 
 Real-world configurations showing how Outport handles common development setups.

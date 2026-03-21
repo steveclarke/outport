@@ -1,3 +1,7 @@
+---
+description: Install Outport, run setup, create your first outport.yml config, and allocate deterministic ports for your project.
+---
+
 # Getting Started
 
 ## Prerequisites

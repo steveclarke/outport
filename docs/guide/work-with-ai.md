@@ -1,3 +1,7 @@
+---
+description: Use the Outport skill with Claude Code, Gemini CLI, and other AI coding agents for port setup, config authoring, and troubleshooting.
+---
+
 # Work with AI
 
 Outport provides an official skill for AI coding agents, so they know how to configure ports, set up `outport.yml`, and troubleshoot your dev environment.

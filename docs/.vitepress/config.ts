@@ -6,6 +6,9 @@ export default defineConfig({
   appearance: false,
   cleanUrls: true,
   srcExclude: ['superpowers/**'],
+  sitemap: {
+    hostname: 'https://outport.dev',
+  },
 
   head: [
     ['link', { rel: 'icon', href: '/favicon.ico' }],
@@ -18,6 +21,9 @@ export default defineConfig({
     ['meta', { property: 'og:image', content: 'https://outport.dev/og-image-1280x640.png' }],
     ['meta', { property: 'og:title', content: 'Outport' }],
     ['meta', { property: 'og:description', content: 'Deterministic port orchestration for the agentic era' }],
+    ['meta', { property: 'og:locale', content: 'en_US' }],
+    ['meta', { name: 'twitter:card', content: 'summary_large_image' }],
+    ['meta', { name: 'twitter:image', content: 'https://outport.dev/og-image-1280x640.png' }],
     ['link', { rel: 'preload', href: '/fonts/Barlow-Bold.ttf', as: 'font', type: 'font/ttf', crossorigin: '' }],
     ['link', { rel: 'preload', href: '/fonts/Inter.ttf', as: 'font', type: 'font/ttf', crossorigin: '' }],
   ],

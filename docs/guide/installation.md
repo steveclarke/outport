@@ -1,3 +1,7 @@
+---
+description: Install Outport via Homebrew, go install, or build from source. macOS and Linux supported.
+---
+
 # Installation
 
 ## Homebrew (Recommended)

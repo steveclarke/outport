@@ -1,3 +1,7 @@
+---
+description: Why port conflicts are an orchestration problem, how the agentic era made deterministic ports essential, and who Outport is built for.
+---
+
 # Why Outport?
 
 I *wanted* to build this tool for years. I *had* to build it in the agentic era.
