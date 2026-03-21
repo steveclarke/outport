@@ -1,0 +1,174 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: #fafbfc;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  color: #1e293b;
+  line-height: 1.5;
+  padding: 2rem 1rem 4rem;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.logo {
+  width: 40px;
+  height: 40px;
+  display: block;
+  margin: 0 auto 0.5rem;
+}
+
+header h1 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1e293b;
+  letter-spacing: -0.01em;
+}
+
+#dashboard:empty::after {
+  content: "No projects registered.";
+  display: block;
+  text-align: center;
+  color: #94a3b8;
+  font-size: 0.9375rem;
+  margin-top: 3rem;
+}
+
+.project-group {
+  margin-bottom: 2rem;
+}
+
+.project-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 0.75rem;
+}
+
+.instance-card {
+  border: 1px solid #e8e8e8;
+  background: #fff;
+  border-radius: 8px;
+  border-left: 3px solid #4a90d9;
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.instance-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.instance-badge {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
+  background: #f1f5f9;
+  color: #475569;
+  font-family: 'SF Mono', 'Fira Code', ui-monospace, monospace;
+}
+
+.instance-dir {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  font-family: 'SF Mono', 'Fira Code', ui-monospace, monospace;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.service-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0;
+  font-size: 0.875rem;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #cbd5e1;
+  flex-shrink: 0;
+}
+
+.status-dot.up {
+  background: #22a563;
+}
+
+.status-dot.down {
+  background: #dc3545;
+}
+
+.service-name {
+  color: #475569;
+  min-width: 0;
+}
+
+.service-url {
+  color: #2563eb;
+  text-decoration: underline;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.service-port {
+  font-family: 'SF Mono', 'Fira Code', ui-monospace, monospace;
+  color: #64748b;
+  font-size: 0.8125rem;
+}
+
+.service-spacer {
+  flex: 1;
+}
+
+.service-envvar {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  font-family: 'SF Mono', 'Fira Code', ui-monospace, monospace;
+  text-align: right;
+  white-space: nowrap;
+}
+
+#connection-status {
+  position: fixed;
+  bottom: 1rem;
+  right: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+#connection-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #cbd5e1;
+}
+
+#connection-dot.connected {
+  background: #22a563;
+}
+
+#connection-dot.reconnecting {
+  background: #f59e0b;
+}
