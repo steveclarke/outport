@@ -78,9 +78,9 @@
       </div>
       <div class="feature-grid">
         <div class="feature-card">
-          <div class="feature-icon">.e</div>
-          <h3>.env Integration</h3>
-          <p>Ports, URLs, and computed values written directly to your <code>.env</code> files. Your app reads them natively — no wrapper, no SDK.</p>
+          <div class="feature-icon">#</div>
+          <h3>Deterministic Ports</h3>
+          <p>Same project, same ports — every time, on every machine.</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon">&gt;_</div>
@@ -88,14 +88,14 @@
           <p>Worktrees, branches, AI agents — each gets isolated ports and hostnames automatically.</p>
         </div>
         <div class="feature-card">
+          <div class="feature-icon">.e</div>
+          <h3>.env Integration</h3>
+          <p>Ports, URLs, and computed values written directly to your <code>.env</code> files. Your app reads them natively — no wrapper, no SDK.</p>
+        </div>
+        <div class="feature-card">
           <div class="feature-icon computed-icon">${}</div>
           <h3>Computed Values</h3>
           <p>Services discover each other. <code>CORS_ORIGINS=${frontend.url}</code> resolves automatically across your stack.</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon">#</div>
-          <h3>Deterministic Ports</h3>
-          <p>Same project, same ports — every time, on every machine.</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon">.t</div>
