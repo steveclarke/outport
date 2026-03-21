@@ -2,7 +2,7 @@
   <div class="home-layout">
     <!-- HERO -->
     <section class="hero">
-      <h1>Nobody needed this until <span class="accent">agents started driving</span></h1>
+      <h1>Deterministic port orchestration for <span class="accent">the agentic era</span></h1>
       <p class="subtitle">
         Deterministic ports, <code>.test</code> hostnames, and wired
         <code>.env</code> files for every project, worktree, and agent instance.
