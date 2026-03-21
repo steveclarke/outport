@@ -53,7 +53,7 @@ An outport is a small, isolated community on the coast of Newfoundland. That's w
 
 ## When to Use What
 
-**Docker Compose** — Great if your team is already containerized. Outport complements Docker by managing host-side port mappings and `.env` files. See the [Docker Compose example](/guide/examples#docker-compose-integration) for how they work together.
+**Docker Compose** — Great if your team is already containerized. Outport complements Docker by managing host-side port mappings and `.env` files. See the [Docker Compose example](/guide/examples#docker-compose-multi-instance) for how they work together.
 
 **Portless** — Solid for single-app workflows with named URLs. Outport is designed for multi-service projects with cross-service URL wiring and `.env` generation.
 
