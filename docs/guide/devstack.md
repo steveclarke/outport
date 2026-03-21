@@ -1,6 +1,6 @@
 # DEVSTACK.md
 
-DEVSTACK.md is a convention — a file committed to your project root that tells agents how to run your dev environment. CLAUDE.md tells agents how to work in a codebase. DEVSTACK.md tells them how to start it, stop it, and check if it's healthy.
+`DEVSTACK.md` is a convention — a file committed to your project root that tells agents how to run your dev environment. `CLAUDE.md` tells agents how to work in a codebase. `DEVSTACK.md` tells them how to start it, stop it, and check if it's healthy.
 
 ## The problem
 
@@ -12,7 +12,7 @@ The missing piece isn't intelligence. It's a structured contract between the pro
 
 ## The convention
 
-DEVSTACK.md is a file in your project root, committed to git. It has standard sections that any agent can parse:
+`DEVSTACK.md` is a file in your project root, committed to git. It has standard sections that any agent can parse:
 
 ```markdown
 # DEVSTACK.md
@@ -70,7 +70,7 @@ The format is vendor-neutral. Claude, Gemini, Codex, or any future agent can rea
 
 ## process-compose
 
-The orchestration layer that makes this work is [process-compose](https://github.com/F1bonacc1/process-compose) — a Go binary that manages your dev processes like docker-compose manages containers.
+The orchestration layer that makes this work is [process-compose](https://f1bonacc1.github.io/process-compose/) — a Go binary that manages your dev processes like docker-compose manages containers.
 
 Why it's the right fit for agents:
 
@@ -187,12 +187,12 @@ readiness_probe:
 ~/Library/Application Support/process-compose/settings.yaml
 ```
 
-## Adopting DEVSTACK.md
+## Adopting `DEVSTACK.md`
 
-DEVSTACK.md is a vendor-neutral convention, like CLAUDE.md and AGENTS.md. It works with any agent framework, any language, any stack.
+`DEVSTACK.md` is a vendor-neutral convention, like `CLAUDE.md` and `AGENTS.md`. It works with any agent framework, any language, any stack.
 
-If your project has a `bin/dev` or `docker-compose.yml` or `Procfile` — you already have the knowledge needed for a DEVSTACK.md. Write it down in a format agents can follow.
+If your project has a `bin/dev` or `docker-compose.yml` or `Procfile` — you already have the knowledge needed for a `DEVSTACK.md`. Write it down in a format agents can follow.
 
-The [outport-app DEVSTACK.md](https://github.com/myunio/outport-app/blob/master/DEVSTACK.md) is a working reference implementation with process-compose health checks, Docker services, worktree support, and all the gotchas documented. Use it as a starting point.
+The [outport-app `DEVSTACK.md`](https://github.com/myunio/outport-app/blob/master/DEVSTACK.md) is a working reference implementation with process-compose health checks, Docker services, worktree support, and all the gotchas documented. Use it as a starting point.
 
-Add a DEVSTACK.md to your project. Commit it. Your agents will thank you by actually being able to run your code.
+Add a `DEVSTACK.md` to your project. Commit it. Your agents will thank you by actually being able to run your code.

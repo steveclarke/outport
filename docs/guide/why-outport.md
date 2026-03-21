@@ -26,7 +26,7 @@ With four or five Claude Code sessions open, working on multiple projects and mu
 
 The ROI flipped from "not worth building" to "can't work without it."
 
-Agents also need to know how to run your stack — that's what [DEVSTACK.md](/guide/devstack) solves.
+Agents also need to know how to run your stack — that's what [`DEVSTACK.md`](/guide/devstack) solves.
 
 ## "Just change the port"
 
