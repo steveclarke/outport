@@ -81,7 +81,9 @@ Go through every location below. For each one, check whether it's current.
 | `docs/guide/examples.md` | Are examples using current config syntax? |
 | `docs/guide/tips.md` | Are troubleshooting tips still accurate? |
 
-### skills/outport/SKILL.md
+### skills/outport/SKILL.md (user-facing skill, NOT .claude/skills/)
+
+This is the Outport skill that users download and install in their own projects. It lives at `skills/outport/SKILL.md` in the repo root — not in `.claude/skills/` which is for Claude Code's internal skills.
 
 | Check | What to look for |
 |-------|-----------------|

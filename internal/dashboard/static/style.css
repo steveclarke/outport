@@ -174,7 +174,7 @@ body {
 /* ── Service row ── */
 .svc {
   display: grid;
-  grid-template-columns: 28px 1fr auto auto;
+  grid-template-columns: 28px 1fr auto auto auto;
   align-items: center;
   gap: 8px;
   padding: 8px 16px;
@@ -337,6 +337,77 @@ body {
 .wt-dot.down { background: var(--red); }
 .wt-dot.idle { background: #cbd5e1; }
 
+/* ── QR panel ── */
+.qr-btn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: none;
+  cursor: pointer;
+  color: var(--text-4);
+  transition: background 0.1s ease, color 0.1s ease, border-color 0.1s ease;
+  padding: 0;
+}
+
+.qr-btn:hover { background: var(--bg-soft); color: var(--text-2); border-color: var(--text-4); }
+.qr-btn.active { background: var(--bg-soft); color: var(--text-2); border-color: var(--text-4); }
+.qr-btn svg { width: 14px; height: 14px; }
+
+.qr-panel {
+  grid-column: 1 / -1;
+  padding: 20px 16px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  border-top: 1px solid #f0ede6;
+  background: var(--bg);
+}
+
+.qr-toggle {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.qr-toggle button {
+  padding: 5px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--text-3);
+  font-family: inherit;
+  transition: background 0.1s ease, color 0.1s ease;
+}
+
+.qr-toggle button.active { background: var(--navy); color: white; }
+.qr-toggle button:not(.active):hover { background: var(--bg-soft); }
+.qr-toggle-sep { width: 1px; background: var(--border); }
+
+.qr-code { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.qr-code img { width: 180px; height: 180px; border: 1px solid var(--border); border-radius: 6px; }
+
+.qr-url {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--text-2);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 4px 12px;
+  user-select: all;
+}
+
+.qr-hint { font-size: 12px; color: var(--text-4); }
+
 /* ── Reduced motion ── */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
@@ -351,7 +422,7 @@ body {
 .main::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 
 @media (max-width: 640px) {
-  .svc { grid-template-columns: 28px 1fr auto; }
+  .svc { grid-template-columns: 28px 1fr auto auto; }
   .svc-envvar { display: none; }
   .infra-row { grid-template-columns: 28px 1fr auto; }
   .infra-row .svc-envvar { display: none; }

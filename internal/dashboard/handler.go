@@ -7,7 +7,10 @@ import (
 	"net/http"
 	"sort"
 
+	"github.com/outport-app/outport/internal/lanip"
+	"github.com/outport-app/outport/internal/qrcode"
 	"github.com/outport-app/outport/internal/registry"
+	"github.com/outport-app/outport/internal/tunnel"
 	"github.com/outport-app/outport/internal/urlutil"
 )
 
@@ -21,6 +24,7 @@ type AllocProvider interface {
 type StatusResponse struct {
 	Version  string                  `json:"version"`
 	Projects map[string]ProjectJSON `json:"projects"`
+	LANIP    string                  `json:"lan_ip,omitempty"`
 }
 
 // ProjectJSON groups instances under a project name.
@@ -36,12 +40,13 @@ type InstanceJSON struct {
 
 // ServiceJSON describes a single allocated service.
 type ServiceJSON struct {
-	Port     int    `json:"port"`
-	EnvVar   string `json:"env_var,omitempty"`
-	Hostname string `json:"hostname,omitempty"`
-	Protocol string `json:"protocol,omitempty"`
-	URL      string `json:"url,omitempty"`
-	Up       *bool  `json:"up,omitempty"`
+	Port      int    `json:"port"`
+	EnvVar    string `json:"env_var,omitempty"`
+	Hostname  string `json:"hostname,omitempty"`
+	Protocol  string `json:"protocol,omitempty"`
+	URL       string `json:"url,omitempty"`
+	Up        *bool  `json:"up,omitempty"`
+	TunnelURL string `json:"tunnel_url,omitempty"`
 }
 
 // portEntry maps a port back to the project, instance, and service that own it.
@@ -53,14 +58,16 @@ type portEntry struct {
 
 // Handler serves the dashboard HTTP API and embedded static files.
 type Handler struct {
-	mux       *http.ServeMux
-	provider  AllocProvider
-	health    *HealthChecker
-	sse       *Broadcaster
-	https     bool
-	version   string
-	indexHTML []byte
-	portIndex map[int]portEntry // port -> owning project/instance/service
+	mux          *http.ServeMux
+	provider     AllocProvider
+	health       *HealthChecker
+	sse          *Broadcaster
+	https        bool
+	version      string
+	indexHTML     []byte
+	portIndex    map[int]portEntry              // port -> owning project/instance/service
+	cachedLANIP  string                         // cached LAN IP string
+	cachedTunnel map[string]map[string]string   // cached tunnel state
 }
 
 // NewHandler creates a dashboard handler with all routes registered.
@@ -76,9 +83,11 @@ func NewHandler(provider AllocProvider, httpsEnabled bool, version string) *Hand
 	h.health = NewHealthChecker(provider.AllPorts, h.onHealthChange)
 	h.indexHTML, _ = staticFiles.ReadFile("static/index.html")
 	h.rebuildPortIndex()
+	h.refreshCaches()
 
 	h.mux.HandleFunc("GET /api/status", h.handleStatus)
 	h.mux.HandleFunc("GET /api/events", h.handleSSE)
+	h.mux.HandleFunc("GET /api/qr", h.handleQR)
 
 	staticSub, err := fs.Sub(staticFiles, "static")
 	if err != nil {
@@ -108,6 +117,23 @@ func (h *Handler) handleStatus(w http.ResponseWriter, r *http.Request) {
 	if err := enc.Encode(resp); err != nil {
 		http.Error(w, "encoding status: "+err.Error(), http.StatusInternalServerError)
 	}
+}
+
+// handleQR returns an SVG QR code for the given URL parameter.
+func (h *Handler) handleQR(w http.ResponseWriter, r *http.Request) {
+	url := r.URL.Query().Get("url")
+	if url == "" {
+		http.Error(w, "missing url parameter", http.StatusBadRequest)
+		return
+	}
+	svg, err := qrcode.SVG(url)
+	if err != nil {
+		http.Error(w, "generating QR code: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "image/svg+xml")
+	w.Header().Set("Cache-Control", "public, max-age=86400")
+	fmt.Fprint(w, svg)
 }
 
 // handleSSE streams server-sent events to the client.
@@ -154,6 +180,7 @@ func (h *Handler) handleSSE(w http.ResponseWriter, r *http.Request) {
 // pick up port status for any newly registered services.
 func (h *Handler) OnRegistryUpdate() {
 	h.rebuildPortIndex()
+	h.refreshCaches()
 	if h.sse.ClientCount() == 0 {
 		return
 	}
@@ -178,6 +205,25 @@ func (h *Handler) rebuildPortIndex() {
 		}
 	}
 	h.portIndex = idx
+}
+
+// refreshCaches updates the cached LAN IP and tunnel state.
+// Called on startup and on every registry/tunnel file change.
+func (h *Handler) refreshCaches() {
+	if ip, err := lanip.Detect(""); err == nil {
+		h.cachedLANIP = ip.String()
+	}
+	statePath, err := tunnel.DefaultStatePath()
+	if err != nil {
+		h.cachedTunnel = nil
+		return
+	}
+	state, err := tunnel.ReadState(statePath)
+	if err != nil || state == nil {
+		h.cachedTunnel = nil
+		return
+	}
+	h.cachedTunnel = state.Tunnels
 }
 
 // onHealthChange is the callback from the health checker when port statuses change.
@@ -228,6 +274,9 @@ func (h *Handler) buildStatus() StatusResponse {
 		Projects: make(map[string]ProjectJSON),
 	}
 
+	resp.LANIP = h.cachedLANIP
+	tunnelState := h.cachedTunnel
+
 	for key, alloc := range allocs {
 		project, instance := registry.ParseKey(key)
 
@@ -271,6 +320,14 @@ func (h *Handler) buildStatus() StatusResponse {
 			if up, ok := healthStatus[port]; ok {
 				upVal := up
 				sj.Up = &upVal
+			}
+
+			if tunnelState != nil {
+				if svcTunnels, ok := tunnelState[key]; ok {
+					if turl, ok := svcTunnels[name]; ok {
+						sj.TunnelURL = turl
+					}
+				}
 			}
 
 			ij.Services[name] = sj

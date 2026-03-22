@@ -10,6 +10,14 @@
 
   var showInactive = false;
   var lastData = null;
+  var openQR = null; // { project, instance, service }
+  var qrShowingTunnel = false;
+
+  function isQROpen(project, instance, service) {
+    return openQR && openQR.project === project &&
+        openQR.instance === instance &&
+        openQR.service === service;
+  }
 
   function setConnection(state) {
     if (state === "connected") {
@@ -69,6 +77,29 @@
     if (className) node.className = className;
     if (text) node.textContent = text;
     return node;
+  }
+
+  function createQRIcon() {
+    var ns = "http://www.w3.org/2000/svg";
+    var svg = document.createElementNS(ns, "svg");
+    svg.setAttribute("viewBox", "0 0 24 24");
+    svg.setAttribute("fill", "none");
+    svg.setAttribute("stroke", "currentColor");
+    svg.setAttribute("stroke-width", "2");
+    var rects = [
+      [3, 3, 7, 7], [14, 3, 7, 7], [3, 14, 7, 7],
+      [14, 14, 3, 3], [18, 18, 3, 3], [18, 14, 3, 1], [14, 18, 1, 3]
+    ];
+    for (var i = 0; i < rects.length; i++) {
+      var r = document.createElementNS(ns, "rect");
+      r.setAttribute("x", rects[i][0]);
+      r.setAttribute("y", rects[i][1]);
+      r.setAttribute("width", rects[i][2]);
+      r.setAttribute("height", rects[i][3]);
+      if (i < 3) r.setAttribute("rx", "1");
+      svg.appendChild(r);
+    }
+    return svg;
   }
 
   function sortInstances(names) {
@@ -351,8 +382,31 @@
     row.appendChild(link);
 
     row.appendChild(el("span", "svc-port", String(service.port)));
+
+    if (service.url) {
+      var qrBtn = el("button", "qr-btn");
+      qrBtn.appendChild(createQRIcon());
+      qrBtn.title = "QR code";
+      var pn = projectName, iname = instanceName, sn = serviceName;
+      qrBtn.addEventListener("click", function () {
+        toggleQR(pn, iname, sn);
+      });
+      if (isQROpen(projectName, instanceName, serviceName)) {
+        qrBtn.classList.add("active");
+      }
+      row.appendChild(qrBtn);
+    } else {
+      row.appendChild(el("span")); // empty cell for grid alignment
+    }
+
     row.appendChild(el("span", "svc-envvar", service.env_var || ""));
 
+    if (isQROpen(projectName, instanceName, serviceName)) {
+      var frag = document.createDocumentFragment();
+      frag.appendChild(row);
+      frag.appendChild(renderQRPanel(service));
+      return frag;
+    }
     return row;
   }
 
@@ -401,6 +455,65 @@
     if (needsRerender) {
       render(lastData);
     }
+  }
+
+  function toggleQR(project, instance, service) {
+    if (isQROpen(project, instance, service)) {
+      openQR = null;
+      qrShowingTunnel = false;
+    } else {
+      openQR = { project: project, instance: instance, service: service };
+      qrShowingTunnel = false;
+    }
+    if (lastData) render(lastData);
+  }
+
+  function lanURL(port) {
+    var ip = lastData && lastData.lan_ip ? lastData.lan_ip : "localhost";
+    return "http://" + ip + ":" + port;
+  }
+
+  function renderQRPanel(service) {
+    var panel = el("div", "qr-panel");
+    var hasTunnel = !!service.tunnel_url;
+
+    if (hasTunnel) {
+      var toggle = el("div", "qr-toggle");
+      var lanBtn = el("button", qrShowingTunnel ? "" : "active", "LAN");
+      var sep = el("div", "qr-toggle-sep");
+      var tunBtn = el("button", qrShowingTunnel ? "active" : "", "Tunnel");
+      lanBtn.addEventListener("click", function () {
+        qrShowingTunnel = false;
+        if (lastData) render(lastData);
+      });
+      tunBtn.addEventListener("click", function () {
+        qrShowingTunnel = true;
+        if (lastData) render(lastData);
+      });
+      toggle.appendChild(lanBtn);
+      toggle.appendChild(sep);
+      toggle.appendChild(tunBtn);
+      panel.appendChild(toggle);
+    }
+
+    var url = qrShowingTunnel ? service.tunnel_url : lanURL(service.port);
+    var code = el("div", "qr-code");
+    var img = document.createElement("img");
+    img.src = "/api/qr?url=" + encodeURIComponent(url);
+    img.alt = "QR code for " + url;
+    code.appendChild(img);
+
+    var urlSpan = el("span", "qr-url", url);
+    code.appendChild(urlSpan);
+    panel.appendChild(code);
+
+    var hint = el("span", "qr-hint",
+      qrShowingTunnel
+        ? "Scan with your phone \u00b7 works from any network"
+        : "Scan with your phone \u00b7 same Wi\u2011Fi network");
+    panel.appendChild(hint);
+
+    return panel;
   }
 
   document.addEventListener("DOMContentLoaded", function () {
