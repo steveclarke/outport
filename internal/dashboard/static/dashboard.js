@@ -101,17 +101,10 @@
 
   // ── Health badge ──
 
-  // Health badge shows up/total across ALL services (including unchecked).
-  // Color logic:
-  //   green — all checked services are up (even if some are unchecked)
-  //   red   — checked services exist and NONE are up (total failure)
-  //   neutral — mix of up and down/unchecked (normal partial usage)
-  //   idle  — no health data at all
   function computeHealth(project) {
     var instances = project.instances || {};
     var total = 0;
     var upCount = 0;
-    var downCount = 0;
 
     var instNames = Object.keys(instances);
     for (var i = 0; i < instNames.length; i++) {
@@ -119,21 +112,11 @@
       var svcNames = Object.keys(services);
       for (var j = 0; j < svcNames.length; j++) {
         total++;
-        var svc = services[svcNames[j]];
-        if (svc.up === true) upCount++;
-        else if (svc.up === false) downCount++;
+        if (services[svcNames[j]].up === true) upCount++;
       }
     }
 
-    var checked = upCount + downCount;
-    var cls = "idle";
-    if (checked > 0) {
-      if (upCount === total) cls = "ok";           // everything up
-      else if (upCount === 0) cls = "warn";        // total failure
-      else cls = "partial";                         // mix — normal
-    }
-
-    return { up: upCount, total: total, cls: cls };
+    return { up: upCount, total: total };
   }
 
   function computeInstanceHealth(instance) {
@@ -229,7 +212,7 @@
     sidebar.appendChild(el("span", "project-name", projectName));
 
     var health = computeHealth(project);
-    var badge = el("span", "project-health " + health.cls, health.up + "/" + health.total);
+    var badge = el("span", "project-health", health.up + "/" + health.total);
     sidebar.appendChild(badge);
     section.appendChild(sidebar);
 
