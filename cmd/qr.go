@@ -49,7 +49,7 @@ func runQR(cmd *cobra.Command, args []string) error {
 	if len(args) == 1 {
 		name := args[0]
 		if _, ok := ctx.Cfg.Services[name]; !ok {
-			return FlagErrorf("unknown service %q", name)
+			return fmt.Errorf("Service %q not found in outport.yml.", name)
 		}
 		port, ok := alloc.Ports[name]
 		if !ok {
