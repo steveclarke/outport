@@ -878,6 +878,112 @@ computed:
 	}
 }
 
+func TestLoad_ComputedProjectNameVariable(t *testing.T) {
+	dir := writeConfig(t, `name: myapp
+services:
+  web:
+    env_var: PORT
+
+computed:
+  COMPOSE_PROJECT_NAME:
+    value: "${project_name}${instance:+-${instance}}"
+    env_file: .env
+`)
+	_, err := Load(dir)
+	if err != nil {
+		t.Fatalf("expected project_name to be a valid variable, got: %v", err)
+	}
+}
+
+func TestResolveComputed_ProjectName(t *testing.T) {
+	computed := map[string]ComputedValue{
+		"COMPOSE_PROJECT_NAME": {
+			Value:    "${project_name}${instance:+-${instance}}",
+			EnvFiles: []string{".env"},
+		},
+	}
+
+	t.Run("main instance", func(t *testing.T) {
+		vars := map[string]string{"project_name": "myapp", "instance": ""}
+		resolved := ResolveComputed(computed, vars)
+		if got := resolved["COMPOSE_PROJECT_NAME"][".env"]; got != "myapp" {
+			t.Errorf("got %q, want %q", got, "myapp")
+		}
+	})
+
+	t.Run("worktree instance", func(t *testing.T) {
+		vars := map[string]string{"project_name": "myapp", "instance": "bxcf"}
+		resolved := ResolveComputed(computed, vars)
+		if got := resolved["COMPOSE_PROJECT_NAME"][".env"]; got != "myapp-bxcf" {
+			t.Errorf("got %q, want %q", got, "myapp-bxcf")
+		}
+	})
+}
+
+func TestLoad_ComputedProtocolField(t *testing.T) {
+	dir := writeConfig(t, `name: myapp
+services:
+  web:
+    env_var: PORT
+    protocol: http
+
+computed:
+  WEB_PROTOCOL:
+    value: "${web.protocol}"
+    env_file: .env
+`)
+	_, err := Load(dir)
+	if err != nil {
+		t.Fatalf("expected protocol to be a valid field, got: %v", err)
+	}
+}
+
+func TestLoad_ComputedEnvVarField(t *testing.T) {
+	dir := writeConfig(t, `name: myapp
+services:
+  web:
+    env_var: PORT
+    protocol: http
+
+computed:
+  WEB_VAR_NAME:
+    value: "${web.env_var}"
+    env_file: .env
+`)
+	_, err := Load(dir)
+	if err != nil {
+		t.Fatalf("expected env_var to be a valid field, got: %v", err)
+	}
+}
+
+func TestResolveComputed_ProtocolField(t *testing.T) {
+	computed := map[string]ComputedValue{
+		"PROTO": {
+			Value:    "${web.protocol}",
+			EnvFiles: []string{".env"},
+		},
+	}
+	vars := map[string]string{"web.protocol": "http", "web.port": "3000"}
+	resolved := ResolveComputed(computed, vars)
+	if got := resolved["PROTO"][".env"]; got != "http" {
+		t.Errorf("got %q, want %q", got, "http")
+	}
+}
+
+func TestResolveComputed_EnvVarField(t *testing.T) {
+	computed := map[string]ComputedValue{
+		"VAR_NAME": {
+			Value:    "${web.env_var}",
+			EnvFiles: []string{".env"},
+		},
+	}
+	vars := map[string]string{"web.env_var": "PORT", "web.port": "3000"}
+	resolved := ResolveComputed(computed, vars)
+	if got := resolved["VAR_NAME"][".env"]; got != "PORT" {
+		t.Errorf("got %q, want %q", got, "PORT")
+	}
+}
+
 func TestLoad_NoPreferredPort(t *testing.T) {
 	dir := writeConfig(t, `name: myapp
 services:

@@ -25,6 +25,8 @@ var validFields = map[string]bool{
 	"port":     true,
 	"hostname": true,
 	"url":      true,
+	"protocol": true,
+	"env_var":  true,
 }
 
 // validModifiers maps field names to their allowed modifiers.
@@ -34,7 +36,8 @@ var validModifiers = map[string]map[string]bool{
 
 // validStandaloneVars are top-level template variables (not service-scoped).
 var validStandaloneVars = map[string]bool{
-	"instance": true,
+	"instance":     true,
+	"project_name": true,
 }
 
 func validateTemplateRefs(computedName, template string, services map[string]Service) error {
@@ -56,7 +59,7 @@ func validateTemplateRefs(computedName, template string, services map[string]Ser
 			return fmt.Errorf("computed %q: references unknown service %q", computedName, svcName)
 		}
 		if !validFields[field] {
-			return fmt.Errorf("computed %q: unknown field %q (valid: port, hostname, url)", computedName, field)
+			return fmt.Errorf("computed %q: unknown field %q (valid: port, hostname, url, protocol, env_var)", computedName, field)
 		}
 		if modifier != "" {
 			mods, ok := validModifiers[field]
@@ -74,7 +77,7 @@ func validateTemplateRefs(computedName, template string, services map[string]Ser
 			varName = m[2] // from the ${word:[+-] branch
 		}
 		if !validStandaloneVars[varName] {
-			return fmt.Errorf("computed %q: unknown variable %q (valid: instance)", computedName, varName)
+			return fmt.Errorf("computed %q: unknown variable %q (valid: instance, project_name)", computedName, varName)
 		}
 	}
 

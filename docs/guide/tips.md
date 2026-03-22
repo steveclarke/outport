@@ -98,7 +98,7 @@ If `docker compose up` from one worktree replaces another's containers, add a `C
 ```yaml
 computed:
   COMPOSE_PROJECT_NAME:
-    value: "myapp${instance:+-${instance}}"
+    value: "${project_name}${instance:+-${instance}}"
     env_file: .env
 ```
 

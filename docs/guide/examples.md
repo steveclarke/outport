@@ -102,7 +102,7 @@ computed:
 
   # Docker Compose isolation per worktree
   COMPOSE_PROJECT_NAME:
-    value: "acme${instance:+-${instance}}"
+    value: "${project_name}${instance:+-${instance}}"
     env_file: backend/.env
 
   # Bruno API testing
@@ -142,11 +142,11 @@ services:
 
 computed:
   COMPOSE_PROJECT_NAME:
-    value: "myapp${instance:+-${instance}}"
+    value: "${project_name}${instance:+-${instance}}"
     env_file: .env
 ```
 
-The `${instance:+-${instance}}` syntax uses bash-style parameter expansion:
+`${project_name}` resolves to the project name from your config. The `${instance:+-${instance}}` syntax uses bash-style parameter expansion:
 - **Main instance** — `${instance}` is empty, so the result is just `myapp`
 - **Worktree** — `${instance}` is `xbjf`, so the result is `myapp-xbjf`
 
