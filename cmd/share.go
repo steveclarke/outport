@@ -72,6 +72,9 @@ func runShare(cmd *cobra.Command, args []string) error {
 	httpsEnabled := certmanager.IsCAInstalled()
 
 	defer func() {
+		if sp, err := tunnel.DefaultStatePath(); err == nil {
+			tunnel.RemoveState(sp)
+		}
 		mgr.StopAll()
 		// Revert .env files to local URLs (best-effort; user can run 'outport up' if this fails)
 		if _, err := writeEnvFiles(ctx.Dir, ctx.Cfg, ctx.Instance, alloc.Ports, alloc.Hostnames, httpsEnabled, nil,
@@ -92,6 +95,13 @@ func runShare(cmd *cobra.Command, args []string) error {
 	tunnelURLs := make(map[string]string)
 	for _, tun := range tunnels {
 		tunnelURLs[tun.Service] = tun.URL
+	}
+
+	// Write tunnel state for dashboard and CLI discovery
+	statePath, stateErr := tunnel.DefaultStatePath()
+	if stateErr == nil {
+		key := ctx.Cfg.Name + "/" + ctx.Instance
+		_ = tunnel.WriteState(statePath, key, tunnelURLs) // best-effort
 	}
 
 	result, err := writeEnvFiles(ctx.Dir, ctx.Cfg, ctx.Instance, alloc.Ports, alloc.Hostnames, httpsEnabled, tunnelURLs,
