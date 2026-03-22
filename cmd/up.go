@@ -262,6 +262,10 @@ func buildTemplateVars(cfg *config.Config, instanceName string, ports map[string
 	for name, svc := range cfg.Services {
 		portStr := fmt.Sprintf("%d", ports[name])
 		vars[name+".port"] = portStr
+		vars[name+".env_var"] = svc.EnvVar
+		if svc.Protocol != "" {
+			vars[name+".protocol"] = svc.Protocol
+		}
 
 		if h, ok := hostnames[name]; ok {
 			vars[name+".hostname"] = h

@@ -25,6 +25,8 @@ var validFields = map[string]bool{
 	"port":     true,
 	"hostname": true,
 	"url":      true,
+	"protocol": true,
+	"env_var":  true,
 }
 
 // validModifiers maps field names to their allowed modifiers.
@@ -57,7 +59,7 @@ func validateTemplateRefs(computedName, template string, services map[string]Ser
 			return fmt.Errorf("computed %q: references unknown service %q", computedName, svcName)
 		}
 		if !validFields[field] {
-			return fmt.Errorf("computed %q: unknown field %q (valid: port, hostname, url)", computedName, field)
+			return fmt.Errorf("computed %q: unknown field %q (valid: port, hostname, url, protocol, env_var)", computedName, field)
 		}
 		if modifier != "" {
 			mods, ok := validModifiers[field]
