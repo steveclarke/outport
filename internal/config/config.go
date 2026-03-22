@@ -34,7 +34,8 @@ var validModifiers = map[string]map[string]bool{
 
 // validStandaloneVars are top-level template variables (not service-scoped).
 var validStandaloneVars = map[string]bool{
-	"instance": true,
+	"instance":     true,
+	"project_name": true,
 }
 
 func validateTemplateRefs(computedName, template string, services map[string]Service) error {
@@ -74,7 +75,7 @@ func validateTemplateRefs(computedName, template string, services map[string]Ser
 			varName = m[2] // from the ${word:[+-] branch
 		}
 		if !validStandaloneVars[varName] {
-			return fmt.Errorf("computed %q: unknown variable %q (valid: instance)", computedName, varName)
+			return fmt.Errorf("computed %q: unknown variable %q (valid: instance, project_name)", computedName, varName)
 		}
 	}
 

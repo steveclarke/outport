@@ -878,6 +878,48 @@ computed:
 	}
 }
 
+func TestLoad_ComputedProjectNameVariable(t *testing.T) {
+	dir := writeConfig(t, `name: myapp
+services:
+  web:
+    env_var: PORT
+
+computed:
+  COMPOSE_PROJECT_NAME:
+    value: "${project_name}${instance:+-${instance}}"
+    env_file: .env
+`)
+	_, err := Load(dir)
+	if err != nil {
+		t.Fatalf("expected project_name to be a valid variable, got: %v", err)
+	}
+}
+
+func TestResolveComputed_ProjectName(t *testing.T) {
+	computed := map[string]ComputedValue{
+		"COMPOSE_PROJECT_NAME": {
+			Value:    "${project_name}${instance:+-${instance}}",
+			EnvFiles: []string{".env"},
+		},
+	}
+
+	t.Run("main instance", func(t *testing.T) {
+		vars := map[string]string{"project_name": "myapp", "instance": ""}
+		resolved := ResolveComputed(computed, vars)
+		if got := resolved["COMPOSE_PROJECT_NAME"][".env"]; got != "myapp" {
+			t.Errorf("got %q, want %q", got, "myapp")
+		}
+	})
+
+	t.Run("worktree instance", func(t *testing.T) {
+		vars := map[string]string{"project_name": "myapp", "instance": "bxcf"}
+		resolved := ResolveComputed(computed, vars)
+		if got := resolved["COMPOSE_PROJECT_NAME"][".env"]; got != "myapp-bxcf" {
+			t.Errorf("got %q, want %q", got, "myapp-bxcf")
+		}
+	})
+}
+
 func TestLoad_NoPreferredPort(t *testing.T) {
 	dir := writeConfig(t, `name: myapp
 services:

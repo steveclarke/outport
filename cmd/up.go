@@ -253,6 +253,7 @@ func computeProtocols(cfg *config.Config) map[string]string {
 // ${service.url:direct} always resolves to localhost (unaffected by tunnels).
 func buildTemplateVars(cfg *config.Config, instanceName string, ports map[string]int, hostnames map[string]string, httpsEnabled bool, tunnelURLs map[string]string) map[string]string {
 	vars := make(map[string]string)
+	vars["project_name"] = cfg.Name
 	if instanceName == "main" {
 		vars["instance"] = ""
 	} else {
