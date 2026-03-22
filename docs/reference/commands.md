@@ -91,6 +91,26 @@ outport open web     # open a specific service
 
 Opens services with `protocol: http` or `protocol: https` in your default browser. Works best with `.test` domains set up (`outport system start`).
 
+### `outport qr`
+
+Show QR codes for accessing HTTP services from mobile devices.
+
+```bash
+outport qr              # LAN QR codes for all HTTP services
+outport qr web          # QR code for a specific service
+outport qr --tunnel     # tunnel URL QR codes (requires active outport share)
+```
+
+Displays a scannable QR code encoding a LAN URL (`http://<your-ip>:<port>`) for each HTTP service. Scan with your phone on the same Wi-Fi network to open the dev app. Use `--tunnel` to show Cloudflare tunnel URLs instead (requires `outport share` running in another terminal).
+
+If the service appears to be bound to localhost only, a hint is shown suggesting to bind to `0.0.0.0`.
+
+| Flag | Description |
+|------|-------------|
+| `--tunnel` | Show tunnel URL instead of LAN URL |
+| `--interface` | Override auto-detected network interface (e.g., `en0`) |
+| `--json` | Output URLs as JSON |
+
 ### `outport share`
 
 Tunnel HTTP services to public URLs via Cloudflare quick tunnels.

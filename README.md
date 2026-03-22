@@ -184,6 +184,8 @@ outport down                   Remove ports, clean .env files
 outport ports                  Show ports for the current project
 outport ports --computed       Show ports and computed values
 outport open                   Open HTTP services in the browser
+outport qr                     Show QR codes for mobile device access
+outport qr --tunnel            Show QR codes with tunnel URLs
 outport share                  Tunnel HTTP services to public URLs
 outport share web              Tunnel a specific service
 outport rename <old> <new>     Rename an instance
