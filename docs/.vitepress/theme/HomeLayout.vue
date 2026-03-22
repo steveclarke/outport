@@ -112,6 +112,29 @@
 
     <hr class="section-divider">
 
+    <!-- DASHBOARD -->
+    <section class="dashboard-section">
+      <h2>Live Dashboard</h2>
+      <p class="dashboard-caption">
+        All your projects, URLs, and service health in one place.
+        Updates in real-time — no refresh needed.
+      </p>
+      <div class="dashboard-frame">
+        <img
+          src="/dashboard-screenshot.png"
+          alt="Outport live dashboard showing projects with .test URLs, ports, and health status"
+          width="1200"
+          height="800"
+          loading="lazy"
+        />
+      </div>
+      <p class="dashboard-note">
+        Pin <code>https://outport.test</code> in your browser after running <code>outport setup</code>.
+      </p>
+    </section>
+
+    <hr class="section-divider">
+
     <!-- MONOREPO EXAMPLE -->
     <section class="example">
       <h2>One config, fully wired</h2>
@@ -412,6 +435,51 @@ CORS_ORIGINS=<span class="success">https://myapp-frontend.test</span>
   text-decoration: underline;
 }
 .feature-card code {
+  background: var(--vp-c-bg-soft);
+  padding: 0.1em 0.4em;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+
+/* DASHBOARD */
+.dashboard-section {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 4rem 2rem;
+  text-align: center;
+}
+.dashboard-section h2 {
+  font-family: 'Barlow', ui-sans-serif, system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 2rem;
+  color: #031C54;
+  letter-spacing: -0.01em;
+  margin-bottom: 0.75rem;
+}
+.dashboard-caption {
+  color: var(--vp-c-text-3);
+  font-size: 1rem;
+  max-width: 500px;
+  margin: 0 auto 2rem;
+  line-height: 1.6;
+}
+.dashboard-frame {
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(3,28,84,0.10), 0 4px 16px rgba(3,28,84,0.05);
+  border: 1px solid rgba(3,28,84,0.08);
+}
+.dashboard-frame img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.dashboard-note {
+  color: var(--vp-c-text-3);
+  font-size: 0.85rem;
+  margin-top: 1.25rem;
+}
+.dashboard-note code {
   background: var(--vp-c-bg-soft);
   padding: 0.1em 0.4em;
   border-radius: 4px;
