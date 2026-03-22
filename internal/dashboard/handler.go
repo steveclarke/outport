@@ -7,7 +7,10 @@ import (
 	"net/http"
 	"sort"
 
+	"github.com/outport-app/outport/internal/lanip"
+	"github.com/outport-app/outport/internal/qrcode"
 	"github.com/outport-app/outport/internal/registry"
+	"github.com/outport-app/outport/internal/tunnel"
 	"github.com/outport-app/outport/internal/urlutil"
 )
 
@@ -21,6 +24,7 @@ type AllocProvider interface {
 type StatusResponse struct {
 	Version  string                  `json:"version"`
 	Projects map[string]ProjectJSON `json:"projects"`
+	LANIP    string                  `json:"lan_ip,omitempty"`
 }
 
 // ProjectJSON groups instances under a project name.
@@ -36,12 +40,13 @@ type InstanceJSON struct {
 
 // ServiceJSON describes a single allocated service.
 type ServiceJSON struct {
-	Port     int    `json:"port"`
-	EnvVar   string `json:"env_var,omitempty"`
-	Hostname string `json:"hostname,omitempty"`
-	Protocol string `json:"protocol,omitempty"`
-	URL      string `json:"url,omitempty"`
-	Up       *bool  `json:"up,omitempty"`
+	Port      int    `json:"port"`
+	EnvVar    string `json:"env_var,omitempty"`
+	Hostname  string `json:"hostname,omitempty"`
+	Protocol  string `json:"protocol,omitempty"`
+	URL       string `json:"url,omitempty"`
+	Up        *bool  `json:"up,omitempty"`
+	TunnelURL string `json:"tunnel_url,omitempty"`
 }
 
 // portEntry maps a port back to the project, instance, and service that own it.
@@ -79,6 +84,7 @@ func NewHandler(provider AllocProvider, httpsEnabled bool, version string) *Hand
 
 	h.mux.HandleFunc("GET /api/status", h.handleStatus)
 	h.mux.HandleFunc("GET /api/events", h.handleSSE)
+	h.mux.HandleFunc("GET /api/qr", h.handleQR)
 
 	staticSub, err := fs.Sub(staticFiles, "static")
 	if err != nil {
@@ -108,6 +114,23 @@ func (h *Handler) handleStatus(w http.ResponseWriter, r *http.Request) {
 	if err := enc.Encode(resp); err != nil {
 		http.Error(w, "encoding status: "+err.Error(), http.StatusInternalServerError)
 	}
+}
+
+// handleQR returns an SVG QR code for the given URL parameter.
+func (h *Handler) handleQR(w http.ResponseWriter, r *http.Request) {
+	url := r.URL.Query().Get("url")
+	if url == "" {
+		http.Error(w, "missing url parameter", http.StatusBadRequest)
+		return
+	}
+	svg, err := qrcode.SVG(url)
+	if err != nil {
+		http.Error(w, "generating QR code: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "image/svg+xml")
+	w.Header().Set("Cache-Control", "public, max-age=86400")
+	fmt.Fprint(w, svg)
 }
 
 // handleSSE streams server-sent events to the client.
@@ -180,6 +203,19 @@ func (h *Handler) rebuildPortIndex() {
 	h.portIndex = idx
 }
 
+// readTunnelState reads the tunnel state file and returns active tunnel URLs.
+func (h *Handler) readTunnelState() map[string]map[string]string {
+	statePath, err := tunnel.DefaultStatePath()
+	if err != nil {
+		return nil
+	}
+	state, err := tunnel.ReadState(statePath)
+	if err != nil || state == nil {
+		return nil
+	}
+	return state.Tunnels
+}
+
 // onHealthChange is the callback from the health checker when port statuses change.
 // It maps port numbers back to project/instance/service names and broadcasts
 // a health event to all SSE clients.
@@ -228,6 +264,11 @@ func (h *Handler) buildStatus() StatusResponse {
 		Projects: make(map[string]ProjectJSON),
 	}
 
+	tunnelState := h.readTunnelState()
+	if ip, err := lanip.Detect(""); err == nil {
+		resp.LANIP = ip.String()
+	}
+
 	for key, alloc := range allocs {
 		project, instance := registry.ParseKey(key)
 
@@ -271,6 +312,14 @@ func (h *Handler) buildStatus() StatusResponse {
 			if up, ok := healthStatus[port]; ok {
 				upVal := up
 				sj.Up = &upVal
+			}
+
+			if tunnelState != nil {
+				if svcTunnels, ok := tunnelState[key]; ok {
+					if turl, ok := svcTunnels[name]; ok {
+						sj.TunnelURL = turl
+					}
+				}
 			}
 
 			ij.Services[name] = sj

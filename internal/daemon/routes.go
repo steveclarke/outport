@@ -130,9 +130,17 @@ func WatchAndRebuild(ctx context.Context, regPath string, rt *RouteTable) error 
 			if !ok {
 				return nil
 			}
-			if filepath.Base(event.Name) == base &&
-				(event.Has(fsnotify.Write) || event.Has(fsnotify.Create)) {
+			eventBase := filepath.Base(event.Name)
+			if !event.Has(fsnotify.Write) && !event.Has(fsnotify.Create) {
+				continue
+			}
+			if eventBase == base {
 				_ = rebuildFromFile(regPath, rt) // best-effort
+			} else if eventBase == "tunnels.json" {
+				// Tunnel state changed — notify dashboard without rebuilding routes
+				if rt.OnUpdate != nil {
+					rt.OnUpdate()
+				}
 			}
 		case err, ok := <-watcher.Errors:
 			if !ok {
