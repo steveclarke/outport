@@ -144,6 +144,8 @@ Computed values use bash-style parameter expansion:
 | `${service.hostname}` | `myapp.test` | `.test` hostname |
 | `${service.url}` | `https://myapp.test` | Browser-facing URLs (CORS, asset hosts) |
 | `${service.url:direct}` | `http://localhost:24920` | Server-to-server (API calls, WebSocket) |
+| `${service.protocol}` | `http` | Protocol as declared in config |
+| `${service.env_var}` | `PORT` | Env var name for the service |
 
 Use `${service.url}` for URLs the browser sees — it produces `https://` URLs when the local CA is installed (via `outport system start`). Use `${service.url:direct}` for server-to-server communication that bypasses the proxy (always `http://localhost:{port}`).
 
@@ -152,6 +154,7 @@ Use `${service.url}` for URLs the browser sees — it produces `https://` URLs w
 | Template | Resolves to | Use case |
 |----------|------------|----------|
 | `${instance}` | `""` (main) or `xbjf` (worktree) | Instance-aware values |
+| `${project_name}` | `myapp` | Project name from config |
 
 The `${instance}` variable is empty for main instances and set to the instance code for worktrees.
 
@@ -167,7 +170,7 @@ The `${instance}` variable is empty for main instances and set to the instance c
 ```yaml
 computed:
   COMPOSE_PROJECT_NAME:
-    value: "myapp${instance:+-${instance}}"
+    value: "${project_name}${instance:+-${instance}}"
     env_file: .env
 ```
 
