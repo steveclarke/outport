@@ -2,13 +2,18 @@
   "use strict";
 
   var dashboard = document.getElementById("dashboard");
-  var connDot = document.getElementById("connection-dot");
-  var connText = document.getElementById("connection-text");
+  var connDot = document.getElementById("conn-dot");
+  var connText = document.getElementById("conn-text");
+  var headerStats = document.getElementById("header-stats");
 
   function setConnection(state) {
-    connDot.className = state;
-    connText.textContent =
-      state === "connected" ? "Connected" : "Reconnecting\u2026";
+    if (state === "connected") {
+      connDot.className = "header-conn-dot";
+      connText.textContent = "Connected";
+    } else {
+      connDot.className = "header-conn-dot reconnecting";
+      connText.textContent = "Reconnecting\u2026";
+    }
   }
 
   function fetchStatus() {
@@ -52,128 +57,261 @@
     }
   }
 
+  // ── Helpers ──
+
+  function el(tag, className, text) {
+    var node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text) node.textContent = text;
+    return node;
+  }
+
+  function sortInstances(names) {
+    return names.slice().sort(function (a, b) {
+      if (a === "main") return -1;
+      if (b === "main") return 1;
+      return a < b ? -1 : a > b ? 1 : 0;
+    });
+  }
+
+  function classifyServices(services) {
+    var web = [];
+    var infra = [];
+    var names = Object.keys(services).sort();
+    for (var i = 0; i < names.length; i++) {
+      var name = names[i];
+      if (services[name].url) {
+        web.push(name);
+      } else {
+        infra.push(name);
+      }
+    }
+    return { web: web, infra: infra };
+  }
+
+  function dotClass(up) {
+    if (up === true) return "up";
+    if (up === false) return "down";
+    return "";
+  }
+
+  // ── Health badge ──
+
+  function computeHealth(project) {
+    var instances = project.instances || {};
+    var total = 0;
+    var upCount = 0;
+    var hasHealth = false;
+
+    var instNames = Object.keys(instances);
+    for (var i = 0; i < instNames.length; i++) {
+      var services = instances[instNames[i]].services || {};
+      var svcNames = Object.keys(services);
+      for (var j = 0; j < svcNames.length; j++) {
+        total++;
+        var svc = services[svcNames[j]];
+        if (svc.up === true) {
+          upCount++;
+          hasHealth = true;
+        } else if (svc.up === false) {
+          hasHealth = true;
+        }
+      }
+    }
+
+    var cls = "idle";
+    if (hasHealth) {
+      cls = upCount === total ? "ok" : "warn";
+    }
+
+    return { up: upCount, total: total, cls: cls };
+  }
+
+  // ── Render ──
+
   function render(data) {
     clearDashboard();
 
     var projects = data.projects || {};
     var projectNames = Object.keys(projects).sort();
 
+    // Update header stats.
+    var totalInstances = 0;
     for (var p = 0; p < projectNames.length; p++) {
-      var projectName = projectNames[p];
-      var project = projects[projectName];
+      var inst = projects[projectNames[p]].instances || {};
+      totalInstances += Object.keys(inst).length;
+    }
+    headerStats.textContent =
+      projectNames.length + (projectNames.length === 1 ? " project" : " projects") +
+      " \u00b7 " +
+      totalInstances + (totalInstances === 1 ? " instance" : " instances");
 
-      var group = document.createElement("section");
-      group.className = "project-group";
-
-      var heading = document.createElement("h2");
-      heading.className = "project-name";
-      heading.textContent = projectName;
-      group.appendChild(heading);
-
-      var instances = project.instances || {};
-      var instanceNames = Object.keys(instances).sort(function (a, b) {
-        if (a === "main") return -1;
-        if (b === "main") return 1;
-        return a < b ? -1 : a > b ? 1 : 0;
-      });
-
-      for (var i = 0; i < instanceNames.length; i++) {
-        var instanceName = instanceNames[i];
-        var instance = instances[instanceName];
-        group.appendChild(renderInstance(projectName, instanceName, instance));
-      }
-
-      dashboard.appendChild(group);
+    for (var pi = 0; pi < projectNames.length; pi++) {
+      dashboard.appendChild(renderProject(projectNames[pi], projects[projectNames[pi]]));
     }
   }
 
-  function renderInstance(projectName, instanceName, instance) {
-    var card = document.createElement("div");
-    card.className = "instance-card";
+  function renderProject(projectName, project) {
+    var section = el("section", "project");
 
-    var header = document.createElement("div");
-    header.className = "instance-header";
+    // Sidebar
+    var sidebar = el("div", "project-sidebar");
+    sidebar.appendChild(el("span", "project-name", projectName));
 
-    var badge = document.createElement("span");
-    badge.className = "instance-badge";
-    badge.textContent = instanceName;
-    header.appendChild(badge);
+    var health = computeHealth(project);
+    var badge = el("span", "project-health " + health.cls, health.up + "/" + health.total);
+    sidebar.appendChild(badge);
+    section.appendChild(sidebar);
 
-    if (instance.project_dir) {
-      var dir = document.createElement("span");
-      dir.className = "instance-dir";
-      dir.textContent = instance.project_dir;
-      header.appendChild(dir);
+    // Instances
+    var instancesDiv = el("div", "project-instances");
+    var instances = project.instances || {};
+    var instNames = sortInstances(Object.keys(instances));
+
+    // Separate main from worktrees
+    var mainName = null;
+    var worktreeNames = [];
+    for (var i = 0; i < instNames.length; i++) {
+      if (instNames[i] === "main") {
+        mainName = instNames[i];
+      } else {
+        worktreeNames.push(instNames[i]);
+      }
     }
 
-    card.appendChild(header);
+    // Render main instance (always visible)
+    if (mainName) {
+      instancesDiv.appendChild(renderInstance(projectName, mainName, instances[mainName]));
+    }
+
+    // Render worktree instances in a collapsible toggle
+    if (worktreeNames.length > 0) {
+      var wtToggle = document.createElement("details");
+      wtToggle.className = "wt-toggle";
+
+      var wtSummary = document.createElement("summary");
+      wtSummary.textContent = worktreeNames.length + (worktreeNames.length === 1 ? " worktree " : " worktrees ");
+
+      // Add worktree dots
+      var wtDots = el("span", "wt-dots");
+      for (var wi = 0; wi < worktreeNames.length; wi++) {
+        wtDots.appendChild(el("span", "wt-dot"));
+      }
+      wtSummary.appendChild(wtDots);
+      wtToggle.appendChild(wtSummary);
+
+      var wtInstances = el("div", "wt-instances");
+      for (var wj = 0; wj < worktreeNames.length; wj++) {
+        wtInstances.appendChild(renderInstance(projectName, worktreeNames[wj], instances[worktreeNames[wj]]));
+      }
+      wtToggle.appendChild(wtInstances);
+      instancesDiv.appendChild(wtToggle);
+    }
+
+    section.appendChild(instancesDiv);
+    return section;
+  }
+
+  function renderInstance(projectName, instanceName, instance) {
+    var card = el("div", "instance");
+
+    // Instance header
+    var head = el("div", "inst-head" + (instanceName === "main" ? " main" : ""), instanceName);
+    card.appendChild(head);
 
     var services = instance.services || {};
-    var serviceNames = Object.keys(services).sort(function (a, b) {
-      var aWeb = services[a].url ? 0 : 1;
-      var bWeb = services[b].url ? 0 : 1;
-      if (aWeb !== bWeb) return aWeb - bWeb;
-      return a < b ? -1 : a > b ? 1 : 0;
-    });
+    var classified = classifyServices(services);
 
-    for (var s = 0; s < serviceNames.length; s++) {
-      var serviceName = serviceNames[s];
-      var service = services[serviceName];
-      card.appendChild(renderService(projectName, instanceName, serviceName, service));
+    // Web services (those with url) — shown directly
+    for (var w = 0; w < classified.web.length; w++) {
+      var wName = classified.web[w];
+      var wSvc = services[wName];
+      card.appendChild(renderWebService(projectName, instanceName, wName, wSvc));
+    }
+
+    // Infra services — collapsed in details toggle
+    if (classified.infra.length > 0) {
+      var details = document.createElement("details");
+      details.className = "infra-toggle";
+
+      var summary = document.createElement("summary");
+
+      // Inline dots
+      var idots = el("span", "idots");
+      for (var d = 0; d < classified.infra.length; d++) {
+        var iName = classified.infra[d];
+        var iSvc = services[iName];
+        var idot = el("span", "idot");
+        var dc = dotClass(iSvc.up);
+        if (dc) idot.classList.add(dc);
+        idot.setAttribute("data-project", projectName);
+        idot.setAttribute("data-instance", instanceName);
+        idot.setAttribute("data-service", iName);
+        idots.appendChild(idot);
+      }
+      summary.appendChild(idots);
+
+      var countText = document.createTextNode(
+        classified.infra.length + " more " + (classified.infra.length === 1 ? "service" : "services")
+      );
+      summary.appendChild(countText);
+      details.appendChild(summary);
+
+      // Infra rows
+      for (var ir = 0; ir < classified.infra.length; ir++) {
+        var irName = classified.infra[ir];
+        var irSvc = services[irName];
+        details.appendChild(renderInfraRow(projectName, instanceName, irName, irSvc));
+      }
+
+      card.appendChild(details);
     }
 
     return card;
   }
 
-  function renderService(projectName, instanceName, serviceName, service) {
-    var row = document.createElement("div");
-    row.className = "service-row";
+  function renderWebService(projectName, instanceName, serviceName, service) {
+    var row = el("div", "svc");
 
-    var dot = document.createElement("span");
-    dot.className = "status-dot";
+    var dot = el("span", "dot");
+    var dc = dotClass(service.up);
+    if (dc) dot.classList.add(dc);
     dot.setAttribute("data-project", projectName);
     dot.setAttribute("data-instance", instanceName);
     dot.setAttribute("data-service", serviceName);
-    if (service.up === true) {
-      dot.classList.add("up");
-    } else if (service.up === false) {
-      dot.classList.add("down");
-    }
     row.appendChild(dot);
 
-    if (service.url) {
-      var link = document.createElement("a");
-      link.className = "service-url";
-      link.href = service.url;
-      link.target = "_blank";
-      link.rel = "noopener";
-      link.textContent = serviceName;
-      row.appendChild(link);
-    } else {
-      var name = document.createElement("span");
-      name.className = "service-name";
-      name.textContent = serviceName;
-      row.appendChild(name);
-    }
+    var link = el("a", "svc-link", service.hostname || serviceName);
+    link.href = service.url;
+    link.target = "_blank";
+    link.rel = "noopener";
+    row.appendChild(link);
 
-    var port = document.createElement("span");
-    port.className = "service-port";
-    port.textContent = ":" + service.port;
-    row.appendChild(port);
-
-    if (service.env_var) {
-      var envVar = document.createElement("span");
-      envVar.className = "service-envvar";
-      envVar.textContent = service.env_var;
-      row.appendChild(envVar);
-    }
-
-    var spacer = document.createElement("span");
-    spacer.className = "service-spacer";
-    row.appendChild(spacer);
+    row.appendChild(el("span", "svc-port", String(service.port)));
+    row.appendChild(el("span", "svc-envvar", service.env_var || ""));
 
     return row;
   }
+
+  function renderInfraRow(projectName, instanceName, serviceName, service) {
+    var row = el("div", "infra-row");
+
+    var dot = el("span", "dot");
+    var dc = dotClass(service.up);
+    if (dc) dot.classList.add(dc);
+    dot.setAttribute("data-project", projectName);
+    dot.setAttribute("data-instance", instanceName);
+    dot.setAttribute("data-service", serviceName);
+    row.appendChild(dot);
+
+    row.appendChild(el("span", null, serviceName));
+    row.appendChild(el("span", "svc-port", String(service.port)));
+    row.appendChild(el("span", "svc-envvar", service.env_var || ""));
+
+    return row;
+  }
+
+  // ── Health updates (targeted dot swap) ──
 
   function updateHealth(changes) {
     for (var i = 0; i < changes.length; i++) {
@@ -182,10 +320,10 @@
         '[data-project="' + c.project + '"]' +
         '[data-instance="' + c.instance + '"]' +
         '[data-service="' + c.service + '"]';
-      var dot = document.querySelector(selector);
-      if (dot) {
-        dot.classList.remove("up", "down");
-        dot.classList.add(c.up ? "up" : "down");
+      var dots = document.querySelectorAll(selector);
+      for (var j = 0; j < dots.length; j++) {
+        dots[j].classList.remove("up", "down");
+        dots[j].classList.add(c.up ? "up" : "down");
       }
     }
   }
