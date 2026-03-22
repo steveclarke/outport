@@ -1511,6 +1511,43 @@ func TestBuildTemplateVarsInstance(t *testing.T) {
 	}
 }
 
+func TestBuildTemplateVarsNewFields(t *testing.T) {
+	cfg := &config.Config{
+		Name: "myapp",
+		Services: map[string]config.Service{
+			"web": {EnvVar: "PORT", Protocol: "http"},
+			"db":  {EnvVar: "DB_PORT"},
+		},
+	}
+	ports := map[string]int{"web": 3000, "db": 5432}
+	hostnames := map[string]string{}
+
+	vars := buildTemplateVars(cfg, "main", ports, hostnames, false, nil)
+
+	// project_name
+	if vars["project_name"] != "myapp" {
+		t.Errorf("project_name = %q, want %q", vars["project_name"], "myapp")
+	}
+
+	// protocol (set)
+	if vars["web.protocol"] != "http" {
+		t.Errorf("web.protocol = %q, want %q", vars["web.protocol"], "http")
+	}
+
+	// protocol (unset)
+	if vars["db.protocol"] != "" {
+		t.Errorf("db.protocol = %q, want empty", vars["db.protocol"])
+	}
+
+	// env_var
+	if vars["web.env_var"] != "PORT" {
+		t.Errorf("web.env_var = %q, want %q", vars["web.env_var"], "PORT")
+	}
+	if vars["db.env_var"] != "DB_PORT" {
+		t.Errorf("db.env_var = %q, want %q", vars["db.env_var"], "DB_PORT")
+	}
+}
+
 // --- share ---
 
 func TestShare_NoConfig(t *testing.T) {
