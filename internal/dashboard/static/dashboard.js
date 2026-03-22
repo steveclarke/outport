@@ -145,16 +145,26 @@
     return allUp ? "ok" : "warn";
   }
 
+  // A project is "inactive" only if ALL services have been health-checked
+  // and ALL are down (up === false). If any service is up, or if no health
+  // data exists yet (up is null/undefined), it's considered active.
   function isProjectActive(project) {
     var instances = project.instances || {};
     var instNames = Object.keys(instances);
+    var hasAnyHealth = false;
+    var hasAnyUp = false;
     for (var i = 0; i < instNames.length; i++) {
       var services = instances[instNames[i]].services || {};
       var svcNames = Object.keys(services);
       for (var j = 0; j < svcNames.length; j++) {
-        if (services[svcNames[j]].up === true) return true;
+        var svc = services[svcNames[j]];
+        if (svc.up === true) { hasAnyUp = true; return true; }
+        if (svc.up === false) { hasAnyHealth = true; }
       }
     }
+    // No health data at all — treat as active (just registered, not checked yet)
+    if (!hasAnyHealth) return true;
+    // All checked, none up
     return false;
   }
 
