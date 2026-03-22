@@ -60,7 +60,7 @@ body {
 .header-stats { font-size: 13px; color: var(--text-3); }
 .header-spacer { flex: 1; }
 .header-conn { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-3); }
-.header-conn-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); opacity: 0.9; }
+.header-conn-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); }
 
 /* ── Main scroll area ── */
 .main {
@@ -185,6 +185,7 @@ body {
 .dot.up { background: var(--green); }
 .dot.down { background: var(--red); }
 
+
 .svc-link {
   color: var(--blue);
   text-decoration: none;
@@ -196,7 +197,11 @@ body {
   white-space: nowrap;
 }
 
-.svc-link:hover { color: var(--blue-hover); text-decoration: underline; }
+.svc-link:hover {
+  color: var(--blue-hover);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
 
 .svc-name {
   color: var(--text-2);
@@ -319,6 +324,14 @@ body {
 
 .wt-dots { display: flex; gap: 3px; }
 .wt-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); opacity: 0.8; }
+
+/* ── Reduced motion ── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
 
 /* ── Scrollbar ── */
 .main::-webkit-scrollbar { width: 6px; }
