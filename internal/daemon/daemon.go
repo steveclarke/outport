@@ -20,6 +20,7 @@ type DaemonConfig struct {
 	HTTPSListener net.Listener // Pre-bound HTTPS listener (launchd socket activation)
 	TLSConfig     *tls.Config  // TLS config with GetCertificate callback (nil = no HTTPS)
 	RegistryPath  string       // Path to registry.json
+	Version       string       // Outport version string (e.g., "0.23.0")
 }
 
 // Daemon coordinates the DNS server, HTTP proxy, and route watcher.
@@ -38,7 +39,7 @@ func New(cfg *DaemonConfig) (*Daemon, error) {
 
 	httpsEnabled := cfg.TLSConfig != nil
 	dashProvider := &routeTableProvider{routes: routes}
-	dashHandler := dashboard.NewHandler(dashProvider, httpsEnabled)
+	dashHandler := dashboard.NewHandler(dashProvider, httpsEnabled, cfg.Version)
 	proxyHandler.DashboardHandler = dashHandler
 
 	routes.OnUpdate = func() {

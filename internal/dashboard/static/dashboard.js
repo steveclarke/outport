@@ -6,6 +6,7 @@
   var connText = document.getElementById("conn-text");
   var headerStats = document.getElementById("header-stats");
   var toggleBtn = document.getElementById("toggle-inactive");
+  var headerVersion = document.getElementById("header-version");
 
   var showInactive = false;
   var lastData = null;
@@ -161,6 +162,10 @@
   function render(data) {
     lastData = data;
     clearDashboard();
+
+    if (data.version) {
+      headerVersion.textContent = "v" + data.version;
+    }
 
     var projects = data.projects || {};
     var projectNames = Object.keys(projects).sort();
