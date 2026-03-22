@@ -106,6 +106,16 @@ GoReleaser builds for macOS + Linux (amd64 + arm64). Version injected via ldflag
 - **Link PRs to issues** — Use `Closes #N` in PR body.
 - **Don't commit without explicit permission** from the user.
 
+## Design Context
+
+- **Users:** Solo developer managing multiple local projects. Primary job: find a `.test` URL and click it. Secondary: glance at service health.
+- **Brand personality:** Reliable, clean, smart.
+- **Aesthetic:** Polished product (not a dev utility dump). Reference: Docker Desktop containers view. Light mode only (astigmatism).
+- **Colors:** Navy `#031C54` (headings), steel blue `#2E86AB` (links/accent), warm cream `#faf8f5` (background), `#f5f0e8` (soft bg), white (surface).
+- **Fonts:** Barlow Bold (headings, tight letter-spacing), Inter (body), SF Mono/Fira Code (mono).
+- **Principles:** URL-first, full-width no waste, on-brand, progressive disclosure, polished not utilitarian.
+- **Full context:** See `.impeccable.md` in project root.
+
 ## Finalize Checklist
 
 Run before committing or merging:
