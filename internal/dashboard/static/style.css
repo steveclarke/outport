@@ -83,9 +83,7 @@ body {
   gap: 0;
 }
 
-#dashboard:empty::after {
-  content: "No projects registered.";
-  display: block;
+.dashboard-empty {
   text-align: center;
   color: var(--text-4);
   font-size: 15px;

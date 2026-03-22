@@ -204,8 +204,18 @@
       toggleBtn.style.display = "none";
     }
 
-    for (var pi = 0; pi < activeNames.length; pi++) {
-      dashboard.appendChild(renderProject(activeNames[pi], projects[activeNames[pi]]));
+    if (activeNames.length === 0) {
+      var msg = el("p", "dashboard-empty");
+      if (projectNames.length === 0) {
+        msg.textContent = "No projects registered.";
+      } else {
+        msg.textContent = "All projects are inactive.";
+      }
+      dashboard.appendChild(msg);
+    } else {
+      for (var pi = 0; pi < activeNames.length; pi++) {
+        dashboard.appendChild(renderProject(activeNames[pi], projects[activeNames[pi]]));
+      }
     }
   }
 
