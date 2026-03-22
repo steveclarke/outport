@@ -117,7 +117,6 @@
       <h2>Live Dashboard</h2>
       <p class="dashboard-caption">
         All your projects, URLs, and service health in one place.
-        Updates in real-time — no refresh needed.
       </p>
       <div class="dashboard-frame">
         <img
