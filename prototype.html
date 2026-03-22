@@ -235,12 +235,17 @@ body {
   align-items: center;
   gap: 6px;
   font-size: 12px;
-  color: var(--text-4);
-  padding: 4px 0;
+  color: var(--text-3);
+  padding: 4px 8px;
+  margin: 0 -8px;
+  border-radius: 4px;
+  transition: background 0.1s ease;
 }
 
+.infra-toggle summary:hover { background: var(--bg); }
+
 .infra-toggle summary::-webkit-details-marker { display: none; }
-.infra-toggle summary::before { content: "\25B8"; font-size: 9px; transition: transform 0.15s ease; }
+.infra-toggle summary::before { content: "\25B8"; font-size: 11px; color: var(--text-3); transition: transform 0.15s ease; }
 .infra-toggle[open] summary::before { transform: rotate(90deg); }
 
 .idots { display: flex; gap: 3px; }
@@ -274,12 +279,17 @@ body {
   gap: 8px;
   font-size: 13px;
   font-weight: 500;
-  color: var(--text-3);
-  padding: 8px 0;
+  color: var(--text-2);
+  padding: 8px 12px;
+  margin: 0 -12px;
+  border-radius: 6px;
+  transition: background 0.1s ease;
 }
 
+.wt-toggle summary:hover { background: var(--bg-soft); }
+
 .wt-toggle summary::-webkit-details-marker { display: none; }
-.wt-toggle summary::before { content: "\25B8"; font-size: 10px; transition: transform 0.15s ease; }
+.wt-toggle summary::before { content: "\25B8"; font-size: 11px; color: var(--text-3); transition: transform 0.15s ease; }
 .wt-toggle[open] summary::before { transform: rotate(90deg); }
 
 .wt-toggle[open] .wt-instances {
@@ -347,7 +357,7 @@ body {
         <span class="svc-envvar">SSL_PORT</span>
       </div>
       <details class="infra-toggle">
-        <summary><span class="idots"><span class="idot up"></span><span class="idot down"></span><span class="idot up"></span><span class="idot down"></span></span>4 services</summary>
+        <summary><span class="idots"><span class="idot up"></span><span class="idot down"></span><span class="idot up"></span><span class="idot down"></span></span>4 more services</summary>
         <div class="infra-row"><span class="dot up"></span><span>postgres</span><span class="svc-port">18940</span><span class="svc-envvar">DB_PORT</span></div>
         <div class="infra-row"><span class="dot down"></span><span>redis</span><span class="svc-port">15074</span><span class="svc-envvar">REDIS_PORT</span></div>
         <div class="infra-row"><span class="dot up"></span><span>mailpit</span><span class="svc-port">27853</span><span class="svc-envvar">MAILPIT_WEB_PORT</span></div>
@@ -379,7 +389,7 @@ body {
         <span class="svc-envvar">MAILPIT_WEB_PORT</span>
       </div>
       <details class="infra-toggle">
-        <summary><span class="idots"><span class="idot up"></span><span class="idot up"></span></span>2 services</summary>
+        <summary><span class="idots"><span class="idot up"></span><span class="idot up"></span></span>2 more services</summary>
         <div class="infra-row"><span class="dot up"></span><span>postgres</span><span class="svc-port">14345</span><span class="svc-envvar">DB_PORT</span></div>
         <div class="infra-row"><span class="dot up"></span><span>mailpit_smtp</span><span class="svc-port">16719</span><span class="svc-envvar">MAILPIT_SMTP_PORT</span></div>
       </details>
@@ -392,7 +402,7 @@ body {
           <div class="svc"><span class="dot up"></span><a class="svc-link" href="https://outport-app-drxj.test" target="_blank" rel="noopener">outport-app-drxj.test</a><span class="svc-port">23626</span><span class="svc-envvar">PORT</span></div>
           <div class="svc"><span class="dot up"></span><a class="svc-link" href="https://mailpit.outport-app-drxj.test" target="_blank" rel="noopener">mailpit.outport-app-drxj.test</a><span class="svc-port">18557</span><span class="svc-envvar">MAILPIT_WEB_PORT</span></div>
           <details class="infra-toggle">
-            <summary><span class="idots"><span class="idot up"></span><span class="idot up"></span></span>2 services</summary>
+            <summary><span class="idots"><span class="idot up"></span><span class="idot up"></span></span>2 more services</summary>
             <div class="infra-row"><span class="dot up"></span><span>postgres</span><span class="svc-port">13699</span><span class="svc-envvar">DB_PORT</span></div>
             <div class="infra-row"><span class="dot up"></span><span>mailpit_smtp</span><span class="svc-port">24149</span><span class="svc-envvar">MAILPIT_SMTP_PORT</span></div>
           </details>
@@ -402,7 +412,7 @@ body {
           <div class="svc"><span class="dot up"></span><a class="svc-link" href="https://outport-app-fcwq.test" target="_blank" rel="noopener">outport-app-fcwq.test</a><span class="svc-port">36469</span><span class="svc-envvar">PORT</span></div>
           <div class="svc"><span class="dot up"></span><a class="svc-link" href="https://mailpit.outport-app-fcwq.test" target="_blank" rel="noopener">mailpit.outport-app-fcwq.test</a><span class="svc-port">11170</span><span class="svc-envvar">MAILPIT_WEB_PORT</span></div>
           <details class="infra-toggle">
-            <summary><span class="idots"><span class="idot up"></span><span class="idot up"></span></span>2 services</summary>
+            <summary><span class="idots"><span class="idot up"></span><span class="idot up"></span></span>2 more services</summary>
             <div class="infra-row"><span class="dot up"></span><span>postgres</span><span class="svc-port">19018</span><span class="svc-envvar">DB_PORT</span></div>
             <div class="infra-row"><span class="dot up"></span><span>mailpit_smtp</span><span class="svc-port">11644</span><span class="svc-envvar">MAILPIT_SMTP_PORT</span></div>
           </details>
@@ -412,7 +422,7 @@ body {
           <div class="svc"><span class="dot up"></span><a class="svc-link" href="https://outport-app-pwwh.test" target="_blank" rel="noopener">outport-app-pwwh.test</a><span class="svc-port">13204</span><span class="svc-envvar">PORT</span></div>
           <div class="svc"><span class="dot up"></span><a class="svc-url" href="https://mailpit.outport-app-pwwh.test" target="_blank" rel="noopener">mailpit.outport-app-pwwh.test</a><span class="svc-port">26411</span><span class="svc-envvar">MAILPIT_WEB_PORT</span></div>
           <details class="infra-toggle">
-            <summary><span class="idots"><span class="idot up"></span><span class="idot up"></span></span>2 services</summary>
+            <summary><span class="idots"><span class="idot up"></span><span class="idot up"></span></span>2 more services</summary>
             <div class="infra-row"><span class="dot up"></span><span>postgres</span><span class="svc-port">37757</span><span class="svc-envvar">DB_PORT</span></div>
             <div class="infra-row"><span class="dot up"></span><span>mailpit_smtp</span><span class="svc-port">21691</span><span class="svc-envvar">MAILPIT_SMTP_PORT</span></div>
           </details>
@@ -422,7 +432,7 @@ body {
           <div class="svc"><span class="dot up"></span><a class="svc-link" href="https://outport-app-rhkg.test" target="_blank" rel="noopener">outport-app-rhkg.test</a><span class="svc-port">13270</span><span class="svc-envvar">PORT</span></div>
           <div class="svc"><span class="dot up"></span><a class="svc-link" href="https://mailpit.outport-app-rhkg.test" target="_blank" rel="noopener">mailpit.outport-app-rhkg.test</a><span class="svc-port">12201</span><span class="svc-envvar">MAILPIT_WEB_PORT</span></div>
           <details class="infra-toggle">
-            <summary><span class="idots"><span class="idot up"></span><span class="idot up"></span></span>2 services</summary>
+            <summary><span class="idots"><span class="idot up"></span><span class="idot up"></span></span>2 more services</summary>
             <div class="infra-row"><span class="dot up"></span><span>postgres</span><span class="svc-port">15975</span><span class="svc-envvar">DB_PORT</span></div>
             <div class="infra-row"><span class="dot up"></span><span>mailpit_smtp</span><span class="svc-port">19481</span><span class="svc-envvar">MAILPIT_SMTP_PORT</span></div>
           </details>
@@ -448,7 +458,7 @@ body {
         <span class="svc-envvar">PORT</span>
       </div>
       <details class="infra-toggle">
-        <summary><span class="idots"><span class="idot up"></span><span class="idot up"></span></span>2 services</summary>
+        <summary><span class="idots"><span class="idot up"></span><span class="idot up"></span></span>2 more services</summary>
         <div class="infra-row"><span class="dot up"></span><span>vite</span><span class="svc-port">18073</span><span class="svc-envvar">VITE_PORT</span></div>
         <div class="infra-row"><span class="dot up"></span><span>postgres</span><span class="svc-port">13205</span><span class="svc-envvar">DB_PORT</span></div>
       </details>
@@ -497,7 +507,7 @@ body {
     <div class="instance">
       <div class="inst-head main">main</div>
       <details class="infra-toggle">
-        <summary><span class="idots"><span class="idot"></span></span>1 service</summary>
+        <summary><span class="idots"><span class="idot"></span></span>1 more service</summary>
         <div class="infra-row"><span class="dot"></span><span>web</span><span class="svc-port">3000</span><span class="svc-envvar">PORT</span></div>
       </details>
     </div>
