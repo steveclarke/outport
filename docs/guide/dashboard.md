@@ -54,6 +54,14 @@ The dashboard uses collapsible sections to avoid clutter:
 - **Infrastructure services** (databases, caches) are collapsed under a "N more services" toggle with inline status dots, so you can see their health at a glance without expanding.
 - **Worktree instances** are collapsed under a "N worktrees" toggle. The main instance is always visible. Each worktree shows a health dot in the collapsed summary.
 
+## QR codes for mobile access
+
+Each web service row has a QR code button. Click it to reveal a scannable QR code encoding the service's LAN URL (`http://<your-ip>:<port>`). Scan with your phone on the same Wi-Fi network to open the dev app — no typing IP addresses and port numbers.
+
+When [`outport share`](/reference/commands#outport-share) is running, a **LAN / Tunnel** toggle appears in the QR panel. Switch to Tunnel to get a QR code for the Cloudflare tunnel URL, which works from any network.
+
+QR codes are also available from the CLI with [`outport qr`](/reference/commands#outport-qr).
+
 ## Tips
 
 - **Pin the tab.** The dashboard is most useful as a pinned browser tab that's always available.
