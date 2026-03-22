@@ -1438,31 +1438,6 @@ computed:
 	}
 }
 
-func TestServiceURL(t *testing.T) {
-	if url := serviceURL("http", "", 3000, false); url != "http://localhost:3000" {
-		t.Errorf("serviceURL(http, '', 3000) = %q, want http://localhost:3000", url)
-	}
-	if url := serviceURL("https", "", 8443, false); url != "https://localhost:8443" {
-		t.Errorf("serviceURL(https, '', 8443) = %q, want https://localhost:8443", url)
-	}
-	if url := serviceURL("http", "myapp.localhost", 3000, false); url != "http://myapp.localhost:3000" {
-		t.Errorf("serviceURL(http, myapp.localhost, 3000) = %q, want http://myapp.localhost:3000", url)
-	}
-	if url := serviceURL("tcp", "", 5432, false); url != "" {
-		t.Errorf("serviceURL(tcp, '', 5432) = %q, want empty", url)
-	}
-	if url := serviceURL("", "", 6379, false); url != "" {
-		t.Errorf("serviceURL('', '', 6379) = %q, want empty", url)
-	}
-	// With httpsEnabled=true, .test hostnames get https://
-	if url := serviceURL("http", "myapp.test", 3000, true); url != "https://myapp.test" {
-		t.Errorf("serviceURL(http, myapp.test, 3000, true) = %q, want https://myapp.test", url)
-	}
-	// Without httpsEnabled, .test hostnames keep original protocol
-	if url := serviceURL("http", "myapp.test", 3000, false); url != "http://myapp.test" {
-		t.Errorf("serviceURL(http, myapp.test, 3000, false) = %q, want http://myapp.test", url)
-	}
-}
 
 func TestBuildTemplateVarsHTTPS(t *testing.T) {
 	home := t.TempDir()

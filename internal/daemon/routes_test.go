@@ -246,6 +246,86 @@ func TestWatchAndRebuild(t *testing.T) {
 	}
 }
 
+func TestRouteTableAllocations(t *testing.T) {
+	rt := &RouteTable{}
+	allocs := map[string]registry.Allocation{
+		"myapp/main": {
+			ProjectDir: "/src/myapp",
+			Ports:      map[string]int{"web": 10001, "postgres": 5432},
+			Hostnames:  map[string]string{"web": "myapp.test"},
+			Protocols:  map[string]string{"web": "http"},
+		},
+	}
+	rt.UpdateWithAllocations(map[string]int{"myapp.test": 10001}, allocs)
+
+	got := rt.Allocations()
+	if len(got) != 1 {
+		t.Fatalf("expected 1 allocation, got %d", len(got))
+	}
+	a, ok := got["myapp/main"]
+	if !ok {
+		t.Fatal("expected myapp/main allocation")
+	}
+	if a.Ports["web"] != 10001 {
+		t.Errorf("web port: got %d, want 10001", a.Ports["web"])
+	}
+}
+
+func TestRouteTableAllPorts(t *testing.T) {
+	rt := &RouteTable{}
+
+	// Empty route table returns nil.
+	if ports := rt.AllPorts(); len(ports) != 0 {
+		t.Fatalf("expected 0 ports on empty table, got %d", len(ports))
+	}
+
+	// After updating with allocations, ports are collected and deduplicated.
+	allocs := map[string]registry.Allocation{
+		"app1/main": {
+			ProjectDir: "/src/app1",
+			Ports:      map[string]int{"web": 10001, "postgres": 15432},
+		},
+		"app2/main": {
+			ProjectDir: "/src/app2",
+			Ports:      map[string]int{"web": 10002},
+		},
+	}
+	rt.UpdateWithAllocations(nil, allocs)
+
+	ports := rt.AllPorts()
+	if len(ports) != 3 {
+		t.Fatalf("expected 3 ports, got %d: %v", len(ports), ports)
+	}
+
+	portSet := make(map[int]bool)
+	for _, p := range ports {
+		portSet[p] = true
+	}
+	for _, want := range []int{10001, 15432, 10002} {
+		if !portSet[want] {
+			t.Errorf("missing port %d in AllPorts: %v", want, ports)
+		}
+	}
+}
+
+func TestRouteTableAllPortsDeduplicates(t *testing.T) {
+	rt := &RouteTable{}
+	// Two allocations sharing a port value (unlikely in practice but tests dedup).
+	allocs := map[string]registry.Allocation{
+		"app1/main": {Ports: map[string]int{"web": 10001}},
+		"app2/main": {Ports: map[string]int{"web": 10001}},
+	}
+	rt.UpdateWithAllocations(nil, allocs)
+
+	ports := rt.AllPorts()
+	if len(ports) != 1 {
+		t.Fatalf("expected 1 deduplicated port, got %d: %v", len(ports), ports)
+	}
+	if ports[0] != 10001 {
+		t.Errorf("expected port 10001, got %d", ports[0])
+	}
+}
+
 func TestWatchAndRebuildMissingFileKeepsRoutes(t *testing.T) {
 	dir := t.TempDir()
 	regPath := filepath.Join(dir, "registry.json")

@@ -157,6 +157,37 @@ func TestProxyStripsPortFromHost(t *testing.T) {
 	}
 }
 
+func TestProxyRoutesOutportTestToDashboard(t *testing.T) {
+	routes := &RouteTable{}
+	routes.Update(map[string]int{})
+
+	dashHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte("dashboard"))
+	})
+
+	proxy := NewProxy(routes)
+	proxy.DashboardHandler = dashHandler
+
+	srv := httptest.NewServer(proxy)
+	defer srv.Close()
+
+	req, _ := http.NewRequest("GET", srv.URL+"/", nil)
+	req.Host = "outport.test"
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("request: %v", err)
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	if string(body) != "dashboard" {
+		t.Errorf("got %q, want %q", body, "dashboard")
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("status: got %d, want 200", resp.StatusCode)
+	}
+}
+
 func TestProxyWebSocketUpgrade(t *testing.T) {
 	// Backend that speaks WebSocket
 	backend := httptest.NewServer(websocket.Handler(func(ws *websocket.Conn) {

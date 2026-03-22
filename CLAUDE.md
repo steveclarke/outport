@@ -30,16 +30,18 @@ Entry point: `main.go` → `cmd.Execute()` (Cobra CLI).
 
 - **allocator** — Port allocation via FNV-32a hash on `"{project}/{instance}/{service}"`. An optional preferred_port can be specified per service; when omitted, the hash is the primary allocation method. Port range: 10000–39999 (port 15353 reserved for daemon DNS). Collisions resolved by linear probing with wraparound.
 - **certmanager** — Local CA and server certificate lifecycle. Generates a CA (EC P-256, 10-year) during `outport system start`, creates per-hostname server certs on demand via TLS SNI callback, caches to disk (`~/.cache/outport/certs/`) and memory. Exports path helpers (`CACertPath`, `CAKeyPath`, `CertCacheDir`) used by `up` and `open` to detect HTTPS availability.
-- **registry** — Persistent JSON store at `~/.local/share/outport/registry.json`. Keys are `"{project}/{instance}"` (e.g., `"myapp/main"`, `"myapp/bxcf"`). Each allocation stores ports, hostnames, and protocols. Atomic writes via temp file + rename. Supports lookup by directory (`FindByDir`) and by project name (`FindByProject`).
+- **registry** — Persistent JSON store at `~/.local/share/outport/registry.json`. Keys are `"{project}/{instance}"` (e.g., `"myapp/main"`, `"myapp/bxcf"`). Each allocation stores ports, hostnames, protocols, and env_var names. Atomic writes via temp file + rename. Supports lookup by directory (`FindByDir`) and by project name (`FindByProject`).
 - **config** — Loads/validates `outport.yml`. Supports per-service env_file (string or array), preferred_port, protocol, hostname, and computed values with bash-style parameter expansion (`${service.field}`, `${service.field:modifier}`, `${var:-default}`, `${var:+replacement}`). The `${instance}` variable is empty for main instances and set to the instance code for worktrees. `FindDir()` walks up from the current directory to locate the config. Validates env_var uniqueness per file, hostname format (must contain project name, requires http/https protocol), and computed value reference validity.
 - **instance** — Resolves instance names for projects. First instance of a project is "main". Additional instances get random 4-character consonant codes (e.g., "bxcf"). Looks up the registry by directory to find existing instances. Provides name validation (lowercase alphanumeric + hyphens).
-- **daemon** — Long-running process providing DNS server (port 15353, resolves `*.test` to 127.0.0.1), HTTP reverse proxy (port 80, 307 redirect to HTTPS when CA exists), and TLS reverse proxy (port 443, SNI-based cert selection). Watches the registry file for changes and rebuilds the route table automatically. Supports WebSocket proxying.
+- **daemon** — Long-running process providing DNS server (port 15353, resolves `*.test` to 127.0.0.1), HTTP reverse proxy (port 80, 307 redirect to HTTPS when CA exists), and TLS reverse proxy (port 443, SNI-based cert selection). Watches the registry file for changes and rebuilds the route table automatically. Supports WebSocket proxying. Serves the web dashboard at `outport.test` (see **dashboard** package).
+- **dashboard** — Web dashboard served by the daemon at `https://outport.test`. Embedded HTML/CSS/JS via `go:embed`. JSON API (`/api/status`) returns all registered projects, services, ports, and health status. SSE endpoint (`/api/events`) pushes live updates for registry changes and port health transitions. Health checker probes ports every 3 seconds only when dashboard clients are connected.
 - **platform** — macOS-specific integration for the daemon. Manages the LaunchAgent plist (`~/Library/LaunchAgents/`) and `/etc/resolver/test` file for `.test` domain resolution. Provides setup/uninstall/start/stop/restart operations and CA trust/untrust via macOS `security` CLI.
 - **doctor** — Diagnostic checks for the `outport doctor` command. `Check`, `Result`, and `Runner` types. `SystemChecks()` returns checks for DNS, daemon, CA, registry, and cloudflared. `ProjectChecks()` returns checks for config validation, registry lookup, and port availability. Each check returns pass/warn/fail with a fix suggestion.
 - **envpath** — Env file path classification and external file approval. `ClassifyEnvFiles` resolves paths through symlinks (`filepath.EvalSymlinks`) and classifies each as internal or external to the project directory. `ConfirmExternalFiles` handles the interactive approval prompt, auto-approve (`-y`), and non-interactive error. `ExternalPaths` filters to external-only paths.
 - **dotenv** — Writes allocated ports and computed values into a fenced block (`# --- begin outport.dev ---` / `# --- end outport.dev ---`) at the bottom of `.env` files. User content outside the block is preserved. Managed vars in the user section are removed and relocated into the block. Also provides `RemoveBlock()` for cleanup.
 - **tunnel** — Tunnel provider abstraction and concurrent manager. Provider interface allows swapping tunnel backends (Cloudflare, etc.) without changing command code. Manager starts/stops multiple tunnels with all-or-nothing semantics and configurable timeout.
 - **tunnel/cloudflare** — Cloudflare quick tunnel provider. Shells out to `cloudflared tunnel --url`, parses tunnel URL from stderr output.
+- **urlutil** — Shared URL construction for `.test` hostnames. `ServiceURL` builds the browser-facing URL for a service, upgrading to `https://` for `.test` domains when the CA is installed. Used by `cmd/` commands and the dashboard.
 - **ui** — Lipgloss terminal styling constants.
 
 ### CLI commands (`cmd/`)
@@ -86,6 +88,7 @@ All commands support `--json` for machine-readable output. Each command has pair
 - **XDG directory layout** — Registry at `~/.local/share/outport/registry.json`, CA at `~/.local/share/outport/`, cert cache at `~/.cache/outport/certs/`. `~/.config/outport/` reserved for future global config.
 - **Error wrapping** — Uses `fmt.Errorf("context: %w", err)` throughout.
 - **External env file safety** — Env file paths outside the project directory (where `outport.yml` lives) require explicit developer approval. Paths are resolved through symlinks using `filepath.EvalSymlinks` before boundary checking. Approval can be interactive (prompt), auto (`-y` flag), or persisted (approved paths stored in registry allocation). All write commands (`up`, `down`, `rename`, `promote`, `share`) enforce this through `writeEnvFiles`/`removeEnvFiles` wrappers. A persistent warning is shown after every write that touches external files.
+- **Dashboard at `outport.test`** — The daemon serves a web dashboard at the reserved hostname `outport.test`. The proxy handler intercepts this hostname before route lookup and delegates to the embedded dashboard handler. HTTPS works automatically via the existing cert manager. The dashboard uses SSE for real-time updates — registry changes push immediately, health status polls every 3s only when clients are connected. Config validation rejects `outport.test` as a project hostname.
 
 ## Testing
 
@@ -103,6 +106,16 @@ GoReleaser builds for macOS + Linux (amd64 + arm64). Version injected via ldflag
 - **Squash merge PRs** — One commit per feature/fix on master.
 - **Link PRs to issues** — Use `Closes #N` in PR body.
 - **Don't commit without explicit permission** from the user.
+
+## Design Context
+
+- **Users:** Solo developer managing multiple local projects. Primary job: find a `.test` URL and click it. Secondary: glance at service health.
+- **Brand personality:** Reliable, clean, smart.
+- **Aesthetic:** Polished product (not a dev utility dump). Reference: Docker Desktop containers view. Light mode only (astigmatism).
+- **Colors:** Navy `#031C54` (headings), steel blue `#2E86AB` (links/accent), warm cream `#faf8f5` (background), `#f5f0e8` (soft bg), white (surface).
+- **Fonts:** Barlow Bold (headings, tight letter-spacing), Inter (body), SF Mono/Fira Code (mono).
+- **Principles:** URL-first, full-width no waste, on-brand, progressive disclosure, polished not utilitarian.
+- **Full context:** See `.impeccable.md` in project root.
 
 ## Finalize Checklist
 

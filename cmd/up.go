@@ -17,6 +17,7 @@ import (
 	"github.com/outport-app/outport/internal/portcheck"
 	"github.com/outport-app/outport/internal/registry"
 	"github.com/outport-app/outport/internal/ui"
+	"github.com/outport-app/outport/internal/urlutil"
 	"github.com/spf13/cobra"
 )
 
@@ -185,7 +186,19 @@ func buildAllocation(cfg *config.Config, instanceName, dir string, ports map[str
 		Ports:      ports,
 		Hostnames:  computeHostnames(cfg, instanceName),
 		Protocols:  computeProtocols(cfg),
+		EnvVars:    computeEnvVars(cfg),
 	}
+}
+
+// computeEnvVars builds a service name -> env_var map from config.
+func computeEnvVars(cfg *config.Config) map[string]string {
+	envVars := make(map[string]string)
+	for name, svc := range cfg.Services {
+		if svc.EnvVar != "" {
+			envVars[name] = svc.EnvVar
+		}
+	}
+	return envVars
 }
 
 // resolvedHostname returns the effective hostname for a service,
@@ -229,15 +242,6 @@ func computeProtocols(cfg *config.Config) map[string]string {
 	return protocols
 }
 
-// effectiveScheme returns the scheme to use for a given protocol and hostname.
-// When httpsEnabled is true and the hostname is a .test domain with an HTTP protocol,
-// the scheme is upgraded to "https".
-func effectiveScheme(protocol, hostname string, httpsEnabled bool) string {
-	if httpsEnabled && strings.HasSuffix(hostname, ".test") && (protocol == "http" || protocol == "https") {
-		return "https"
-	}
-	return protocol
-}
 
 // buildTemplateVars builds the template variable map from services and allocated ports.
 // Keys are "service.field" (e.g., "rails.port", "rails.hostname", "rails.url").
@@ -265,7 +269,7 @@ func buildTemplateVars(cfg *config.Config, instanceName string, ports map[string
 			if tunnelURL, hasTunnel := tunnelURLs[name]; hasTunnel {
 				vars[name+".url"] = tunnelURL
 			} else {
-				vars[name+".url"] = fmt.Sprintf("%s://%s", effectiveScheme(protocol, h, httpsEnabled), h)
+				vars[name+".url"] = fmt.Sprintf("%s://%s", urlutil.EffectiveScheme(protocol, h, httpsEnabled), h)
 			}
 			vars[name+".url:direct"] = fmt.Sprintf("http://localhost:%s", portStr)
 		} else {
@@ -328,19 +332,6 @@ type upJSON struct {
 	ExternalFiles []externalFileJSON      `json:"external_files,omitempty"`
 }
 
-func serviceURL(protocol, hostname string, port int, httpsEnabled bool) string {
-	if protocol == "http" || protocol == "https" {
-		host := hostname
-		if host == "" {
-			host = "localhost"
-		}
-		if strings.HasSuffix(host, ".test") {
-			return fmt.Sprintf("%s://%s", effectiveScheme(protocol, host, httpsEnabled), host)
-		}
-		return fmt.Sprintf("%s://%s:%d", protocol, host, port)
-	}
-	return ""
-}
 
 func buildServiceMap(cfg *config.Config, ports map[string]int, hostnames map[string]string, httpsEnabled bool) map[string]svcJSON {
 	services := make(map[string]svcJSON)
@@ -352,7 +343,7 @@ func buildServiceMap(cfg *config.Config, ports map[string]int, hostnames map[str
 			EnvVar:        svc.EnvVar,
 			Protocol:      svc.Protocol,
 			Hostname:      hostname,
-			URL:           serviceURL(svc.Protocol, hostname, ports[name], httpsEnabled),
+			URL:           urlutil.ServiceURL(svc.Protocol, hostname, ports[name], httpsEnabled),
 			EnvFiles:      svc.EnvFiles,
 		}
 	}
@@ -500,7 +491,7 @@ func printServiceLine(w io.Writer, cfg *config.Config, svcName string, port int,
 	extra := ""
 	if ok {
 		hostname := resolvedHostname(svc, hostnames, svcName)
-		if u := serviceURL(svc.Protocol, hostname, port, httpsEnabled); u != "" {
+		if u := urlutil.ServiceURL(svc.Protocol, hostname, port, httpsEnabled); u != "" {
 			extra = "  " + ui.UrlStyle.Render(u)
 		} else if hostname != "" {
 			extra = "  " + ui.HostnameStyle.Render(hostname)

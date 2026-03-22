@@ -59,6 +59,8 @@ Run `outport system start` once to enable friendly hostnames. This installs a lo
 
 The proxy runs via macOS launchd, starts at login, and updates routes automatically when you `outport up`. No port numbers in your browser, ever.
 
+Open `https://outport.test` for a live dashboard showing all your projects, services, and health status.
+
 ### Multiple Instances
 
 Every clone, worktree, or checkout of a project is an **instance**. The first is "main" — subsequent instances get auto-generated codes:

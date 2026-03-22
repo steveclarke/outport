@@ -11,6 +11,7 @@ import (
 	"github.com/outport-app/outport/internal/portcheck"
 	"github.com/outport-app/outport/internal/registry"
 	"github.com/outport-app/outport/internal/ui"
+	"github.com/outport-app/outport/internal/urlutil"
 	"github.com/spf13/cobra"
 )
 
@@ -131,7 +132,7 @@ func printStatusJSON(cmd *cobra.Command, reg *registry.Registry, portStatus map[
 			if cfg != nil {
 				if svc, ok := cfg.Services[svcName]; ok {
 					s.Protocol = svc.Protocol
-					s.URL = serviceURL(svc.Protocol, resolvedHostname(svc, alloc.Hostnames, svcName), port, httpsEnabled)
+					s.URL = urlutil.ServiceURL(svc.Protocol, resolvedHostname(svc, alloc.Hostnames, svcName), port, httpsEnabled)
 				}
 			}
 			if portStatus != nil {

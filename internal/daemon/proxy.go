@@ -11,8 +11,9 @@ import (
 
 // ProxyHandler routes HTTP requests by Host header using cached reverse proxies.
 type ProxyHandler struct {
-	routes  *RouteTable
-	proxies sync.Map // port (int) -> *httputil.ReverseProxy
+	routes           *RouteTable
+	proxies          sync.Map     // port (int) -> *httputil.ReverseProxy
+	DashboardHandler http.Handler // serves outport.test
 }
 
 // NewProxy creates an HTTP reverse proxy that routes by Host header.
@@ -41,6 +42,12 @@ func (p *ProxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	hostname := r.Host
 	if idx := strings.LastIndex(hostname, ":"); idx != -1 {
 		hostname = hostname[:idx]
+	}
+
+	// Dashboard intercept
+	if hostname == "outport.test" && p.DashboardHandler != nil {
+		p.DashboardHandler.ServeHTTP(w, r)
+		return
 	}
 
 	port, ok := p.routes.Lookup(hostname)

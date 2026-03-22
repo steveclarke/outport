@@ -317,6 +317,9 @@ func (c *Config) validate() error {
 
 	for name, svc := range c.Services {
 		if svc.Hostname != "" {
+			if svc.Hostname == "outport.test" {
+				return fmt.Errorf("service %q: hostname %q is reserved for the Outport dashboard", name, svc.Hostname)
+			}
 			if svc.Protocol != "http" && svc.Protocol != "https" {
 				return fmt.Errorf("service %q: hostname requires protocol http or https", name)
 			}

@@ -773,6 +773,28 @@ services:
 	}
 }
 
+func TestValidateRejectsReservedOutportHostname(t *testing.T) {
+	yaml := `
+name: outport
+services:
+  web:
+    env_var: PORT
+    protocol: http
+    hostname: outport.test
+`
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "outport.yml"), []byte(yaml), 0644); err != nil {
+		t.Fatal(err)
+	}
+	_, err := Load(dir)
+	if err == nil {
+		t.Fatal("expected error for reserved hostname")
+	}
+	if !strings.Contains(err.Error(), "reserved") {
+		t.Errorf("error should mention 'reserved', got: %v", err)
+	}
+}
+
 // --- Template Modifier Support ---
 
 func TestTemplateModifierParsing(t *testing.T) {

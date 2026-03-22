@@ -11,6 +11,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -310,4 +311,79 @@ func TestDaemonHTTPProxyWithoutTLS(t *testing.T) {
 	}
 
 	cancel()
+}
+
+func TestDaemonServesDashboard(t *testing.T) {
+	dir := t.TempDir()
+	regPath := filepath.Join(dir, "registry.json")
+
+	reg := &registry.Registry{Projects: make(map[string]registry.Allocation)}
+	reg.Set("myapp", "main", registry.Allocation{
+		ProjectDir: "/src/myapp",
+		Ports:      map[string]int{"web": 10001},
+		Hostnames:  map[string]string{"web": "myapp.test"},
+		Protocols:  map[string]string{"web": "http"},
+	})
+	writeRegistryJSON(t, regPath, reg)
+
+	cfg := &DaemonConfig{
+		DNSAddr:      "127.0.0.1:0",
+		ProxyAddr:    "127.0.0.1:0",
+		RegistryPath: regPath,
+	}
+
+	d, err := New(cfg)
+	if err != nil {
+		t.Fatalf("new daemon: %v", err)
+	}
+
+	// Use the proxy handler directly (avoid binding ports)
+	req := httptest.NewRequest("GET", "/", nil)
+	req.Host = "outport.test"
+	w := httptest.NewRecorder()
+	d.proxy.Handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("status: got %d, want 200", w.Code)
+	}
+	if !strings.Contains(w.Body.String(), "Outport Dashboard") {
+		t.Error("response should contain dashboard page title")
+	}
+}
+
+func TestDaemonAPIStatus(t *testing.T) {
+	dir := t.TempDir()
+	regPath := filepath.Join(dir, "registry.json")
+
+	reg := &registry.Registry{Projects: make(map[string]registry.Allocation)}
+	reg.Set("myapp", "main", registry.Allocation{
+		ProjectDir: "/src/myapp",
+		Ports:      map[string]int{"web": 10001},
+		Hostnames:  map[string]string{"web": "myapp.test"},
+		Protocols:  map[string]string{"web": "http"},
+	})
+	writeRegistryJSON(t, regPath, reg)
+
+	cfg := &DaemonConfig{
+		DNSAddr:      "127.0.0.1:0",
+		ProxyAddr:    "127.0.0.1:0",
+		RegistryPath: regPath,
+	}
+
+	d, err := New(cfg)
+	if err != nil {
+		t.Fatalf("new daemon: %v", err)
+	}
+
+	req := httptest.NewRequest("GET", "/api/status", nil)
+	req.Host = "outport.test"
+	w := httptest.NewRecorder()
+	d.proxy.Handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("status: got %d, want 200", w.Code)
+	}
+	if ct := w.Header().Get("Content-Type"); ct != "application/json" {
+		t.Errorf("content-type: got %q, want application/json", ct)
+	}
 }
