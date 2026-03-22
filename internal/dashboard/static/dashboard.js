@@ -127,6 +127,20 @@
     return { up: upCount, total: total, cls: cls };
   }
 
+  function computeInstanceHealth(instance) {
+    var services = instance.services || {};
+    var names = Object.keys(services);
+    var hasHealth = false;
+    var allUp = true;
+    for (var i = 0; i < names.length; i++) {
+      var svc = services[names[i]];
+      if (svc.up === true) { hasHealth = true; }
+      else if (svc.up === false) { hasHealth = true; allUp = false; }
+    }
+    if (!hasHealth) return "idle";
+    return allUp ? "ok" : "warn";
+  }
+
   // ── Render ──
 
   function render(data) {
@@ -192,10 +206,15 @@
       var wtSummary = document.createElement("summary");
       wtSummary.textContent = worktreeNames.length + (worktreeNames.length === 1 ? " worktree " : " worktrees ");
 
-      // Add worktree dots
+      // Add worktree dots — reflect actual health of each worktree
       var wtDots = el("span", "wt-dots");
       for (var wi = 0; wi < worktreeNames.length; wi++) {
-        wtDots.appendChild(el("span", "wt-dot"));
+        var wtInst = instances[worktreeNames[wi]];
+        var wtHealth = computeInstanceHealth(wtInst);
+        var wtDot = el("span", "wt-dot");
+        if (wtHealth === "warn") wtDot.classList.add("down");
+        else if (wtHealth === "idle") wtDot.classList.add("idle");
+        wtDots.appendChild(wtDot);
       }
       wtSummary.appendChild(wtDots);
       wtToggle.appendChild(wtSummary);

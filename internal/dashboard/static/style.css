@@ -321,7 +321,9 @@ body {
 }
 
 .wt-dots { display: flex; gap: 3px; }
-.wt-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); opacity: 0.8; }
+.wt-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
+.wt-dot.down { background: var(--red); }
+.wt-dot.idle { background: #cbd5e1; }
 
 /* ── Reduced motion ── */
 @media (prefers-reduced-motion: reduce) {
