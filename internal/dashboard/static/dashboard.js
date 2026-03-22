@@ -101,15 +101,17 @@
 
   // ── Health badge ──
 
+  // Health badge only counts the main instance. Worktrees are secondary
+  // and shouldn't make the badge look alarming when they're just not running.
   function computeHealth(project) {
     var instances = project.instances || {};
+    var mainInst = instances["main"];
     var total = 0;
     var upCount = 0;
     var hasHealth = false;
 
-    var instNames = Object.keys(instances);
-    for (var i = 0; i < instNames.length; i++) {
-      var services = instances[instNames[i]].services || {};
+    if (mainInst) {
+      var services = mainInst.services || {};
       var svcNames = Object.keys(services);
       for (var j = 0; j < svcNames.length; j++) {
         total++;
