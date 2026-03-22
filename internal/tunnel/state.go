@@ -1,0 +1,80 @@
+package tunnel
+
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+	"path/filepath"
+	"syscall"
+
+	"github.com/outport-app/outport/internal/paths"
+)
+
+// TunnelState represents the persisted state of active tunnels.
+type TunnelState struct {
+	PID     int                          `json:"pid"`
+	Tunnels map[string]map[string]string `json:"tunnels"` // key -> service -> URL
+}
+
+// DefaultStatePath returns ~/.local/share/outport/tunnels.json.
+func DefaultStatePath() (string, error) {
+	dir, err := paths.DataDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(dir, "tunnels.json"), nil
+}
+
+// WriteState writes tunnel state to the given path with the current PID.
+func WriteState(path string, key string, tunnels map[string]string) error {
+	state := TunnelState{
+		PID:     os.Getpid(),
+		Tunnels: map[string]map[string]string{key: tunnels},
+	}
+	data, err := json.MarshalIndent(state, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshaling tunnel state: %w", err)
+	}
+	if err := os.WriteFile(path, data, 0644); err != nil {
+		return fmt.Errorf("writing tunnel state: %w", err)
+	}
+	return nil
+}
+
+// ReadState reads tunnel state from the given path.
+// Returns nil, nil if the file doesn't exist or the PID is stale.
+func ReadState(path string) (*TunnelState, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("reading tunnel state: %w", err)
+	}
+	var state TunnelState
+	if err := json.Unmarshal(data, &state); err != nil {
+		return nil, fmt.Errorf("parsing tunnel state: %w", err)
+	}
+	if !isProcessAlive(state.PID) {
+		return nil, nil
+	}
+	return &state, nil
+}
+
+// RemoveState deletes the tunnel state file (best-effort).
+func RemoveState(path string) {
+	_ = os.Remove(path)
+}
+
+// isProcessAlive checks whether a process with the given PID exists.
+func isProcessAlive(pid int) bool {
+	if pid <= 0 {
+		return false
+	}
+	proc, err := os.FindProcess(pid)
+	if err != nil {
+		return false
+	}
+	err = proc.Signal(syscall.Signal(0))
+	return err == nil
+}
