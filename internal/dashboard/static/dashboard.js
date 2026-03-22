@@ -381,20 +381,32 @@
     return row;
   }
 
-  // ── Health updates (targeted dot swap) ──
+  // ── Health updates ──
 
   function updateHealth(changes) {
+    if (!lastData) return;
+
+    // Update the cached data with new health values
+    var needsRerender = false;
     for (var i = 0; i < changes.length; i++) {
       var c = changes[i];
-      var selector =
-        '[data-project="' + c.project + '"]' +
-        '[data-instance="' + c.instance + '"]' +
-        '[data-service="' + c.service + '"]';
-      var dots = document.querySelectorAll(selector);
-      for (var j = 0; j < dots.length; j++) {
-        dots[j].classList.remove("up", "down");
-        dots[j].classList.add(c.up ? "up" : "down");
+      var proj = lastData.projects && lastData.projects[c.project];
+      if (!proj) continue;
+      var inst = proj.instances && proj.instances[c.instance];
+      if (!inst) continue;
+      var svc = inst.services && inst.services[c.service];
+      if (svc) {
+        var wasUp = svc.up;
+        svc.up = c.up;
+        // If a service went from down/unknown to up or vice versa,
+        // the active/inactive classification may have changed
+        if (wasUp !== c.up) needsRerender = true;
       }
+    }
+
+    // Re-render to pick up active/inactive changes and update all dots
+    if (needsRerender) {
+      render(lastData);
     }
   }
 
