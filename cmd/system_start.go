@@ -127,6 +127,7 @@ func runSystemStart(cmd *cobra.Command, args []string) error {
 
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, ui.SuccessStyle.Render("Done! *.test domains are now routing with HTTPS."))
+	fmt.Fprintln(w, ui.DimStyle.Render("Dashboard: https://outport.test"))
 	return nil
 }
 

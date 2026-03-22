@@ -175,6 +175,8 @@ On first run, installs the `.test` DNS resolver (`/etc/resolver/test`, requires 
 
 On subsequent runs, starts the daemon if it is not already running.
 
+Once the daemon is running, a live dashboard is available at `https://outport.test` showing all registered projects, services, and health status with real-time updates.
+
 | Flag | Description |
 |------|-------------|
 | `--json` | Output results as JSON (includes `ca_generated`, `ca_trusted` fields) |

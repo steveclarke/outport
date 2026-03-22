@@ -97,6 +97,10 @@ When you run `outport up`:
 4. **Registry updated** — Allocations are saved to `~/.local/share/outport/registry.json`.
 5. **.env written** — Ports are written inside a fenced block (`# --- begin/end outport.dev ---`). Your existing `.env` content is preserved.
 
+## Dashboard
+
+Open [https://outport.test](https://outport.test) in your browser for a live dashboard showing all your registered projects, services, and health status. It updates in real-time — when you `outport up` a new project or a service goes up or down, the dashboard reflects it instantly.
+
 ## Managing the System
 
 ```bash

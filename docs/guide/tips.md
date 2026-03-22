@@ -14,6 +14,10 @@ outport doctor
 
 This checks DNS, the daemon, TLS certificates, the registry, and (if you're in a project directory) your `outport.yml` and port status. Each check shows pass/fail with a fix suggestion.
 
+## Live dashboard
+
+Pin `https://outport.test` in your browser for a live view of all your projects and services. It shows which services are up or down and gives you clickable links to every `.test` URL. The dashboard updates automatically via server-sent events — no need to refresh.
+
 ## protocol: http vs https
 
 Set `protocol: http` even though your `.test` URLs show `https://`. The `protocol` field describes what your app speaks — your Rails server, Nuxt dev server, and Mailpit all listen on plain HTTP. The outport daemon terminates TLS at the proxy and forwards to your app over HTTP.

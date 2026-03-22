@@ -153,10 +153,13 @@ func runUp(cmd *cobra.Command, args []string) error {
 
 	printExternalFilesWarning(cmd.OutOrStdout(), result.ExternalFiles)
 
+	w := cmd.OutOrStdout()
 	if !platform.IsAgentLoaded() {
-		w := cmd.OutOrStdout()
 		fmt.Fprintln(w)
 		fmt.Fprintln(w, ui.DimStyle.Render("Hint: The outport daemon is not running. Run 'outport system start' to enable .test domains."))
+	} else {
+		fmt.Fprintln(w)
+		fmt.Fprintln(w, ui.DimStyle.Render("Dashboard: https://outport.test"))
 	}
 
 	return nil
