@@ -66,38 +66,43 @@ body {
 .main {
   flex: 1;
   overflow-y: auto;
-  display: flex;
-  justify-content: center;
-  padding: 32px 24px 64px;
+  padding: clamp(16px, 3vw, 32px) clamp(16px, 4vw, 48px) 64px;
 }
 
 .content {
   width: 100%;
-  max-width: 960px;
+  max-width: 1200px;
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 40px;
+  gap: 0;
 }
 
 /* ── Project section ── */
 .project {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  gap: 0 24px;
+  padding: clamp(20px, 2.5vw, 32px) 0;
+  border-bottom: 1px solid var(--border);
 }
 
-.project-head {
+.project:last-child { border-bottom: none; }
+
+.project-sidebar {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 10px;
 }
 
 .project-name {
   font-family: 'Barlow', sans-serif;
   font-weight: 700;
-  font-size: 20px;
+  font-size: 18px;
   color: var(--navy);
   letter-spacing: -0.02em;
+  line-height: 1.2;
 }
 
 .project-health {
@@ -106,12 +111,31 @@ body {
   font-weight: 600;
   padding: 2px 8px;
   border-radius: 4px;
-  margin-left: auto;
+  width: fit-content;
 }
 
 .project-health.ok { color: var(--green); background: var(--green-soft); }
 .project-health.warn { color: var(--red); background: var(--red-soft); }
 .project-health.idle { color: var(--text-4); background: var(--bg-soft); }
+
+.project-instances {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+@media (max-width: 700px) {
+  .project {
+    grid-template-columns: 1fr;
+    gap: 8px 0;
+  }
+  .project-sidebar {
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+    padding-top: 0;
+  }
+}
 
 /* ── Instance section ── */
 .instance {
@@ -125,13 +149,13 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 16px;
+  padding: 8px 16px;
   background: var(--bg-soft);
   border-bottom: 1px solid var(--border);
   font-family: var(--mono);
   font-size: 13px;
   font-weight: 600;
-  color: var(--text-3);
+  color: var(--text-2);
 }
 
 .inst-head.main { color: var(--blue); }
@@ -142,7 +166,7 @@ body {
   grid-template-columns: 28px 1fr auto auto;
   align-items: center;
   gap: 8px;
-  padding: 10px 16px;
+  padding: 8px 16px;
   border-bottom: 1px solid #f0ede6;
   transition: background 0.1s ease;
 }
@@ -303,10 +327,11 @@ body {
 
   <!-- ── ninjanizr ── -->
   <section class="project">
-    <div class="project-head">
+    <div class="project-sidebar">
       <span class="project-name">ninjanizr</span>
       <span class="project-health warn">4/6</span>
     </div>
+    <div class="project-instances">
     <div class="instance">
       <div class="inst-head main">main</div>
       <div class="svc">
@@ -329,14 +354,16 @@ body {
         <div class="infra-row"><span class="dot down"></span><span>mailpit_smtp</span><span class="svc-port">35714</span><span class="svc-envvar">MAILPIT_SMTP_PORT</span></div>
       </details>
     </div>
+    </div>
   </section>
 
   <!-- ── outport-app ── -->
   <section class="project">
-    <div class="project-head">
+    <div class="project-sidebar">
       <span class="project-name">outport-app</span>
       <span class="project-health ok">20/20</span>
     </div>
+    <div class="project-instances">
     <div class="instance">
       <div class="inst-head main">main</div>
       <div class="svc">
@@ -402,14 +429,16 @@ body {
         </div>
       </div>
     </details>
+    </div>
   </section>
 
   <!-- ── clevertakes ── -->
   <section class="project">
-    <div class="project-head">
+    <div class="project-sidebar">
       <span class="project-name">clevertakes</span>
       <span class="project-health ok">3/3</span>
     </div>
+    <div class="project-instances">
     <div class="instance">
       <div class="inst-head main">main</div>
       <div class="svc">
@@ -424,14 +453,16 @@ body {
         <div class="infra-row"><span class="dot up"></span><span>postgres</span><span class="svc-port">13205</span><span class="svc-envvar">DB_PORT</span></div>
       </details>
     </div>
+    </div>
   </section>
 
   <!-- ── kiso ── -->
   <section class="project">
-    <div class="project-head">
+    <div class="project-sidebar">
       <span class="project-name">kiso</span>
       <span class="project-health warn">2/3</span>
     </div>
+    <div class="project-instances">
     <div class="instance">
       <div class="inst-head main">main</div>
       <div class="svc">
@@ -453,20 +484,23 @@ body {
         <span class="svc-envvar">LOOKBOOK_PORT</span>
       </div>
     </div>
+    </div>
   </section>
 
   <!-- ── qa-internal ── -->
   <section class="project">
-    <div class="project-head">
+    <div class="project-sidebar">
       <span class="project-name">qa-internal</span>
       <span class="project-health idle">0/1</span>
     </div>
+    <div class="project-instances">
     <div class="instance">
       <div class="inst-head main">main</div>
       <details class="infra-toggle">
         <summary><span class="idots"><span class="idot"></span></span>1 service</summary>
         <div class="infra-row"><span class="dot"></span><span>web</span><span class="svc-port">3000</span><span class="svc-envvar">PORT</span></div>
       </details>
+    </div>
     </div>
   </section>
 
