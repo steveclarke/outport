@@ -169,16 +169,5 @@ func (p *routeTableProvider) Allocations() map[string]registry.Allocation {
 }
 
 func (p *routeTableProvider) AllPorts() []int {
-	allocs := p.routes.Allocations()
-	seen := make(map[int]bool)
-	var ports []int
-	for _, alloc := range allocs {
-		for _, port := range alloc.Ports {
-			if !seen[port] {
-				seen[port] = true
-				ports = append(ports, port)
-			}
-		}
-	}
-	return ports
+	return p.routes.AllPorts()
 }

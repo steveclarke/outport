@@ -13,6 +13,7 @@ type Allocation struct {
 	Ports                 map[string]int    `json:"ports"`
 	Hostnames             map[string]string `json:"hostnames,omitempty"`
 	Protocols             map[string]string `json:"protocols,omitempty"`
+	EnvVars               map[string]string `json:"env_vars,omitempty"`
 	ApprovedExternalFiles []string          `json:"approved_external_files,omitempty"`
 }
 

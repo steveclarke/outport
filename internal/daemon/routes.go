@@ -17,6 +17,7 @@ type RouteTable struct {
 	mu          sync.RWMutex
 	routes      map[string]int
 	allocations map[string]registry.Allocation // full registry data for dashboard
+	ports       []int                          // deduplicated list of all allocated ports
 	OnUpdate    func()                         // called after every Update, if non-nil
 }
 
@@ -44,10 +45,33 @@ func (rt *RouteTable) UpdateWithAllocations(routes map[string]int, allocs map[st
 	rt.mu.Lock()
 	rt.routes = routes
 	rt.allocations = allocs
+	rt.ports = deduplicatePorts(allocs)
 	rt.mu.Unlock()
 	if rt.OnUpdate != nil {
 		rt.OnUpdate()
 	}
+}
+
+// AllPorts returns the cached deduplicated list of all allocated ports.
+func (rt *RouteTable) AllPorts() []int {
+	rt.mu.RLock()
+	defer rt.mu.RUnlock()
+	return rt.ports
+}
+
+// deduplicatePorts collects all unique ports from allocations.
+func deduplicatePorts(allocs map[string]registry.Allocation) []int {
+	seen := make(map[int]bool)
+	var ports []int
+	for _, alloc := range allocs {
+		for _, port := range alloc.Ports {
+			if !seen[port] {
+				seen[port] = true
+				ports = append(ports, port)
+			}
+		}
+	}
+	return ports
 }
 
 // Allocations returns a shallow copy of the full registry allocation data.

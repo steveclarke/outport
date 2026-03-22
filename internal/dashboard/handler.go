@@ -6,10 +6,9 @@ import (
 	"io/fs"
 	"net/http"
 	"sort"
-	"strings"
 
-	"github.com/outport-app/outport/internal/config"
 	"github.com/outport-app/outport/internal/registry"
+	"github.com/outport-app/outport/internal/urlutil"
 )
 
 // AllocProvider gives access to the current registry state.
@@ -44,6 +43,13 @@ type ServiceJSON struct {
 	Up       *bool  `json:"up,omitempty"`
 }
 
+// portEntry maps a port back to the project, instance, and service that own it.
+type portEntry struct {
+	Project  string
+	Instance string
+	Service  string
+}
+
 // Handler serves the dashboard HTTP API and embedded static files.
 type Handler struct {
 	mux       *http.ServeMux
@@ -52,6 +58,7 @@ type Handler struct {
 	sse       *Broadcaster
 	https     bool
 	indexHTML []byte
+	portIndex map[int]portEntry // port -> owning project/instance/service
 }
 
 // NewHandler creates a dashboard handler with all routes registered.
@@ -65,6 +72,7 @@ func NewHandler(provider AllocProvider, httpsEnabled bool) *Handler {
 
 	h.health = NewHealthChecker(provider.AllPorts, h.onHealthChange)
 	h.indexHTML, _ = staticFiles.ReadFile("static/index.html")
+	h.rebuildPortIndex()
 
 	h.mux.HandleFunc("GET /api/status", h.handleStatus)
 	h.mux.HandleFunc("GET /api/events", h.handleSSE)
@@ -142,12 +150,31 @@ func (h *Handler) handleSSE(w http.ResponseWriter, r *http.Request) {
 // Sends the full state as a registry event. The next health tick (3s) will
 // pick up port status for any newly registered services.
 func (h *Handler) OnRegistryUpdate() {
+	h.rebuildPortIndex()
 	if h.sse.ClientCount() == 0 {
 		return
 	}
 	resp := h.buildStatus()
 	data, _ := json.Marshal(resp)
 	h.sse.Send(Event{Type: "registry", Data: string(data)})
+}
+
+// rebuildPortIndex reconstructs the port -> (project, instance, service) reverse index
+// from the current provider allocations.
+func (h *Handler) rebuildPortIndex() {
+	allocs := h.provider.Allocations()
+	idx := make(map[int]portEntry, len(allocs)*2)
+	for key, alloc := range allocs {
+		project, instance := registry.ParseKey(key)
+		for svc, port := range alloc.Ports {
+			idx[port] = portEntry{
+				Project:  project,
+				Instance: instance,
+				Service:  svc,
+			}
+		}
+	}
+	h.portIndex = idx
 }
 
 // onHealthChange is the callback from the health checker when port statuses change.
@@ -161,25 +188,15 @@ func (h *Handler) onHealthChange(changes map[int]bool) {
 		Up       bool   `json:"up"`
 	}
 
-	// Build a port -> (project, instance, service) reverse lookup.
-	allocs := h.provider.Allocations()
-	portIndex := make(map[int]changeEntry)
-	for key, alloc := range allocs {
-		project, instance := registry.ParseKey(key)
-		for svc, port := range alloc.Ports {
-			portIndex[port] = changeEntry{
-				Project:  project,
-				Instance: instance,
-				Service:  svc,
-			}
-		}
-	}
-
 	var entries []changeEntry
 	for port, up := range changes {
-		if entry, ok := portIndex[port]; ok {
-			entry.Up = up
-			entries = append(entries, entry)
+		if pe, ok := h.portIndex[port]; ok {
+			entries = append(entries, changeEntry{
+				Project:  pe.Project,
+				Instance: pe.Instance,
+				Service:  pe.Service,
+				Up:       up,
+			})
 		}
 	}
 
@@ -202,19 +219,6 @@ func (h *Handler) onHealthChange(changes map[int]bool) {
 func (h *Handler) buildStatus() StatusResponse {
 	allocs := h.provider.Allocations()
 	healthStatus := h.health.CurrentStatus()
-
-	// Load configs for env_var names (best-effort, skip failures).
-	envVars := make(map[string]map[string]string) // registry key -> service name -> env_var
-	for key, alloc := range allocs {
-		cfg, err := config.Load(alloc.ProjectDir)
-		if err == nil {
-			vars := make(map[string]string)
-			for name, svc := range cfg.Services {
-				vars[name] = svc.EnvVar
-			}
-			envVars[key] = vars
-		}
-	}
 
 	resp := StatusResponse{
 		Projects: make(map[string]ProjectJSON),
@@ -243,9 +247,7 @@ func (h *Handler) buildStatus() StatusResponse {
 			port := alloc.Ports[name]
 			sj := ServiceJSON{Port: port}
 
-			if vars, ok := envVars[key]; ok {
-				sj.EnvVar = vars[name]
-			}
+			sj.EnvVar = alloc.EnvVars[name]
 
 			hostname := alloc.Hostnames[name]
 			protocol := alloc.Protocols[name]
@@ -257,12 +259,8 @@ func (h *Handler) buildStatus() StatusResponse {
 				sj.Protocol = protocol
 			}
 
-			if hostname != "" && (protocol == "http" || protocol == "https") {
-				scheme := "http"
-				if h.https && strings.HasSuffix(hostname, ".test") {
-					scheme = "https"
-				}
-				sj.URL = fmt.Sprintf("%s://%s", scheme, hostname)
+			if u := urlutil.ServiceURL(protocol, hostname, port, h.https); u != "" {
+				sj.URL = u
 			}
 
 			// Attach health status if we have it.

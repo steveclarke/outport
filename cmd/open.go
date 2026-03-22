@@ -8,6 +8,7 @@ import (
 	"github.com/outport-app/outport/internal/certmanager"
 	"github.com/outport-app/outport/internal/config"
 	"github.com/outport-app/outport/internal/registry"
+	"github.com/outport-app/outport/internal/urlutil"
 	"github.com/spf13/cobra"
 )
 
@@ -50,9 +51,9 @@ func runOpen(cmd *cobra.Command, args []string) error {
 			if protocol == "" {
 				continue
 			}
-			url = fmt.Sprintf("%s://%s", effectiveScheme(protocol, h, httpsEnabled), h)
+			url = fmt.Sprintf("%s://%s", urlutil.EffectiveScheme(protocol, h, httpsEnabled), h)
 		} else {
-			url = serviceURL(svc.Protocol, svc.Hostname, alloc.Ports[svcName], httpsEnabled)
+			url = urlutil.ServiceURL(svc.Protocol, svc.Hostname, alloc.Ports[svcName], httpsEnabled)
 		}
 		if url == "" {
 			continue
@@ -88,9 +89,9 @@ func openService(cmd *cobra.Command, cfg *config.Config, alloc registry.Allocati
 		if svc.Protocol == "" {
 			return fmt.Errorf("Service %q has no protocol set. Add 'protocol: http' to open it in the browser.", name)
 		}
-		url = fmt.Sprintf("%s://%s", effectiveScheme(svc.Protocol, h, httpsEnabled), h)
+		url = fmt.Sprintf("%s://%s", urlutil.EffectiveScheme(svc.Protocol, h, httpsEnabled), h)
 	} else {
-		url = serviceURL(svc.Protocol, svc.Hostname, port, httpsEnabled)
+		url = urlutil.ServiceURL(svc.Protocol, svc.Hostname, port, httpsEnabled)
 	}
 	if url == "" {
 		return fmt.Errorf("Service %q has no protocol set. Add 'protocol: http' to open it in the browser.", name)

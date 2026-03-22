@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/outport-app/outport/internal/registry"
@@ -258,26 +256,13 @@ func TestHandlerStatusNoURLForNonWebServices(t *testing.T) {
 }
 
 func TestHandlerAPIStatusIncludesEnvVar(t *testing.T) {
-	dir := t.TempDir()
-	configYAML := `name: myapp
-services:
-  web:
-    env_var: PORT
-    protocol: http
-    hostname: myapp.test
-  postgres:
-    env_var: DB_PORT
-`
-	if err := os.WriteFile(filepath.Join(dir, "outport.yml"), []byte(configYAML), 0644); err != nil {
-		t.Fatalf("write config: %v", err)
-	}
-
 	allocs := map[string]registry.Allocation{
 		"myapp/main": {
-			ProjectDir: dir,
+			ProjectDir: "/home/dev/myapp",
 			Ports:      map[string]int{"web": 10001, "postgres": 15432},
 			Hostnames:  map[string]string{"web": "myapp.test"},
 			Protocols:  map[string]string{"web": "http"},
+			EnvVars:    map[string]string{"web": "PORT", "postgres": "DB_PORT"},
 		},
 	}
 	provider := &mockAllocProvider{allocs: allocs}
