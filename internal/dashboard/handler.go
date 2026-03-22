@@ -19,6 +19,7 @@ type AllocProvider interface {
 
 // StatusResponse is the JSON structure returned by GET /api/status.
 type StatusResponse struct {
+	Version  string                  `json:"version"`
 	Projects map[string]ProjectJSON `json:"projects"`
 }
 
@@ -57,17 +58,19 @@ type Handler struct {
 	health    *HealthChecker
 	sse       *Broadcaster
 	https     bool
+	version   string
 	indexHTML []byte
 	portIndex map[int]portEntry // port -> owning project/instance/service
 }
 
 // NewHandler creates a dashboard handler with all routes registered.
-func NewHandler(provider AllocProvider, httpsEnabled bool) *Handler {
+func NewHandler(provider AllocProvider, httpsEnabled bool, version string) *Handler {
 	h := &Handler{
 		mux:      http.NewServeMux(),
 		provider: provider,
 		sse:      NewBroadcaster(),
 		https:    httpsEnabled,
+		version:  version,
 	}
 
 	h.health = NewHealthChecker(provider.AllPorts, h.onHealthChange)
@@ -221,6 +224,7 @@ func (h *Handler) buildStatus() StatusResponse {
 	healthStatus := h.health.CurrentStatus()
 
 	resp := StatusResponse{
+		Version:  h.version,
 		Projects: make(map[string]ProjectJSON),
 	}
 
