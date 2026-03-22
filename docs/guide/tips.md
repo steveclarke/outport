@@ -16,7 +16,7 @@ This checks DNS, the daemon, TLS certificates, the registry, and (if you're in a
 
 ## Live dashboard
 
-Pin `https://outport.test` in your browser for a live view of all your projects and services. It shows which services are up or down and gives you clickable links to every `.test` URL. The dashboard updates automatically via server-sent events — no need to refresh.
+Pin [https://outport.test](https://outport.test) in your browser for a live view of all your projects and services. It shows which services are up or down and gives you clickable links to every `.test` URL. The dashboard updates automatically via server-sent events — no need to refresh. See the [Dashboard guide](/guide/dashboard) for details.
 
 ## protocol: http vs https
 

@@ -99,7 +99,7 @@ When you run `outport up`:
 
 ## Dashboard
 
-Open [https://outport.test](https://outport.test) in your browser for a live dashboard showing all your registered projects, services, and health status. It updates in real-time — when you `outport up` a new project or a service goes up or down, the dashboard reflects it instantly.
+Open [https://outport.test](https://outport.test) in your browser for a live dashboard showing all your registered projects, services, and health status. It updates in real-time — when you `outport up` a new project or a service goes up or down, the dashboard reflects it instantly. See [Dashboard](/guide/dashboard) for the full guide.
 
 ## Managing the System
 
@@ -123,6 +123,7 @@ This tunnels all HTTP services to public Cloudflare URLs and rewrites `.env` fil
 
 ## Next Steps
 
+- [Dashboard](/guide/dashboard) — live web view of all your projects and services
 - [VS Code Extension](/guide/vscode) — ports, URLs, and service health right in the editor
 - [Configuration Reference](/reference/configuration) — full `outport.yml` schema
 - [Commands Reference](/reference/commands) — all CLI commands
