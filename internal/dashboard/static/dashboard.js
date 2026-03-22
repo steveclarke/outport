@@ -5,6 +5,10 @@
   var connDot = document.getElementById("conn-dot");
   var connText = document.getElementById("conn-text");
   var headerStats = document.getElementById("header-stats");
+  var toggleBtn = document.getElementById("toggle-inactive");
+
+  var showInactive = false;
+  var lastData = null;
 
   function setConnection(state) {
     if (state === "connected") {
@@ -141,18 +145,44 @@
     return allUp ? "ok" : "warn";
   }
 
+  function isProjectActive(project) {
+    var instances = project.instances || {};
+    var instNames = Object.keys(instances);
+    for (var i = 0; i < instNames.length; i++) {
+      var services = instances[instNames[i]].services || {};
+      var svcNames = Object.keys(services);
+      for (var j = 0; j < svcNames.length; j++) {
+        if (services[svcNames[j]].up === true) return true;
+      }
+    }
+    return false;
+  }
+
   // ── Render ──
 
   function render(data) {
+    lastData = data;
     clearDashboard();
 
     var projects = data.projects || {};
     var projectNames = Object.keys(projects).sort();
 
-    // Update header stats.
-    var totalInstances = 0;
+    // Split into active/inactive
+    var activeNames = [];
+    var inactiveCount = 0;
     for (var p = 0; p < projectNames.length; p++) {
-      var inst = projects[projectNames[p]].instances || {};
+      if (isProjectActive(projects[projectNames[p]])) {
+        activeNames.push(projectNames[p]);
+      } else {
+        inactiveCount++;
+        if (showInactive) activeNames.push(projectNames[p]);
+      }
+    }
+
+    // Update header stats
+    var totalInstances = 0;
+    for (var s = 0; s < projectNames.length; s++) {
+      var inst = projects[projectNames[s]].instances || {};
       totalInstances += Object.keys(inst).length;
     }
     headerStats.textContent =
@@ -160,8 +190,19 @@
       " \u00b7 " +
       totalInstances + (totalInstances === 1 ? " instance" : " instances");
 
-    for (var pi = 0; pi < projectNames.length; pi++) {
-      dashboard.appendChild(renderProject(projectNames[pi], projects[projectNames[pi]]));
+    // Update toggle button
+    if (inactiveCount > 0) {
+      toggleBtn.style.display = "";
+      toggleBtn.textContent = showInactive
+        ? "Hide inactive (" + inactiveCount + ")"
+        : "Show inactive (" + inactiveCount + ")";
+      toggleBtn.className = "header-toggle" + (showInactive ? " active" : "");
+    } else {
+      toggleBtn.style.display = "none";
+    }
+
+    for (var pi = 0; pi < activeNames.length; pi++) {
+      dashboard.appendChild(renderProject(activeNames[pi], projects[activeNames[pi]]));
     }
   }
 
@@ -350,5 +391,10 @@
   document.addEventListener("DOMContentLoaded", function () {
     fetchStatus();
     connectSSE();
+
+    toggleBtn.addEventListener("click", function () {
+      showInactive = !showInactive;
+      if (lastData) render(lastData);
+    });
   });
 })();
