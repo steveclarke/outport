@@ -36,13 +36,11 @@ func New(cfg *DaemonConfig) (*Daemon, error) {
 	routes := &RouteTable{}
 	proxyHandler := NewProxy(routes)
 
-	// Create dashboard handler
 	httpsEnabled := cfg.TLSConfig != nil
 	dashProvider := &routeTableProvider{routes: routes}
 	dashHandler := dashboard.NewHandler(dashProvider, httpsEnabled)
 	proxyHandler.DashboardHandler = dashHandler
 
-	// Chain OnUpdate: clear proxy cache + notify dashboard
 	routes.OnUpdate = func() {
 		proxyHandler.ClearCache()
 		dashHandler.OnRegistryUpdate()

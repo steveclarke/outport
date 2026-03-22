@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"net/http"
 	"sort"
+	"strings"
 
 	"github.com/outport-app/outport/internal/config"
 	"github.com/outport-app/outport/internal/registry"
@@ -45,11 +46,12 @@ type ServiceJSON struct {
 
 // Handler serves the dashboard HTTP API and embedded static files.
 type Handler struct {
-	mux      *http.ServeMux
-	provider AllocProvider
-	health   *HealthChecker
-	sse      *Broadcaster
-	https    bool
+	mux       *http.ServeMux
+	provider  AllocProvider
+	health    *HealthChecker
+	sse       *Broadcaster
+	https     bool
+	indexHTML []byte
 }
 
 // NewHandler creates a dashboard handler with all routes registered.
@@ -62,11 +64,11 @@ func NewHandler(provider AllocProvider, httpsEnabled bool) *Handler {
 	}
 
 	h.health = NewHealthChecker(provider.AllPorts, h.onHealthChange)
+	h.indexHTML, _ = staticFiles.ReadFile("static/index.html")
 
 	h.mux.HandleFunc("GET /api/status", h.handleStatus)
 	h.mux.HandleFunc("GET /api/events", h.handleSSE)
 
-	// Serve embedded static files.
 	staticSub, err := fs.Sub(staticFiles, "static")
 	if err != nil {
 		panic(fmt.Sprintf("dashboard: embed sub: %v", err))
@@ -81,15 +83,9 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.mux.ServeHTTP(w, r)
 }
 
-// handleIndex serves the embedded index.html for the root path.
 func (h *Handler) handleIndex(w http.ResponseWriter, r *http.Request) {
-	data, err := staticFiles.ReadFile("static/index.html")
-	if err != nil {
-		http.Error(w, "not found", http.StatusNotFound)
-		return
-	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	_, _ = w.Write(data)
+	_, _ = w.Write(h.indexHTML)
 }
 
 // handleStatus returns the current status of all projects as JSON.
@@ -118,23 +114,19 @@ func (h *Handler) handleSSE(w http.ResponseWriter, r *http.Request) {
 	ch := h.sse.Subscribe()
 	defer h.sse.Unsubscribe(ch)
 
-	// Start health checker if this is the first client.
 	if h.sse.ClientCount() == 1 {
 		h.health.Start()
 	}
 
-	// Send initial full state.
 	resp := h.buildStatus()
 	data, _ := json.Marshal(resp)
 	writeSSE(w, "registry", string(data))
 	flusher.Flush()
 
-	// Stream events until the client disconnects.
 	ctx := r.Context()
 	for {
 		select {
 		case <-ctx.Done():
-			// Stop health checker if this was the last client.
 			if h.sse.ClientCount() <= 1 {
 				h.health.Stop()
 			}
@@ -147,13 +139,12 @@ func (h *Handler) handleSSE(w http.ResponseWriter, r *http.Request) {
 }
 
 // OnRegistryUpdate is called by the daemon when the registry file changes.
-// If SSE clients are connected, it triggers an immediate health check and
-// sends the full state as a registry event.
+// Sends the full state as a registry event. The next health tick (3s) will
+// pick up port status for any newly registered services.
 func (h *Handler) OnRegistryUpdate() {
 	if h.sse.ClientCount() == 0 {
 		return
 	}
-	h.health.CheckNow()
 	resp := h.buildStatus()
 	data, _ := json.Marshal(resp)
 	h.sse.Send(Event{Type: "registry", Data: string(data)})
@@ -242,7 +233,6 @@ func (h *Handler) buildStatus() StatusResponse {
 			Services:   make(map[string]ServiceJSON),
 		}
 
-		// Collect and sort service names for stable output.
 		svcNames := make([]string, 0, len(alloc.Ports))
 		for svc := range alloc.Ports {
 			svcNames = append(svcNames, svc)
@@ -267,10 +257,9 @@ func (h *Handler) buildStatus() StatusResponse {
 				sj.Protocol = protocol
 			}
 
-			// Build URL for web services (those with hostname + http/https protocol).
 			if hostname != "" && (protocol == "http" || protocol == "https") {
 				scheme := "http"
-				if h.https {
+				if h.https && strings.HasSuffix(hostname, ".test") {
 					scheme = "https"
 				}
 				sj.URL = fmt.Sprintf("%s://%s", scheme, hostname)
