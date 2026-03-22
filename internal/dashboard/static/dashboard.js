@@ -11,6 +11,13 @@
   var showInactive = false;
   var lastData = null;
   var openQR = null; // { project, instance, service }
+  var qrShowingTunnel = false;
+
+  function isQROpen(project, instance, service) {
+    return openQR && openQR.project === project &&
+        openQR.instance === instance &&
+        openQR.service === service;
+  }
 
   function setConnection(state) {
     if (state === "connected") {
@@ -384,9 +391,7 @@
       qrBtn.addEventListener("click", function () {
         toggleQR(pn, iname, sn);
       });
-      if (openQR && openQR.project === projectName &&
-          openQR.instance === instanceName &&
-          openQR.service === serviceName) {
+      if (isQROpen(projectName, instanceName, serviceName)) {
         qrBtn.classList.add("active");
       }
       row.appendChild(qrBtn);
@@ -396,9 +401,7 @@
 
     row.appendChild(el("span", "svc-envvar", service.env_var || ""));
 
-    if (openQR && openQR.project === projectName &&
-        openQR.instance === instanceName &&
-        openQR.service === serviceName) {
+    if (isQROpen(projectName, instanceName, serviceName)) {
       var frag = document.createDocumentFragment();
       frag.appendChild(row);
       frag.appendChild(renderQRPanel(service));
@@ -455,12 +458,12 @@
   }
 
   function toggleQR(project, instance, service) {
-    if (openQR && openQR.project === project &&
-        openQR.instance === instance &&
-        openQR.service === service) {
+    if (isQROpen(project, instance, service)) {
       openQR = null;
+      qrShowingTunnel = false;
     } else {
       openQR = { project: project, instance: instance, service: service };
+      qrShowingTunnel = false;
     }
     if (lastData) render(lastData);
   }
@@ -473,49 +476,43 @@
   function renderQRPanel(service) {
     var panel = el("div", "qr-panel");
     var hasTunnel = !!service.tunnel_url;
-    var showingTunnel = false;
 
-    function buildContent() {
-      while (panel.firstChild) panel.removeChild(panel.firstChild);
-
-      if (hasTunnel) {
-        var toggle = el("div", "qr-toggle");
-        var lanBtn = el("button", showingTunnel ? "" : "active", "LAN");
-        var sep = el("div", "qr-toggle-sep");
-        var tunBtn = el("button", showingTunnel ? "active" : "", "Tunnel");
-        lanBtn.addEventListener("click", function () {
-          showingTunnel = false;
-          buildContent();
-        });
-        tunBtn.addEventListener("click", function () {
-          showingTunnel = true;
-          buildContent();
-        });
-        toggle.appendChild(lanBtn);
-        toggle.appendChild(sep);
-        toggle.appendChild(tunBtn);
-        panel.appendChild(toggle);
-      }
-
-      var url = showingTunnel ? service.tunnel_url : lanURL(service.port);
-      var code = el("div", "qr-code");
-      var img = document.createElement("img");
-      img.src = "/api/qr?url=" + encodeURIComponent(url);
-      img.alt = "QR code for " + url;
-      code.appendChild(img);
-
-      var urlSpan = el("span", "qr-url", url);
-      code.appendChild(urlSpan);
-      panel.appendChild(code);
-
-      var hint = el("span", "qr-hint",
-        showingTunnel
-          ? "Scan with your phone \u00b7 works from any network"
-          : "Scan with your phone \u00b7 same Wi\u2011Fi network");
-      panel.appendChild(hint);
+    if (hasTunnel) {
+      var toggle = el("div", "qr-toggle");
+      var lanBtn = el("button", qrShowingTunnel ? "" : "active", "LAN");
+      var sep = el("div", "qr-toggle-sep");
+      var tunBtn = el("button", qrShowingTunnel ? "active" : "", "Tunnel");
+      lanBtn.addEventListener("click", function () {
+        qrShowingTunnel = false;
+        if (lastData) render(lastData);
+      });
+      tunBtn.addEventListener("click", function () {
+        qrShowingTunnel = true;
+        if (lastData) render(lastData);
+      });
+      toggle.appendChild(lanBtn);
+      toggle.appendChild(sep);
+      toggle.appendChild(tunBtn);
+      panel.appendChild(toggle);
     }
 
-    buildContent();
+    var url = qrShowingTunnel ? service.tunnel_url : lanURL(service.port);
+    var code = el("div", "qr-code");
+    var img = document.createElement("img");
+    img.src = "/api/qr?url=" + encodeURIComponent(url);
+    img.alt = "QR code for " + url;
+    code.appendChild(img);
+
+    var urlSpan = el("span", "qr-url", url);
+    code.appendChild(urlSpan);
+    panel.appendChild(code);
+
+    var hint = el("span", "qr-hint",
+      qrShowingTunnel
+        ? "Scan with your phone \u00b7 works from any network"
+        : "Scan with your phone \u00b7 same Wi\u2011Fi network");
+    panel.appendChild(hint);
+
     return panel;
   }
 

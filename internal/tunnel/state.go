@@ -10,6 +10,9 @@ import (
 	"github.com/outport-app/outport/internal/paths"
 )
 
+// StateFilename is the name of the tunnel state file in the data directory.
+const StateFilename = "tunnels.json"
+
 // TunnelState represents the persisted state of active tunnels.
 type TunnelState struct {
 	PID     int                          `json:"pid"`
@@ -22,7 +25,7 @@ func DefaultStatePath() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(dir, "tunnels.json"), nil
+	return filepath.Join(dir, StateFilename), nil
 }
 
 // WriteState writes tunnel state to the given path with the current PID.
@@ -35,8 +38,12 @@ func WriteState(path string, key string, tunnels map[string]string) error {
 	if err != nil {
 		return fmt.Errorf("marshaling tunnel state: %w", err)
 	}
-	if err := os.WriteFile(path, data, 0644); err != nil {
+	tmp := path + ".tmp"
+	if err := os.WriteFile(tmp, data, 0644); err != nil {
 		return fmt.Errorf("writing tunnel state: %w", err)
+	}
+	if err := os.Rename(tmp, path); err != nil {
+		return fmt.Errorf("renaming tunnel state: %w", err)
 	}
 	return nil
 }

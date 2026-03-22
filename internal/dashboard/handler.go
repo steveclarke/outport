@@ -58,14 +58,16 @@ type portEntry struct {
 
 // Handler serves the dashboard HTTP API and embedded static files.
 type Handler struct {
-	mux       *http.ServeMux
-	provider  AllocProvider
-	health    *HealthChecker
-	sse       *Broadcaster
-	https     bool
-	version   string
-	indexHTML []byte
-	portIndex map[int]portEntry // port -> owning project/instance/service
+	mux          *http.ServeMux
+	provider     AllocProvider
+	health       *HealthChecker
+	sse          *Broadcaster
+	https        bool
+	version      string
+	indexHTML     []byte
+	portIndex    map[int]portEntry              // port -> owning project/instance/service
+	cachedLANIP  string                         // cached LAN IP string
+	cachedTunnel map[string]map[string]string   // cached tunnel state
 }
 
 // NewHandler creates a dashboard handler with all routes registered.
@@ -81,6 +83,7 @@ func NewHandler(provider AllocProvider, httpsEnabled bool, version string) *Hand
 	h.health = NewHealthChecker(provider.AllPorts, h.onHealthChange)
 	h.indexHTML, _ = staticFiles.ReadFile("static/index.html")
 	h.rebuildPortIndex()
+	h.refreshCaches()
 
 	h.mux.HandleFunc("GET /api/status", h.handleStatus)
 	h.mux.HandleFunc("GET /api/events", h.handleSSE)
@@ -177,6 +180,7 @@ func (h *Handler) handleSSE(w http.ResponseWriter, r *http.Request) {
 // pick up port status for any newly registered services.
 func (h *Handler) OnRegistryUpdate() {
 	h.rebuildPortIndex()
+	h.refreshCaches()
 	if h.sse.ClientCount() == 0 {
 		return
 	}
@@ -203,17 +207,23 @@ func (h *Handler) rebuildPortIndex() {
 	h.portIndex = idx
 }
 
-// readTunnelState reads the tunnel state file and returns active tunnel URLs.
-func (h *Handler) readTunnelState() map[string]map[string]string {
+// refreshCaches updates the cached LAN IP and tunnel state.
+// Called on startup and on every registry/tunnel file change.
+func (h *Handler) refreshCaches() {
+	if ip, err := lanip.Detect(""); err == nil {
+		h.cachedLANIP = ip.String()
+	}
 	statePath, err := tunnel.DefaultStatePath()
 	if err != nil {
-		return nil
+		h.cachedTunnel = nil
+		return
 	}
 	state, err := tunnel.ReadState(statePath)
 	if err != nil || state == nil {
-		return nil
+		h.cachedTunnel = nil
+		return
 	}
-	return state.Tunnels
+	h.cachedTunnel = state.Tunnels
 }
 
 // onHealthChange is the callback from the health checker when port statuses change.
@@ -264,10 +274,8 @@ func (h *Handler) buildStatus() StatusResponse {
 		Projects: make(map[string]ProjectJSON),
 	}
 
-	tunnelState := h.readTunnelState()
-	if ip, err := lanip.Detect(""); err == nil {
-		resp.LANIP = ip.String()
-	}
+	resp.LANIP = h.cachedLANIP
+	tunnelState := h.cachedTunnel
 
 	for key, alloc := range allocs {
 		project, instance := registry.ParseKey(key)

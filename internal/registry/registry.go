@@ -21,6 +21,11 @@ func registryKey(project, instance string) string {
 	return project + "/" + instance
 }
 
+// Key constructs a registry key from project and instance names.
+func Key(project, instance string) string {
+	return registryKey(project, instance)
+}
+
 // ParseKey splits a registry key ("project/instance") into its components.
 func ParseKey(key string) (project, instance string) {
 	parts := strings.SplitN(key, "/", 2)

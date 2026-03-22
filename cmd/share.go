@@ -13,6 +13,7 @@ import (
 	"github.com/outport-app/outport/internal/certmanager"
 	"github.com/outport-app/outport/internal/config"
 	"github.com/outport-app/outport/internal/envpath"
+	"github.com/outport-app/outport/internal/registry"
 	"github.com/outport-app/outport/internal/tunnel"
 	"github.com/outport-app/outport/internal/tunnel/cloudflare"
 	"github.com/outport-app/outport/internal/ui"
@@ -100,7 +101,7 @@ func runShare(cmd *cobra.Command, args []string) error {
 	// Write tunnel state for dashboard and CLI discovery
 	statePath, stateErr := tunnel.DefaultStatePath()
 	if stateErr == nil {
-		key := ctx.Cfg.Name + "/" + ctx.Instance
+		key := registry.Key(ctx.Cfg.Name, ctx.Instance)
 		_ = tunnel.WriteState(statePath, key, tunnelURLs) // best-effort
 	}
 

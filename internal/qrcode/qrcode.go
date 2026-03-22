@@ -8,16 +8,23 @@ import (
 	goqrcode "github.com/skip2/go-qrcode"
 )
 
-// SVG generates an SVG string containing a QR code for the given URL.
-func SVG(url string) (string, error) {
+func newBitmap(url string) ([][]bool, error) {
 	if url == "" {
-		return "", fmt.Errorf("URL must not be empty")
+		return nil, fmt.Errorf("URL must not be empty")
 	}
 	qr, err := goqrcode.New(url, goqrcode.Medium)
 	if err != nil {
-		return "", fmt.Errorf("generating QR code: %w", err)
+		return nil, fmt.Errorf("generating QR code: %w", err)
 	}
-	bitmap := qr.Bitmap()
+	return qr.Bitmap(), nil
+}
+
+// SVG generates an SVG string containing a QR code for the given URL.
+func SVG(url string) (string, error) {
+	bitmap, err := newBitmap(url)
+	if err != nil {
+		return "", err
+	}
 	size := len(bitmap)
 	moduleSize := 4
 	margin := 16
@@ -41,14 +48,10 @@ func SVG(url string) (string, error) {
 // Terminal generates a QR code as a string for terminal display using
 // Unicode block characters. Returns the rendered string.
 func Terminal(url string) (string, error) {
-	if url == "" {
-		return "", fmt.Errorf("URL must not be empty")
-	}
-	qr, err := goqrcode.New(url, goqrcode.Medium)
+	bitmap, err := newBitmap(url)
 	if err != nil {
-		return "", fmt.Errorf("generating QR code: %w", err)
+		return "", err
 	}
-	bitmap := qr.Bitmap()
 	var buf bytes.Buffer
 	for y := 0; y < len(bitmap); y += 2 {
 		for x := 0; x < len(bitmap[0]); x++ {

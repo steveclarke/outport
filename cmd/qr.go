@@ -1,9 +1,9 @@
-// cmd/qr.go
 package cmd
 
 import (
 	"fmt"
 	"net"
+	"strconv"
 	"time"
 
 	"charm.land/lipgloss/v2"
@@ -86,7 +86,7 @@ func printLANQR(cmd *cobra.Command, services map[string]int) error {
 	w := cmd.OutOrStdout()
 	for _, name := range sortedMapKeys(services) {
 		port := services[name]
-		url := "http://" + net.JoinHostPort(ip.String(), fmt.Sprintf("%d", port))
+		url := formatLANURL(ip, port)
 
 		lipgloss.Fprintln(w, ui.ServiceStyle.Render(name))
 		qr, qrErr := qrcode.Terminal(url)
@@ -118,7 +118,7 @@ func printTunnelQR(cmd *cobra.Command, ctx *projectContext, services map[string]
 		return fmt.Errorf("No active tunnels. Run 'outport share' first.")
 	}
 
-	key := ctx.Cfg.Name + "/" + ctx.Instance
+	key := registry.Key(ctx.Cfg.Name, ctx.Instance)
 	tunnelURLs, ok := state.Tunnels[key]
 	if !ok {
 		return fmt.Errorf("No tunnels active for %s/%s. Run 'outport share' first.", ctx.Cfg.Name, ctx.Instance)
@@ -178,7 +178,7 @@ func printQRJSON(cmd *cobra.Command, ip net.IP, services map[string]int, tunnelU
 			Port:    port,
 		}
 		if ip != nil {
-			svc.LANURL = "http://" + net.JoinHostPort(ip.String(), fmt.Sprintf("%d", port))
+			svc.LANURL = formatLANURL(ip, port)
 		}
 		if tunnelURLs != nil {
 			svc.TunnelURL = tunnelURLs[name]
@@ -188,9 +188,12 @@ func printQRJSON(cmd *cobra.Command, ip net.IP, services map[string]int, tunnelU
 	return writeJSON(cmd, out)
 }
 
-// probeLAN checks if a port is reachable on the given LAN IP.
+func formatLANURL(ip net.IP, port int) string {
+	return "http://" + net.JoinHostPort(ip.String(), strconv.Itoa(port))
+}
+
 func probeLAN(ip net.IP, port int) bool {
-	addr := net.JoinHostPort(ip.String(), fmt.Sprintf("%d", port))
+	addr := net.JoinHostPort(ip.String(), strconv.Itoa(port))
 	conn, err := net.DialTimeout("tcp", addr, 500*time.Millisecond)
 	if err != nil {
 		return false

@@ -10,6 +10,7 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/outport-app/outport/internal/registry"
+	"github.com/outport-app/outport/internal/tunnel"
 )
 
 // RouteTable is a thread-safe hostname -> port mapping.
@@ -136,7 +137,7 @@ func WatchAndRebuild(ctx context.Context, regPath string, rt *RouteTable) error 
 			}
 			if eventBase == base {
 				_ = rebuildFromFile(regPath, rt) // best-effort
-			} else if eventBase == "tunnels.json" {
+			} else if eventBase == tunnel.StateFilename {
 				// Tunnel state changed — notify dashboard without rebuilding routes
 				if rt.OnUpdate != nil {
 					rt.OnUpdate()
