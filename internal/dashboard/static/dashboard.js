@@ -101,31 +101,39 @@
 
   // ── Health badge ──
 
-  // Health badge only counts services that have actually been health-checked.
-  // Services with up === null/undefined (not running, never checked) are excluded
-  // from the count — they're not a problem, just dormant.
+  // Health badge shows up/total across ALL services (including unchecked).
+  // Color logic:
+  //   green — all checked services are up (even if some are unchecked)
+  //   red   — checked services exist and NONE are up (total failure)
+  //   neutral — mix of up and down/unchecked (normal partial usage)
+  //   idle  — no health data at all
   function computeHealth(project) {
     var instances = project.instances || {};
-    var checked = 0;
+    var total = 0;
     var upCount = 0;
+    var downCount = 0;
 
     var instNames = Object.keys(instances);
     for (var i = 0; i < instNames.length; i++) {
       var services = instances[instNames[i]].services || {};
       var svcNames = Object.keys(services);
       for (var j = 0; j < svcNames.length; j++) {
+        total++;
         var svc = services[svcNames[j]];
-        if (svc.up === true) { checked++; upCount++; }
-        else if (svc.up === false) { checked++; }
+        if (svc.up === true) upCount++;
+        else if (svc.up === false) downCount++;
       }
     }
 
+    var checked = upCount + downCount;
     var cls = "idle";
     if (checked > 0) {
-      cls = upCount === checked ? "ok" : "warn";
+      if (upCount === total) cls = "ok";           // everything up
+      else if (upCount === 0) cls = "warn";        // total failure
+      else cls = "partial";                         // mix — normal
     }
 
-    return { up: upCount, total: checked, cls: cls };
+    return { up: upCount, total: total, cls: cls };
   }
 
   function computeInstanceHealth(instance) {

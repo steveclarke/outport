@@ -128,6 +128,7 @@ body {
 }
 
 .project-health.ok { color: var(--green); background: var(--green-soft); }
+.project-health.partial { color: var(--text-2); background: var(--bg-soft); }
 .project-health.warn { color: var(--red); background: var(--red-soft); }
 .project-health.idle { color: var(--text-4); background: var(--bg-soft); }
 
