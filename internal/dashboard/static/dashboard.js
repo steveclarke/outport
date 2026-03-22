@@ -101,36 +101,31 @@
 
   // ── Health badge ──
 
-  // Health badge only counts the main instance. Worktrees are secondary
-  // and shouldn't make the badge look alarming when they're just not running.
+  // Health badge only counts services that have actually been health-checked.
+  // Services with up === null/undefined (not running, never checked) are excluded
+  // from the count — they're not a problem, just dormant.
   function computeHealth(project) {
     var instances = project.instances || {};
-    var mainInst = instances["main"];
-    var total = 0;
+    var checked = 0;
     var upCount = 0;
-    var hasHealth = false;
 
-    if (mainInst) {
-      var services = mainInst.services || {};
+    var instNames = Object.keys(instances);
+    for (var i = 0; i < instNames.length; i++) {
+      var services = instances[instNames[i]].services || {};
       var svcNames = Object.keys(services);
       for (var j = 0; j < svcNames.length; j++) {
-        total++;
         var svc = services[svcNames[j]];
-        if (svc.up === true) {
-          upCount++;
-          hasHealth = true;
-        } else if (svc.up === false) {
-          hasHealth = true;
-        }
+        if (svc.up === true) { checked++; upCount++; }
+        else if (svc.up === false) { checked++; }
       }
     }
 
     var cls = "idle";
-    if (hasHealth) {
-      cls = upCount === total ? "ok" : "warn";
+    if (checked > 0) {
+      cls = upCount === checked ? "ok" : "warn";
     }
 
-    return { up: upCount, total: total, cls: cls };
+    return { up: upCount, total: checked, cls: cls };
   }
 
   function computeInstanceHealth(instance) {
