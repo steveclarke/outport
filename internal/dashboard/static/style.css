@@ -97,12 +97,6 @@ body {
   color: var(--text-4);
   font-size: 14px;
 }
-.empty-action {
-  color: var(--text-4);
-  font-size: 14px;
-  margin-top: 0.25rem;
-}
-
 /* ── Project section ── */
 .project {
   display: grid;
