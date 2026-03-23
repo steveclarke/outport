@@ -98,7 +98,7 @@ func TestBuildRoutesMultipleProjects(t *testing.T) {
 
 func TestRouteTableLookup(t *testing.T) {
 	rt := &RouteTable{}
-	rt.Update(map[string]int{"myapp.test": 24920})
+	rt.update(map[string]int{"myapp.test": 24920})
 
 	port, ok := rt.Lookup("myapp.test")
 	if !ok {
@@ -116,8 +116,8 @@ func TestRouteTableLookup(t *testing.T) {
 
 func TestRouteTableUpdateReplacesRoutes(t *testing.T) {
 	rt := &RouteTable{}
-	rt.Update(map[string]int{"old.test": 10000})
-	rt.Update(map[string]int{"new.test": 20000})
+	rt.update(map[string]int{"old.test": 10000})
+	rt.update(map[string]int{"new.test": 20000})
 
 	_, ok := rt.Lookup("old.test")
 	if ok {

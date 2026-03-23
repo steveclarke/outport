@@ -2,7 +2,9 @@ package cmd
 
 import (
 	"fmt"
+	"maps"
 	"net"
+	"slices"
 	"strconv"
 	"time"
 
@@ -84,7 +86,7 @@ func printLANQR(cmd *cobra.Command, services map[string]int) error {
 	}
 
 	w := cmd.OutOrStdout()
-	for _, name := range sortedMapKeys(services) {
+	for _, name := range slices.Sorted(maps.Keys(services)) {
 		port := services[name]
 		url := formatLANURL(ip, port)
 
@@ -129,7 +131,7 @@ func printTunnelQR(cmd *cobra.Command, ctx *projectContext, services map[string]
 	}
 
 	w := cmd.OutOrStdout()
-	for _, name := range sortedMapKeys(services) {
+	for _, name := range slices.Sorted(maps.Keys(services)) {
 		url, ok := tunnelURLs[name]
 		if !ok {
 			continue
@@ -171,7 +173,7 @@ type qrServiceJSON struct {
 
 func printQRJSON(cmd *cobra.Command, ip net.IP, services map[string]int, tunnelURLs map[string]string) error {
 	var out []qrServiceJSON
-	for _, name := range sortedMapKeys(services) {
+	for _, name := range slices.Sorted(maps.Keys(services)) {
 		port := services[name]
 		svc := qrServiceJSON{
 			Service: name,

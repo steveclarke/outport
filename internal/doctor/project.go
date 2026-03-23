@@ -2,7 +2,8 @@ package doctor
 
 import (
 	"fmt"
-	"sort"
+	"maps"
+	"slices"
 
 	"github.com/outport-app/outport/internal/config"
 	"github.com/outport-app/outport/internal/portcheck"
@@ -72,11 +73,7 @@ func ProjectChecks(dir string, cfg *config.Config, configErr error, regPath stri
 
 	// Port checks
 	if found {
-		serviceNames := make([]string, 0, len(alloc.Ports))
-		for name := range alloc.Ports {
-			serviceNames = append(serviceNames, name)
-		}
-		sort.Strings(serviceNames)
+		serviceNames := slices.Sorted(maps.Keys(alloc.Ports))
 		for _, svcName := range serviceNames {
 			port := alloc.Ports[svcName]
 			checks = append(checks, Check{

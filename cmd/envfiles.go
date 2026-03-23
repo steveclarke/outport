@@ -4,7 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"path/filepath"
+	"slices"
 
 	"charm.land/lipgloss/v2"
 	"github.com/outport-app/outport/internal/config"
@@ -56,7 +58,7 @@ func collectEnvFiles(cfg *config.Config) []string {
 			seen[f] = true
 		}
 	}
-	return sortedMapKeys(seen)
+	return slices.Sorted(maps.Keys(seen))
 }
 
 // classifyAndConfirm collects env file paths from config, classifies them as
@@ -104,6 +106,44 @@ func writeEnvFiles(
 		ExternalFiles:    envpath.ExternalPaths(classified),
 		NewlyApproved:    newlyApproved,
 	}, nil
+}
+
+// mergeEnvFiles rebuilds and writes env file vars for an allocation.
+// Called by writeEnvFiles after external file confirmation.
+// Returns the resolved computed values so callers can reuse them for display.
+func mergeEnvFiles(dir string, cfg *config.Config, instanceName string, ports map[string]int, hostnames map[string]string, httpsEnabled bool, tunnelURLs map[string]string) (map[string]map[string]string, error) {
+	envFileVars := make(map[string]map[string]string)
+
+	for svcName, svc := range cfg.Services {
+		port := ports[svcName]
+		for _, envFile := range svc.EnvFiles {
+			if envFileVars[envFile] == nil {
+				envFileVars[envFile] = make(map[string]string)
+			}
+			envFileVars[envFile][svc.EnvVar] = fmt.Sprintf("%d", port)
+		}
+	}
+
+	// Resolve computed values and add to envFileVars
+	resolvedComputed := resolveComputedFromAlloc(cfg, instanceName, ports, hostnames, httpsEnabled, tunnelURLs)
+	for name, fileValues := range resolvedComputed {
+		for file, value := range fileValues {
+			if envFileVars[file] == nil {
+				envFileVars[file] = make(map[string]string)
+			}
+			envFileVars[file][name] = value
+		}
+	}
+
+	envFiles := slices.Sorted(maps.Keys(envFileVars))
+	for _, envFile := range envFiles {
+		envPath := filepath.Join(dir, envFile)
+		if err := dotenv.Merge(envPath, envFileVars[envFile]); err != nil {
+			return nil, fmt.Errorf("writing %s: %w", envFile, err)
+		}
+	}
+
+	return resolvedComputed, nil
 }
 
 // cleanEnvFiles removes the outport fenced block from all .env files

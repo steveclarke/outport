@@ -1,9 +1,10 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
+	"maps"
 	"os"
+	"slices"
 
 	"charm.land/lipgloss/v2"
 	"github.com/outport-app/outport/internal/certmanager"
@@ -120,7 +121,7 @@ func printStatusJSON(cmd *cobra.Command, reg *registry.Registry, portStatus map[
 	currentKey := currentProjectKey(reg)
 	var entries []statusEntryJSON
 
-	keys := sortedMapKeys(reg.Projects)
+	keys := slices.Sorted(maps.Keys(reg.Projects))
 	for _, key := range keys {
 		alloc := reg.Projects[key]
 		cfg := loadProjectConfig(alloc.ProjectDir)
@@ -155,12 +156,7 @@ func printStatusJSON(cmd *cobra.Command, reg *registry.Registry, portStatus map[
 		})
 	}
 
-	data, err := json.MarshalIndent(entries, "", "  ")
-	if err != nil {
-		return err
-	}
-	fmt.Fprintln(cmd.OutOrStdout(), string(data))
-	return nil
+	return writeJSON(cmd, entries)
 }
 
 var currentMarker = lipgloss.NewStyle().Foreground(ui.Green).Bold(true)
@@ -169,7 +165,7 @@ func printStatusStyled(cmd *cobra.Command, reg *registry.Registry, portStatus ma
 	w := cmd.OutOrStdout()
 	currentKey := currentProjectKey(reg)
 
-	keys := sortedMapKeys(reg.Projects)
+	keys := slices.Sorted(maps.Keys(reg.Projects))
 
 	for i, key := range keys {
 		alloc := reg.Projects[key]
@@ -189,7 +185,7 @@ func printStatusStyled(cmd *cobra.Command, reg *registry.Registry, portStatus ma
 		header := ui.ProjectStyle.Render(displayName) + " " + ui.DimStyle.Render(alloc.ProjectDir) + marker
 		lipgloss.Fprintln(w, header)
 
-		svcNames := sortedMapKeys(alloc.Ports)
+		svcNames := slices.Sorted(maps.Keys(alloc.Ports))
 
 		// Use a minimal config for rendering if the real one is missing
 		renderCfg := cfg

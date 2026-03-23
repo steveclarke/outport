@@ -1,11 +1,11 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"os"
-	"sort"
+	"slices"
 	"strings"
 
 	"charm.land/lipgloss/v2"
@@ -73,7 +73,7 @@ func runUp(cmd *cobra.Command, args []string) error {
 	}
 
 	ports := make(map[string]int)
-	serviceNames := sortedMapKeys(cfg.Services)
+	serviceNames := slices.Sorted(maps.Keys(cfg.Services))
 
 	for _, svcName := range serviceNames {
 		svc := cfg.Services[svcName]
@@ -179,7 +179,7 @@ func mergedEnvFileList(cfg *config.Config, resolvedComputed map[string]map[strin
 			files[file] = true
 		}
 	}
-	return sortedMapKeys(files)
+	return slices.Sorted(maps.Keys(files))
 }
 
 // buildAllocation constructs a registry Allocation from config, instance, directory, and ports.
@@ -301,15 +301,6 @@ func resolveComputedFromAlloc(cfg *config.Config, instanceName string, ports map
 	return config.ResolveComputed(cfg.Computed, templateVars)
 }
 
-func sortedMapKeys[V any](m map[string]V) []string {
-	keys := make([]string, 0, len(m))
-	for k := range m {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	return keys
-}
-
 // JSON types
 
 type svcJSON struct {
@@ -402,12 +393,7 @@ func printUpJSON(cmd *cobra.Command, cfg *config.Config, instanceName string, po
 		EnvFiles:      envFiles,
 		ExternalFiles: toExternalFileJSON(externalFiles),
 	}
-	data, err := json.MarshalIndent(out, "", "  ")
-	if err != nil {
-		return err
-	}
-	fmt.Fprintln(cmd.OutOrStdout(), string(data))
-	return nil
+	return writeJSON(cmd, out)
 }
 
 func printHeader(w io.Writer, projectName, instanceName string) {
@@ -449,7 +435,7 @@ func truncate(s string, max int) string {
 func printComputedValues(w io.Writer, resolved map[string]map[string]string) {
 	lipgloss.Fprintln(w)
 	lipgloss.Fprintln(w, ui.DimStyle.Render("    computed:"))
-	names := sortedMapKeys(resolved)
+	names := slices.Sorted(maps.Keys(resolved))
 	for _, name := range names {
 		fileValues := resolved[name]
 		if commonValue, allSame := uniformValue(fileValues); allSame {
@@ -462,7 +448,7 @@ func printComputedValues(w io.Writer, resolved map[string]map[string]string) {
 		} else {
 			lipgloss.Fprintln(w, fmt.Sprintf("    %s",
 				ui.EnvVarStyle.Render(name)))
-			files := sortedMapKeys(fileValues)
+			files := slices.Sorted(maps.Keys(fileValues))
 			for _, file := range files {
 				line := fmt.Sprintf("      %s  %s %s",
 					ui.DimStyle.Render(fmt.Sprintf("%-34s", file)),
