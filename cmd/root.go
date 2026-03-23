@@ -16,6 +16,9 @@ var rootCmd = &cobra.Command{
 	Long:          "Outport allocates deterministic, non-conflicting ports for your projects and writes them to .env files.",
 	SilenceUsage:  true,
 	SilenceErrors: true,
+	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		maybeRestartDaemon(cmd)
+	},
 }
 
 func Execute() error {
