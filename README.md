@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="https://outport.app">
+  <a href="https://outport.dev">
     <img src="brand/svg/logo-horizontal-color.svg" width="280" alt="Outport">
   </a>
 </p>
@@ -8,7 +8,9 @@
 
 **Port orchestration for multi-project development.**
 
-Outport allocates deterministic, non-conflicting ports for all your projects, assigns `.test` hostnames, and writes everything to `.env`. No more port conflicts. No more memorizing port numbers. No more cookie collisions across parallel instances.
+Outport allocates deterministic, non-conflicting ports for all your projects, assigns `.test` hostnames with HTTPS, and writes everything to `.env`. No more port conflicts. No more memorizing port numbers. No more cookie collisions across parallel instances.
+
+> **[Full documentation at outport.dev](https://outport.dev)**
 
 ## The Problem
 
@@ -18,30 +20,17 @@ Outport fixes this. Declare your services once in `outport.yml`, check it into y
 
 ## Install
 
-### Homebrew
-
 ```bash
 brew install steveclarke/tap/outport
 ```
 
-### From Source
-
-```bash
-go install github.com/outport-app/outport@latest
-```
-
-### Build Locally
-
-```bash
-git clone https://github.com/steveclarke/outport.git
-cd outport
-go build -o outport .
-```
+> [!TIP]
+> You can also install [from source](https://outport.dev/guide/installation) with `go install`.
 
 ## Quick Start
 
 ```bash
-outport setup         # One-time setup (optional .test domains)
+outport setup         # One-time setup (optional .test domains + HTTPS)
 outport init          # Create outport.yml
 outport up            # Allocate ports, write .env
 ```
@@ -51,185 +40,49 @@ After `outport up`, your `.env` has deterministic ports and your services are ac
 ```
 myapp [main]
 
-    web       PORT        → 24920  http://myapp.test
+    web       PORT        → 24920  https://myapp.test
     postgres  DB_PORT     → 21536
     redis     REDIS_PORT  → 29454
 ```
 
-## How It Works
+That's it. Outport writes finished environment variables to `.env` — every framework that reads `.env` works with zero configuration.
 
-Drop an `outport.yml` in your project:
+> [!NOTE]
+> See the [Getting Started guide](https://outport.dev/guide/getting-started) for a full walkthrough.
 
-```yaml
-name: myapp
-services:
-  web:
-    env_var: PORT
-    protocol: http
-    hostname: myapp.test
-  postgres:
-    env_var: DB_PORT
-  redis:
-    env_var: REDIS_PORT
-```
+## Features
 
-Run `outport up`. Outport allocates a deterministic hash-based port (range 10000–39999) for each service and writes the result to `.env`. Services with `hostname` get a `.test` URL routed through a local reverse proxy.
+### .test Domains with HTTPS
 
-### .test Domains
-
-Run `outport system start` once to enable friendly hostnames. This installs a local DNS server, reverse proxy, and local CA — your services become accessible at `https://myapp.test` instead of `http://localhost:24920`.
-
-The proxy runs via macOS launchd, starts at login, and updates routes automatically when you `outport up`. No port numbers in your browser, ever.
-
-Open `https://outport.test` for a live dashboard showing all your projects, services, and health status.
+Run `outport system start` once to enable `.test` hostnames. This installs a local DNS server, reverse proxy, and CA — your services become accessible at `https://myapp.test` instead of `http://localhost:24920`. The proxy starts at login and updates routes automatically.
 
 ### Multiple Instances
 
-Every clone, worktree, or checkout of a project is an **instance**. The first is "main" — subsequent instances get auto-generated codes:
+Every clone, worktree, or checkout is an **instance**. The first is "main" — additional instances get auto-generated codes with their own ports and hostnames (`myapp-bkrm.test`). Cookie isolation is automatic.
 
-```
-# Main checkout
-$ outport up
-myapp [main]
-    web    PORT    → 24920  http://myapp.test
+### Computed Values
 
-# Second clone / worktree — different ports, different hostname
-$ outport up
-  Registered as myapp-bkrm. Use 'outport rename bkrm <name>' to rename.
-myapp [bkrm]
-    web    PORT    → 28104  http://myapp-bkrm.test
-```
+Services don't just need port numbers — they need URLs. Outport computes environment variables from your service map and writes finished values to `.env`. CORS origins, API URLs, WebSocket endpoints — declare them once in `outport.yml`.
 
-Each instance gets its own ports and `.test` hostname. Cookie isolation is automatic — no incognito windows, no browser profile hacks.
+See the [Configuration reference](https://outport.dev/reference/configuration) for template syntax and examples.
 
-### Multi-Service Hostnames
+### Dashboard
 
-Projects with multiple HTTP services use subdomains:
+Open `https://outport.test` for a live dashboard showing all your projects, services, ports, and health status. Updates in real-time as you run `outport up` across projects.
 
-```yaml
-name: unio
-services:
-  rails:
-    env_var: RAILS_PORT
-    protocol: http
-    hostname: unio.test
-  frontend:
-    env_var: FRONTEND_PORT
-    protocol: http
-    hostname: app.unio.test
-  portal:
-    env_var: PORTAL_PORT
-    protocol: http
-    hostname: portal.unio.test
-  postgres:
-    env_var: DB_PORT
-```
+See the [Dashboard guide](https://outport.dev/guide/dashboard).
 
-Each HTTP service gets its own `.test` URL. Non-HTTP services (Postgres, Redis) get port allocations only.
+### Sharing and Mobile Access
 
-## Computed Values
+`outport share` tunnels your HTTP services to public URLs via Cloudflare. `outport qr` shows QR codes for testing on mobile devices over your local network.
 
-Applications don't just need port numbers — they need URLs. Computed values compute environment variables from your service map:
+See [Tips & Troubleshooting](https://outport.dev/guide/tips) for details on tunneling and sharing.
 
-```yaml
-computed:
-  CORS_ORIGINS:
-    value: "${frontend.url},${portal.url}"     # browser-facing: http://app.unio.test,...
-    env_file: backend/.env
-  API_URL:
-    value: "${rails.url:direct}/api/v1"        # server-to-server: http://localhost:24920/api/v1
-    env_file: frontend/.env
-```
+### VS Code Extension
 
-### Template Fields
+The [Outport for VS Code](https://outport.dev/guide/vscode) extension shows ports, URLs, and service health in the editor sidebar with clickable links.
 
-| Template | Resolves to | Use case |
-|----------|------------|----------|
-| `${rails.port}` | `24920` | Raw port number |
-| `${rails.hostname}` | `unio.test` | `.test` hostname |
-| `${rails.url}` | `http://unio.test` | Browser-facing URLs (CORS, asset hosts) |
-| `${rails.url:direct}` | `http://localhost:24920` | Server-to-server (API calls, WebSocket) |
-
-Use `${service.url}` for URLs the browser sees. Use `${service.url:direct}` for server-to-server communication that bypasses the proxy.
-
-### Per-File Overrides
-
-When the same env var needs different values per file (common in monorepos):
-
-```yaml
-computed:
-  API_BASE_URL:
-    env_file:
-      - file: frontend/apps/main/.env
-        value: "${rails.url:direct}/api/v1"
-      - file: frontend/apps/portal/.env
-        value: "${rails.url:direct}/portal/api/v1"
-```
-
-## Multiple .env Files
-
-Use per-service `env_file` to write ports to different locations — useful for monorepos:
-
-```yaml
-services:
-  rails:
-    env_var: RAILS_PORT
-    env_file: backend/.env
-  frontend:
-    env_var: FRONTEND_PORT
-    env_file: frontend/.env
-```
-
-Services without `env_file` write to `.env` in the project root. `env_file` can be a string or array to write to multiple files.
-
-## Integration
-
-Outport writes to `.env` because everything already reads it:
-
-- **Docker Compose** reads `.env` automatically — use `${DB_PORT:-5432}` in `compose.yml`
-- **Foreman / Overmind** reads `.env` — use `web: bin/rails server -p $PORT` in `Procfile.dev`
-- **Rails** (dotenv-rails), **Nuxt**, **Phoenix**, **Django** — all have dotenv support
-- **Any framework** that reads environment variables works with zero configuration
-
-Outport preserves your existing `.env` variables. It only manages variables declared in `outport.yml` — everything else is untouched.
-
-## Commands
-
-### Project Commands
-
-```
-outport setup                  Interactive first-run system setup
-outport init                   Create outport.yml for this project
-outport up                     Allocate ports, assign hostnames, write .env
-outport up --force             Clear and re-allocate all ports
-outport down                   Remove ports, clean .env files
-outport ports                  Show ports for the current project
-outport ports --computed       Show ports and computed values
-outport open                   Open HTTP services in the browser
-outport qr                     Show QR codes for mobile device access
-outport qr --tunnel            Show QR codes with tunnel URLs
-outport share                  Tunnel HTTP services to public URLs
-outport share web              Tunnel a specific service
-outport rename <old> <new>     Rename an instance
-outport promote                Promote the current instance to main
-outport doctor                 Check the health of the outport system
-```
-
-### System Commands
-
-```
-outport system start           Install DNS, CA, and start the daemon
-outport system stop            Stop the daemon
-outport system restart         Re-write plist and restart the daemon
-outport system status          Show all registered projects
-outport system status --check  Show with health checks (up/down)
-outport system gc              Remove stale registry entries
-outport system uninstall       Remove DNS resolver, daemon, and CA
-```
-
-All commands support `--json` for machine-readable output. Use `--yes`/`-y` to auto-approve writing env files outside the project directory.
-
-## AI Agent Skill
+### AI Agent Support
 
 Install the Outport skill so your AI coding agent knows how to configure ports:
 
@@ -237,17 +90,17 @@ Install the Outport skill so your AI coding agent knows how to configure ports:
 npx skills add steveclarke/outport/skills
 ```
 
-The agent can run `outport up` in any instance, read `outport ports --json` for structured output, and configure `outport.yml` for new services.
+See [Work with AI](https://outport.dev/guide/work-with-ai) for example prompts and what's included.
 
 ## FAQ
 
-### "My frontend and backend need to know each other's URLs, not just ports"
+### "My frontend and backend need to know each other's URLs"
 
-Use [computed values](#computed-values). `${service.url}` gives browser-facing URLs, `${service.url:direct}` gives server-to-server URLs. Outport resolves everything and writes finished values to `.env`.
+Use [computed values](https://outport.dev/reference/configuration#computed-values). `${service.url}` gives browser-facing URLs, `${service.url:direct}` gives server-to-server URLs. Outport resolves everything and writes finished values to `.env`.
 
-### "I'm running two instances and my sessions are colliding"
+### "My sessions are colliding across instances"
 
-Run `outport system start` to enable `.test` domains. Each instance gets its own hostname (`myapp.test` vs `myapp-bkrm.test`), so cookies are isolated automatically.
+Enable `.test` domains with `outport system start`. Each instance gets its own hostname (`myapp.test` vs `myapp-bkrm.test`), so cookies are isolated automatically.
 
 ### "How do I add Outport to my project's setup script?"
 
@@ -261,6 +114,28 @@ else
 fi
 ```
 
+## All Commands
+
+All commands support `--json` for machine-readable output.
+
+```
+outport setup              One-time system setup
+outport init               Create outport.yml
+outport up [--force]       Allocate ports, write .env
+outport down               Remove ports, clean .env
+outport ports [--computed] Show allocated ports
+outport open               Open services in the browser
+outport qr [--tunnel]      QR codes for mobile access
+outport share [service]    Tunnel services to public URLs
+outport rename <old> <new> Rename an instance
+outport promote            Promote instance to main
+outport doctor             Diagnose issues
+outport system start       Install DNS, HTTPS, start daemon
+outport system stop|restart|status|gc|uninstall
+```
+
+See the [Commands reference](https://outport.dev/reference/commands) for full details.
+
 ## Development
 
 Requires [Go 1.26+](https://go.dev/dl/) and [just](https://github.com/casey/just).
@@ -270,7 +145,6 @@ just build        # Build the binary
 just test         # Run all tests
 just lint         # Run linter
 just run up       # Build and run with args
-just clean        # Clean build artifacts
 ```
 
 ## Roadmap
