@@ -24,13 +24,10 @@ func runGC(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	var removed []string
-	for key, alloc := range reg.Projects {
-		if stale, _ := isStale(alloc.ProjectDir); stale {
-			removed = append(removed, key)
-			delete(reg.Projects, key)
-		}
-	}
+	removed := reg.RemoveStale(func(projectDir string) bool {
+		stale, _ := isStale(projectDir)
+		return stale
+	})
 
 	if len(removed) == 0 {
 		fmt.Fprintln(cmd.OutOrStdout(), "No stale entries found.")

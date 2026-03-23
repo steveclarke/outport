@@ -84,7 +84,9 @@ func runStatus(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if len(reg.Projects) == 0 {
+	projects := reg.All()
+
+	if len(projects) == 0 {
 		fmt.Fprintln(cmd.OutOrStdout(), "No projects registered. Run 'outport up' in a project directory.")
 		return nil
 	}
@@ -93,7 +95,7 @@ func runStatus(cmd *cobra.Command, args []string) error {
 	var portStatus map[int]bool
 	if statusCheckFlag {
 		var allPorts []int
-		for _, alloc := range reg.Projects {
+		for _, alloc := range projects {
 			for _, port := range alloc.Ports {
 				allPorts = append(allPorts, port)
 			}
@@ -104,9 +106,9 @@ func runStatus(cmd *cobra.Command, args []string) error {
 	httpsEnabled := certmanager.IsCAInstalled()
 
 	if jsonFlag {
-		return printStatusJSON(cmd, reg, portStatus, httpsEnabled)
+		return printStatusJSON(cmd, reg, projects, portStatus, httpsEnabled)
 	}
-	return printStatusStyled(cmd, reg, portStatus, httpsEnabled)
+	return printStatusStyled(cmd, reg, projects, portStatus, httpsEnabled)
 }
 
 type statusEntryJSON struct {
@@ -117,13 +119,13 @@ type statusEntryJSON struct {
 	Computed   map[string]computedJSON `json:"computed,omitempty"`
 }
 
-func printStatusJSON(cmd *cobra.Command, reg *registry.Registry, portStatus map[int]bool, httpsEnabled bool) error {
+func printStatusJSON(cmd *cobra.Command, reg *registry.Registry, projects map[string]registry.Allocation, portStatus map[int]bool, httpsEnabled bool) error {
 	currentKey := currentProjectKey(reg)
 	var entries []statusEntryJSON
 
-	keys := slices.Sorted(maps.Keys(reg.Projects))
+	keys := slices.Sorted(maps.Keys(projects))
 	for _, key := range keys {
-		alloc := reg.Projects[key]
+		alloc := projects[key]
 		cfg := loadProjectConfig(alloc.ProjectDir)
 		_, instanceName := registry.ParseKey(key)
 
@@ -161,14 +163,14 @@ func printStatusJSON(cmd *cobra.Command, reg *registry.Registry, portStatus map[
 
 var currentMarker = lipgloss.NewStyle().Foreground(ui.Green).Bold(true)
 
-func printStatusStyled(cmd *cobra.Command, reg *registry.Registry, portStatus map[int]bool, httpsEnabled bool) error {
+func printStatusStyled(cmd *cobra.Command, reg *registry.Registry, projects map[string]registry.Allocation, portStatus map[int]bool, httpsEnabled bool) error {
 	w := cmd.OutOrStdout()
 	currentKey := currentProjectKey(reg)
 
-	keys := slices.Sorted(maps.Keys(reg.Projects))
+	keys := slices.Sorted(maps.Keys(projects))
 
 	for i, key := range keys {
-		alloc := reg.Projects[key]
+		alloc := projects[key]
 		cfg := loadProjectConfig(alloc.ProjectDir)
 		_, instanceName := registry.ParseKey(key)
 

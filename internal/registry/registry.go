@@ -131,6 +131,44 @@ func (r *Registry) FindByProject(project string) map[string]Allocation {
 	return result
 }
 
+// All returns a shallow copy of the projects map.
+func (r *Registry) All() map[string]Allocation {
+	result := make(map[string]Allocation, len(r.Projects))
+	for k, v := range r.Projects {
+		result[k] = v
+	}
+	return result
+}
+
+// FindHostname checks if a hostname is already allocated to any project/instance
+// other than excludeKey. Returns the conflicting key if found.
+func (r *Registry) FindHostname(hostname, excludeKey string) (string, bool) {
+	for key, alloc := range r.Projects {
+		if key == excludeKey {
+			continue
+		}
+		for _, h := range alloc.Hostnames {
+			if h == hostname {
+				return key, true
+			}
+		}
+	}
+	return "", false
+}
+
+// RemoveStale removes entries where the predicate returns true for the project directory.
+// Returns the list of removed keys.
+func (r *Registry) RemoveStale(isStale func(projectDir string) bool) []string {
+	var removed []string
+	for key, alloc := range r.Projects {
+		if isStale(alloc.ProjectDir) {
+			removed = append(removed, key)
+			delete(r.Projects, key)
+		}
+	}
+	return removed
+}
+
 func (r *Registry) UsedPorts() map[int]bool {
 	used := make(map[int]bool)
 	for _, alloc := range r.Projects {

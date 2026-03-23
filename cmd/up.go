@@ -100,17 +100,10 @@ func runUp(cmd *cobra.Command, args []string) error {
 	alloc := buildAllocation(cfg, ctx.Instance, dir, ports)
 
 	// Check hostname uniqueness across registry
+	selfKey := registry.Key(cfg.Name, ctx.Instance)
 	for svcName, hostname := range alloc.Hostnames {
-		projectKey := cfg.Name + "/" + ctx.Instance
-		for regKey, regAlloc := range reg.Projects {
-			if regKey == projectKey {
-				continue // skip self
-			}
-			for _, existingHostname := range regAlloc.Hostnames {
-				if existingHostname == hostname {
-					return fmt.Errorf("hostname %q (service %q) conflicts with %s", hostname, svcName, regKey)
-				}
-			}
+		if conflictKey, found := reg.FindHostname(hostname, selfKey); found {
+			return fmt.Errorf("hostname %q (service %q) conflicts with %s", hostname, svcName, conflictKey)
 		}
 	}
 
