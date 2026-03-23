@@ -57,7 +57,7 @@ Go's composition model is used correctly throughout. No inheritance hierarchies.
 - **Why it matters:** Registry.Projects is exported for JSON marshaling but is being treated as a mutable public API. If the registry adds change-tracking or caching, direct mutations bypass it.
 - **Recommendation:** Add `Registry.RemoveStale(predicate func(projectDir string) bool) []string` and `Registry.All() map[string]Allocation` snapshot accessor.
 
-#### Finding: `mergeEnvFiles` defined in `rename.go` but shared across cmd package
+#### Finding: `mergeEnvFiles` defined in `rename.go` but shared across cmd package [RESOLVED]
 - **Severity:** Low
 - **Location:** `cmd/rename.go:97`, called from `cmd/envfiles.go:97`
 - **What:** Core env-writing function lives in `rename.go` despite being called by `writeEnvFiles` in `envfiles.go`, which is itself used by up, down, promote, rename, and share.
@@ -93,7 +93,7 @@ Cobra is used idiomatically: `RunE` for error-returning handlers, `PersistentPre
 - **Why it matters:** Timing-dependent silent failure in health status reporting. Low risk at 3-second poll intervals but grows if frequency increases.
 - **Recommendation:** Collapse into a single `Snapshot()` method or rebuild `portIndex` atomically before notifying the health checker.
 
-#### Finding: `RouteTable.Update` is dead in production
+#### Finding: `RouteTable.Update` is dead in production [RESOLVED]
 - **Severity:** Low
 - **Location:** `internal/daemon/routes.go:34-41`
 - **What:** Only called from tests. Production always uses `UpdateWithAllocations`. Exported method gives false impression it's a valid production entry point.
@@ -110,28 +110,28 @@ Cobra is used idiomatically: `RunE` for error-returning handlers, `PersistentPre
 ### Duplication & Reuse
 **Health: Needs Attention**
 
-#### Finding: Dotenv writes are not atomic (registry and tunnel writes are)
+#### Finding: Dotenv writes are not atomic (registry and tunnel writes are) [RESOLVED]
 - **Severity:** Medium
 - **Location:** `internal/dotenv/dotenv.go:134-143`
 - **What:** `dotenv.writeLines` calls `os.WriteFile` directly. `registry.Save()` and `tunnel.WriteState()` both use temp-file-then-rename for atomicity. A crash mid-write on a `.env` file leaves it truncated, including user content above the managed block.
 - **Why it matters:** `.env` files are the primary output of `outport up`. Inconsistent safety guarantees across the three write paths.
 - **Recommendation:** Write to `.tmp` sibling, then `os.Rename`. 3-line change matching existing pattern in `registry.Save` and `tunnel.WriteState`.
 
-#### Finding: `sortedMapKeys` duplicated across cmd and internal packages
+#### Finding: `sortedMapKeys` duplicated across cmd and internal packages [RESOLVED]
 - **Severity:** Medium
 - **Location:** `cmd/up.go:304-311`, `internal/doctor/project.go:75-79`, `internal/dashboard/handler.go:303-307`
 - **What:** Three separate implementations of "get sorted keys from a map."
 - **Why it matters:** Unnecessary duplication of a trivial operation that Go 1.23 stdlib handles.
 - **Recommendation:** Delete all three. Replace with `slices.Sorted(maps.Keys(m))` (Go 1.23+). Zero new shared code needed.
 
-#### Finding: `writeJSON` exists in `cmdutil.go` but 5 commands inline the pattern
+#### Finding: `writeJSON` exists in `cmdutil.go` but 5 commands inline the pattern [RESOLVED]
 - **Severity:** Low
 - **Location:** `cmd/up.go`, `cmd/ports.go`, `cmd/status.go`, `cmd/system_start.go`, `cmd/system.go`
 - **What:** `cmdutil.go` exports `writeJSON(cmd, v)` but 5+ commands inline the identical `json.MarshalIndent` + `fmt.Fprintln` sequence.
 - **Why it matters:** Inconsistency in a pattern specifically extracted for reuse. Future changes to JSON output behavior require touching 6+ sites.
 - **Recommendation:** Replace inlined blocks with calls to `writeJSON`. For `printSystemStatusJSON` (which takes `io.Writer`), add a `writeJSONTo(w, v)` variant.
 
-#### Finding: Port collection from `map[string]int` into `[]int` duplicated
+#### Finding: Port collection from `map[string]int` into `[]int` duplicated [RESOLVED]
 - **Severity:** Low
 - **Location:** `cmd/ports.go:102-106`, `cmd/status.go:94-100`
 - **What:** Both collect `[]int` from port maps for `portcheck.CheckAll`. Same idiom, slightly different contexts.
@@ -158,7 +158,7 @@ Cobra is used idiomatically: `RunE` for error-returning handlers, `PersistentPre
 
 ## Action Plan
 
-### Phase 1: Quick Wins [NOT STARTED]
+### Phase 1: Quick Wins [COMPLETE]
 **Target findings:** Dotenv non-atomic writes, sortedMapKeys duplication, writeJSON inconsistency, mergeEnvFiles misplacement, RouteTable.Update dead API, port collection duplication
 **Scope:** Mechanical changes across `internal/dotenv`, `cmd/`, `internal/daemon`, `internal/doctor`, `internal/dashboard`. No design decisions — each is a direct replacement or move.
 **Risk:** Low
