@@ -1,7 +1,6 @@
 dist/
 .claude/settings.local.json
 .superpowers/
-docs/superpowers/
 .worktrees/
 node_modules/
 docs/.vitepress/dist/

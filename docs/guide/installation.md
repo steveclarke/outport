@@ -18,7 +18,7 @@ brew upgrade outport
 
 ## From Source
 
-Requires [Go 1.22+](https://go.dev/dl/):
+Requires [Go 1.26+](https://go.dev/dl/):
 
 ```bash
 go install github.com/outport-app/outport@latest

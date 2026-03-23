@@ -5,7 +5,6 @@ export default defineConfig({
   description: 'Deterministic port orchestration for the agentic era',
   appearance: false,
   cleanUrls: true,
-  srcExclude: ['superpowers/**'],
   sitemap: {
     hostname: 'https://outport.dev',
   },

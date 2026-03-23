@@ -57,13 +57,6 @@ Go through every location below. For each one, check whether it's current.
 | Service presets | Does the `presets` slice include all standard services? |
 | Preset fields | Do presets use the current config field names? |
 
-### project/releasing.md
-
-| Check | What to look for |
-|-------|-----------------|
-| Release process | Does it match current CI workflow? |
-| Prerequisites | Are tools and secrets still correct? |
-
 ### .goreleaser.yml
 
 | Check | What to look for |
@@ -117,5 +110,5 @@ For each STALE item, update the file. Rules:
 | **New command** | README commands, CLAUDE.md commands, docs/reference/commands.md, skills/outport/SKILL.md | init presets, docs/guide/getting-started.md, docs/guide/tips.md |
 | **Config schema change** | README config example, CLAUDE.md config description, docs/reference/configuration.md | init presets, docs/guide/examples.md |
 | **New convention** | CLAUDE.md | — |
-| **Infrastructure** | — | releasing.md, CLAUDE.md dev commands |
+| **Infrastructure** | — | CLAUDE.md dev commands |
 | **Bug fix** | — | README (if workaround documented), docs/guide/tips.md |
