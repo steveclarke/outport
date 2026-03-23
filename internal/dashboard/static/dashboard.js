@@ -205,13 +205,20 @@
     }
 
     if (activeNames.length === 0) {
-      var msg = el("p", "dashboard-empty");
+      var emptyDiv = el("div", "dashboard-empty");
       if (projectNames.length === 0) {
-        msg.textContent = "No projects registered.";
+        emptyDiv.appendChild(el("p", "empty-heading", "No projects registered"));
+        emptyDiv.appendChild(el("p", "empty-hint", "Run outport up in a project directory to get started."));
       } else {
-        msg.textContent = "All projects are inactive.";
+        emptyDiv.appendChild(el("p", "empty-heading", "All quiet \u2014 nothing running right now"));
+        var count = projectNames.length;
+        var hint = el("p", "empty-hint");
+        hint.appendChild(document.createTextNode("You have " + count + (count === 1 ? " project" : " projects") + " registered. Click "));
+        hint.appendChild(el("strong", null, "Show inactive"));
+        hint.appendChild(document.createTextNode(" to view them."));
+        emptyDiv.appendChild(hint);
       }
-      dashboard.appendChild(msg);
+      dashboard.appendChild(emptyDiv);
     } else {
       for (var pi = 0; pi < activeNames.length; pi++) {
         dashboard.appendChild(renderProject(activeNames[pi], projects[activeNames[pi]]));
