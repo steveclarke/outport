@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/outport-app/outport/internal/allocation"
 	"github.com/outport-app/outport/internal/certmanager"
 	"github.com/outport-app/outport/internal/envpath"
 	"github.com/outport-app/outport/internal/instance"
@@ -56,7 +57,7 @@ func runRename(cmd *cobra.Command, args []string) error {
 	// Move the allocation: delete old key, recompute hostnames, set new key
 	reg.Remove(cfg.Name, oldName)
 
-	newAlloc := buildAllocation(cfg, newName, oldAlloc.ProjectDir, oldAlloc.Ports)
+	newAlloc := allocation.Build(cfg, newName, oldAlloc.ProjectDir, oldAlloc.Ports)
 	newAlloc.ApprovedExternalFiles = oldAlloc.ApprovedExternalFiles
 	reg.Set(cfg.Name, newName, newAlloc)
 

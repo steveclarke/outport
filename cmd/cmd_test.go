@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/outport-app/outport/internal/allocation"
 	"github.com/outport-app/outport/internal/certmanager"
 	"github.com/outport-app/outport/internal/config"
 	"github.com/outport-app/outport/internal/registry"
@@ -1459,7 +1460,7 @@ func TestBuildTemplateVarsHTTPS(t *testing.T) {
 	hostnames := map[string]string{"rails": "myapp.test"}
 
 	httpsEnabled := certmanager.IsCAInstalled()
-	vars := buildTemplateVars(cfg, "main", ports, hostnames, httpsEnabled, nil)
+	vars := allocation.BuildTemplateVars(cfg, "main", ports, hostnames, httpsEnabled, nil)
 
 	if vars["rails.url"] != "https://myapp.test" {
 		t.Errorf("rails.url = %q, want %q", vars["rails.url"], "https://myapp.test")
@@ -1483,7 +1484,7 @@ func TestBuildTemplateVarsHTTP(t *testing.T) {
 	hostnames := map[string]string{"rails": "myapp.test"}
 
 	httpsEnabled := certmanager.IsCAInstalled()
-	vars := buildTemplateVars(cfg, "main", ports, hostnames, httpsEnabled, nil)
+	vars := allocation.BuildTemplateVars(cfg, "main", ports, hostnames, httpsEnabled, nil)
 
 	if vars["rails.url"] != "http://myapp.test" {
 		t.Errorf("rails.url = %q, want %q", vars["rails.url"], "http://myapp.test")
@@ -1500,12 +1501,12 @@ func TestBuildTemplateVarsInstance(t *testing.T) {
 	ports := map[string]int{"web": 3000}
 	hostnames := map[string]string{}
 
-	vars := buildTemplateVars(cfg, "main", ports, hostnames, false, nil)
+	vars := allocation.BuildTemplateVars(cfg, "main", ports, hostnames, false, nil)
 	if vars["instance"] != "" {
 		t.Errorf("instance for main = %q, want empty string", vars["instance"])
 	}
 
-	vars = buildTemplateVars(cfg, "xbjf", ports, hostnames, false, nil)
+	vars = allocation.BuildTemplateVars(cfg, "xbjf", ports, hostnames, false, nil)
 	if vars["instance"] != "xbjf" {
 		t.Errorf("instance = %q, want %q", vars["instance"], "xbjf")
 	}
@@ -1522,7 +1523,7 @@ func TestBuildTemplateVarsNewFields(t *testing.T) {
 	ports := map[string]int{"web": 3000, "db": 5432}
 	hostnames := map[string]string{}
 
-	vars := buildTemplateVars(cfg, "main", ports, hostnames, false, nil)
+	vars := allocation.BuildTemplateVars(cfg, "main", ports, hostnames, false, nil)
 
 	// project_name
 	if vars["project_name"] != "myapp" {
@@ -1680,7 +1681,7 @@ func TestBuildTemplateVars_TunnelOverrides(t *testing.T) {
 	hostnames := map[string]string{"rails": "myapp.test"}
 	tunnelURLs := map[string]string{"rails": "https://abc-def.trycloudflare.com"}
 
-	vars := buildTemplateVars(cfg, "main", ports, hostnames, true, tunnelURLs)
+	vars := allocation.BuildTemplateVars(cfg, "main", ports, hostnames, true, tunnelURLs)
 
 	// Tunneled service: url overridden, url:direct stays localhost
 	if got := vars["rails.url"]; got != "https://abc-def.trycloudflare.com" {
@@ -1715,7 +1716,7 @@ func TestBuildTemplateVars_NilTunnelURLs(t *testing.T) {
 	ports := map[string]int{"rails": 3000}
 	hostnames := map[string]string{"rails": "myapp.test"}
 
-	vars := buildTemplateVars(cfg, "main", ports, hostnames, true, nil)
+	vars := allocation.BuildTemplateVars(cfg, "main", ports, hostnames, true, nil)
 
 	if got := vars["rails.url"]; got != "https://myapp.test" {
 		t.Errorf("rails.url = %q, want https://myapp.test", got)

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/outport-app/outport/internal/allocation"
 	"github.com/outport-app/outport/internal/certmanager"
 	"github.com/outport-app/outport/internal/envpath"
 	"github.com/outport-app/outport/internal/instance"
@@ -60,7 +61,7 @@ func runPromote(cmd *cobra.Command, args []string) error {
 		// Rekey main → generated code
 		reg.Remove(cfg.Name, "main")
 
-		demotedAlloc := buildAllocation(cfg, demotedTo, mainAlloc.ProjectDir, mainAlloc.Ports)
+		demotedAlloc := allocation.Build(cfg, demotedTo, mainAlloc.ProjectDir, mainAlloc.Ports)
 		demotedAlloc.ApprovedExternalFiles = mainAlloc.ApprovedExternalFiles
 		reg.Set(cfg.Name, demotedTo, demotedAlloc)
 
@@ -86,7 +87,7 @@ func runPromote(cmd *cobra.Command, args []string) error {
 	// Promote current instance → main
 	reg.Remove(cfg.Name, ctx.Instance)
 
-	promotedAlloc := buildAllocation(cfg, "main", currentAlloc.ProjectDir, currentAlloc.Ports)
+	promotedAlloc := allocation.Build(cfg, "main", currentAlloc.ProjectDir, currentAlloc.Ports)
 	promotedAlloc.ApprovedExternalFiles = currentAlloc.ApprovedExternalFiles
 	reg.Set(cfg.Name, "main", promotedAlloc)
 

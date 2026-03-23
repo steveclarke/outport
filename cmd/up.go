@@ -5,9 +5,9 @@ import (
 	"maps"
 	"os"
 	"slices"
-	"strings"
 
 	"charm.land/lipgloss/v2"
+	"github.com/outport-app/outport/internal/allocation"
 	"github.com/outport-app/outport/internal/allocator"
 	"github.com/outport-app/outport/internal/certmanager"
 	"github.com/outport-app/outport/internal/config"
@@ -16,7 +16,6 @@ import (
 	"github.com/outport-app/outport/internal/portcheck"
 	"github.com/outport-app/outport/internal/registry"
 	"github.com/outport-app/outport/internal/ui"
-	"github.com/outport-app/outport/internal/urlutil"
 	"github.com/spf13/cobra"
 )
 
@@ -97,7 +96,7 @@ func runUp(cmd *cobra.Command, args []string) error {
 	}
 
 	// Build allocation
-	alloc := buildAllocation(cfg, ctx.Instance, dir, ports)
+	alloc := allocation.Build(cfg, ctx.Instance, dir, ports)
 
 	// Check hostname uniqueness across registry
 	selfKey := registry.Key(cfg.Name, ctx.Instance)
@@ -176,116 +175,6 @@ func mergedEnvFileList(cfg *config.Config, resolvedComputed map[string]map[strin
 		}
 	}
 	return slices.Sorted(maps.Keys(files))
-}
-
-// buildAllocation constructs a registry Allocation from config, instance, directory, and ports.
-func buildAllocation(cfg *config.Config, instanceName, dir string, ports map[string]int) registry.Allocation {
-	return registry.Allocation{
-		ProjectDir: dir,
-		Ports:      ports,
-		Hostnames:  computeHostnames(cfg, instanceName),
-		Protocols:  computeProtocols(cfg),
-		EnvVars:    computeEnvVars(cfg),
-	}
-}
-
-// computeEnvVars builds a service name -> env_var map from config.
-func computeEnvVars(cfg *config.Config) map[string]string {
-	envVars := make(map[string]string)
-	for name, svc := range cfg.Services {
-		if svc.EnvVar != "" {
-			envVars[name] = svc.EnvVar
-		}
-	}
-	return envVars
-}
-
-// computeHostnames builds hostname map for an allocation.
-// For "main" instance, hostnames are stem + ".test".
-// For other instances, the project name in the stem is suffixed with "-instance".
-func computeHostnames(cfg *config.Config, instanceName string) map[string]string {
-	hostnames := make(map[string]string)
-	for name, svc := range cfg.Services {
-		if svc.Hostname == "" {
-			continue
-		}
-		stem := strings.TrimSuffix(svc.Hostname, ".test")
-		if instanceName != "main" {
-			idx := strings.LastIndex(stem, cfg.Name)
-			if idx >= 0 {
-				stem = stem[:idx] + cfg.Name + "-" + instanceName + stem[idx+len(cfg.Name):]
-			}
-		}
-		hostnames[name] = stem + ".test"
-	}
-	return hostnames
-}
-
-// computeProtocols builds protocol map from config.
-func computeProtocols(cfg *config.Config) map[string]string {
-	protocols := make(map[string]string)
-	for name, svc := range cfg.Services {
-		if svc.Protocol != "" {
-			protocols[name] = svc.Protocol
-		}
-	}
-	return protocols
-}
-
-
-// buildTemplateVars builds the template variable map from services and allocated ports.
-// Keys are "service.field" (e.g., "rails.port", "rails.hostname", "rails.url").
-// When httpsEnabled is true, .url uses https:// for .test hostnames.
-// When tunnelURLs is non-nil, ${service.url} resolves to the tunnel URL for tunneled services.
-// ${service.url:direct} always resolves to localhost (unaffected by tunnels).
-func buildTemplateVars(cfg *config.Config, instanceName string, ports map[string]int, hostnames map[string]string, httpsEnabled bool, tunnelURLs map[string]string) map[string]string {
-	vars := make(map[string]string)
-	vars["project_name"] = cfg.Name
-	if instanceName == "main" {
-		vars["instance"] = ""
-	} else {
-		vars["instance"] = instanceName
-	}
-	for name, svc := range cfg.Services {
-		portStr := fmt.Sprintf("%d", ports[name])
-		vars[name+".port"] = portStr
-		vars[name+".env_var"] = svc.EnvVar
-		if svc.Protocol != "" {
-			vars[name+".protocol"] = svc.Protocol
-		}
-
-		if h, ok := hostnames[name]; ok {
-			vars[name+".hostname"] = h
-			protocol := svc.Protocol
-			if protocol == "" {
-				protocol = "http"
-			}
-
-			if tunnelURL, hasTunnel := tunnelURLs[name]; hasTunnel {
-				vars[name+".url"] = tunnelURL
-			} else {
-				vars[name+".url"] = fmt.Sprintf("%s://%s", urlutil.EffectiveScheme(protocol, h, httpsEnabled), h)
-			}
-			vars[name+".url:direct"] = fmt.Sprintf("http://localhost:%s", portStr)
-		} else {
-			hostname := svc.Hostname
-			if hostname == "" {
-				hostname = "localhost"
-			}
-			vars[name+".hostname"] = hostname
-		}
-	}
-	return vars
-}
-
-// resolveComputedFromAlloc resolves computed value templates using allocated ports.
-// Returns name → file → resolved value.
-func resolveComputedFromAlloc(cfg *config.Config, instanceName string, ports map[string]int, hostnames map[string]string, httpsEnabled bool, tunnelURLs map[string]string) map[string]map[string]string {
-	if len(cfg.Computed) == 0 {
-		return nil
-	}
-	templateVars := buildTemplateVars(cfg, instanceName, ports, hostnames, httpsEnabled, tunnelURLs)
-	return config.ResolveComputed(cfg.Computed, templateVars)
 }
 
 func printUpJSON(cmd *cobra.Command, cfg *config.Config, instanceName string, ports map[string]int, hostnames map[string]string, resolvedComputed map[string]map[string]string, envFiles []string, httpsEnabled bool, externalFiles []envpath.EnvFilePath) error {

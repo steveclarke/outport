@@ -5,6 +5,7 @@ import (
 	"maps"
 	"slices"
 
+	"github.com/outport-app/outport/internal/allocation"
 	"github.com/outport-app/outport/internal/certmanager"
 	"github.com/outport-app/outport/internal/config"
 	"github.com/outport-app/outport/internal/portcheck"
@@ -66,7 +67,7 @@ func printPortsJSON(cmd *cobra.Command, cfg *config.Config, instanceName string,
 		Services: services,
 	}
 	if portsComputedFlag {
-		out.Computed = buildComputedMap(cfg.Computed, resolveComputedFromAlloc(cfg, instanceName, alloc.Ports, alloc.Hostnames, httpsEnabled, nil))
+		out.Computed = buildComputedMap(cfg.Computed, allocation.ResolveComputed(cfg, instanceName, alloc.Ports, alloc.Hostnames, httpsEnabled, nil))
 	}
 	return writeJSON(cmd, out)
 }
@@ -85,7 +86,7 @@ func printPortsStyled(cmd *cobra.Command, cfg *config.Config, instanceName strin
 	printFlatServices(w, cfg, serviceNames, alloc.Ports, alloc.Hostnames, portStatus, httpsEnabled)
 
 	if portsComputedFlag {
-		if resolved := resolveComputedFromAlloc(cfg, instanceName, alloc.Ports, alloc.Hostnames, httpsEnabled, nil); len(resolved) > 0 {
+		if resolved := allocation.ResolveComputed(cfg, instanceName, alloc.Ports, alloc.Hostnames, httpsEnabled, nil); len(resolved) > 0 {
 			printComputedValues(w, resolved)
 		}
 	}

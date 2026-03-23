@@ -9,6 +9,7 @@ import (
 	"slices"
 
 	"charm.land/lipgloss/v2"
+	"github.com/outport-app/outport/internal/allocation"
 	"github.com/outport-app/outport/internal/config"
 	"github.com/outport-app/outport/internal/dotenv"
 	"github.com/outport-app/outport/internal/envpath"
@@ -132,7 +133,7 @@ func mergeEnvFiles(dir string, cfg *config.Config, instanceName string, ports ma
 	}
 
 	// Resolve computed values and add to envFileVars
-	resolvedComputed := resolveComputedFromAlloc(cfg, instanceName, ports, hostnames, httpsEnabled, tunnelURLs)
+	resolvedComputed := allocation.ResolveComputed(cfg, instanceName, ports, hostnames, httpsEnabled, tunnelURLs)
 	for name, fileValues := range resolvedComputed {
 		for file, value := range fileValues {
 			if envFileVars[file] == nil {
