@@ -136,9 +136,6 @@ func writeLines(path string, lines []string) error {
 	if content != "" && !strings.HasSuffix(content, "\n") {
 		content += "\n"
 	}
-	if content == "" {
-		content = ""
-	}
 	// Atomic write: temp file + rename to avoid partial writes on crash.
 	// Matches the pattern used by registry.Save and tunnel.WriteState.
 	tmp := path + ".tmp"
