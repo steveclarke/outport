@@ -117,8 +117,12 @@ func runUp(cmd *cobra.Command, args []string) error {
 		approvedPaths = existing.ApprovedExternalFiles
 	}
 
-	result, err := writeEnvFiles(dir, cfg, ctx.Instance, ports, alloc.Hostnames, httpsEnabled, nil,
-		yesFlag, approvedPaths, os.Stdin, os.Stderr)
+	result, err := writeEnvFiles(dir, cfg, ctx.Instance, ports, alloc.Hostnames, httpsEnabled, EnvWriteOptions{
+		AutoApprove:   yesFlag,
+		ApprovedPaths: approvedPaths,
+		Stdin:         os.Stdin,
+		Stderr:        os.Stderr,
+	})
 	if err != nil {
 		return err
 	}

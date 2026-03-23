@@ -62,8 +62,12 @@ func runRename(cmd *cobra.Command, args []string) error {
 
 	// Re-merge .env files with updated hostnames
 	httpsEnabled := certmanager.IsCAInstalled()
-	result, err := writeEnvFiles(ctx.Dir, cfg, newName, oldAlloc.Ports, newAlloc.Hostnames, httpsEnabled, nil,
-		yesFlag, newAlloc.ApprovedExternalFiles, os.Stdin, os.Stderr)
+	result, err := writeEnvFiles(ctx.Dir, cfg, newName, oldAlloc.Ports, newAlloc.Hostnames, httpsEnabled, EnvWriteOptions{
+		AutoApprove:   yesFlag,
+		ApprovedPaths: newAlloc.ApprovedExternalFiles,
+		Stdin:         os.Stdin,
+		Stderr:        os.Stderr,
+	})
 	if err != nil {
 		return fmt.Errorf("updating .env files: %w", err)
 	}

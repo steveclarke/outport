@@ -65,8 +65,12 @@ func runPromote(cmd *cobra.Command, args []string) error {
 		reg.Set(cfg.Name, demotedTo, demotedAlloc)
 
 		// Re-merge .env files for the demoted instance
-		demotedResult, err := writeEnvFiles(mainAlloc.ProjectDir, cfg, demotedTo, mainAlloc.Ports, demotedAlloc.Hostnames, httpsEnabled, nil,
-			yesFlag, demotedAlloc.ApprovedExternalFiles, os.Stdin, os.Stderr)
+		demotedResult, err := writeEnvFiles(mainAlloc.ProjectDir, cfg, demotedTo, mainAlloc.Ports, demotedAlloc.Hostnames, httpsEnabled, EnvWriteOptions{
+			AutoApprove:   yesFlag,
+			ApprovedPaths: demotedAlloc.ApprovedExternalFiles,
+			Stdin:         os.Stdin,
+			Stderr:        os.Stderr,
+		})
 		if err != nil {
 			return fmt.Errorf("updating .env files for demoted instance: %w", err)
 		}
@@ -87,8 +91,12 @@ func runPromote(cmd *cobra.Command, args []string) error {
 	reg.Set(cfg.Name, "main", promotedAlloc)
 
 	// Re-merge .env files for the promoted instance
-	promotedResult, err := writeEnvFiles(ctx.Dir, cfg, "main", currentAlloc.Ports, promotedAlloc.Hostnames, httpsEnabled, nil,
-		yesFlag, promotedAlloc.ApprovedExternalFiles, os.Stdin, os.Stderr)
+	promotedResult, err := writeEnvFiles(ctx.Dir, cfg, "main", currentAlloc.Ports, promotedAlloc.Hostnames, httpsEnabled, EnvWriteOptions{
+		AutoApprove:   yesFlag,
+		ApprovedPaths: promotedAlloc.ApprovedExternalFiles,
+		Stdin:         os.Stdin,
+		Stderr:        os.Stderr,
+	})
 	if err != nil {
 		return fmt.Errorf("updating .env files for promoted instance: %w", err)
 	}

@@ -31,6 +31,15 @@ func handleConfirmError(err error) error {
 	return fmt.Errorf("confirming external env files: %w", err)
 }
 
+// EnvWriteOptions groups the approval and I/O parameters for env file operations.
+type EnvWriteOptions struct {
+	AutoApprove   bool
+	ApprovedPaths []string
+	TunnelURLs    map[string]string
+	Stdin         io.Reader
+	Stderr        io.Writer
+}
+
 // WriteResult bundles the results of writeEnvFiles.
 type WriteResult struct {
 	ResolvedComputed map[string]map[string]string
@@ -87,16 +96,14 @@ func classifyAndConfirm(
 func writeEnvFiles(
 	dir string, cfg *config.Config, instanceName string,
 	ports map[string]int, hostnames map[string]string,
-	httpsEnabled bool, tunnelURLs map[string]string,
-	autoApprove bool, approvedPaths []string,
-	stdin io.Reader, stderr io.Writer,
+	httpsEnabled bool, opts EnvWriteOptions,
 ) (*WriteResult, error) {
-	classified, newlyApproved, err := classifyAndConfirm(dir, cfg, autoApprove, approvedPaths, stdin, stderr)
+	classified, newlyApproved, err := classifyAndConfirm(dir, cfg, opts.AutoApprove, opts.ApprovedPaths, opts.Stdin, opts.Stderr)
 	if err != nil {
 		return nil, err
 	}
 
-	resolvedComputed, err := mergeEnvFiles(dir, cfg, instanceName, ports, hostnames, httpsEnabled, tunnelURLs)
+	resolvedComputed, err := mergeEnvFiles(dir, cfg, instanceName, ports, hostnames, httpsEnabled, opts.TunnelURLs)
 	if err != nil {
 		return nil, fmt.Errorf("writing env files: %w", err)
 	}
@@ -159,12 +166,8 @@ func cleanEnvFiles(dir string, cfg *config.Config) []string {
 }
 
 // removeEnvFiles classifies, confirms, and removes the outport fenced block from env files.
-func removeEnvFiles(
-	dir string, cfg *config.Config,
-	autoApprove bool, approvedPaths []string,
-	stdin io.Reader, stderr io.Writer,
-) (*RemoveResult, error) {
-	classified, newlyApproved, err := classifyAndConfirm(dir, cfg, autoApprove, approvedPaths, stdin, stderr)
+func removeEnvFiles(dir string, cfg *config.Config, opts EnvWriteOptions) (*RemoveResult, error) {
+	classified, newlyApproved, err := classifyAndConfirm(dir, cfg, opts.AutoApprove, opts.ApprovedPaths, opts.Stdin, opts.Stderr)
 	if err != nil {
 		return nil, err
 	}
