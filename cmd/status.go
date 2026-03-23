@@ -1,11 +1,13 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
+	"maps"
 	"os"
+	"slices"
 
 	"charm.land/lipgloss/v2"
+	"github.com/outport-app/outport/internal/allocation"
 	"github.com/outport-app/outport/internal/certmanager"
 	"github.com/outport-app/outport/internal/config"
 	"github.com/outport-app/outport/internal/portcheck"
@@ -83,7 +85,9 @@ func runStatus(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if len(reg.Projects) == 0 {
+	projects := reg.All()
+
+	if len(projects) == 0 {
 		fmt.Fprintln(cmd.OutOrStdout(), "No projects registered. Run 'outport up' in a project directory.")
 		return nil
 	}
@@ -92,7 +96,7 @@ func runStatus(cmd *cobra.Command, args []string) error {
 	var portStatus map[int]bool
 	if statusCheckFlag {
 		var allPorts []int
-		for _, alloc := range reg.Projects {
+		for _, alloc := range projects {
 			for _, port := range alloc.Ports {
 				allPorts = append(allPorts, port)
 			}
@@ -103,9 +107,9 @@ func runStatus(cmd *cobra.Command, args []string) error {
 	httpsEnabled := certmanager.IsCAInstalled()
 
 	if jsonFlag {
-		return printStatusJSON(cmd, reg, portStatus, httpsEnabled)
+		return printStatusJSON(cmd, reg, projects, portStatus, httpsEnabled)
 	}
-	return printStatusStyled(cmd, reg, portStatus, httpsEnabled)
+	return printStatusStyled(cmd, reg, projects, portStatus, httpsEnabled)
 }
 
 type statusEntryJSON struct {
@@ -116,13 +120,13 @@ type statusEntryJSON struct {
 	Computed   map[string]computedJSON `json:"computed,omitempty"`
 }
 
-func printStatusJSON(cmd *cobra.Command, reg *registry.Registry, portStatus map[int]bool, httpsEnabled bool) error {
+func printStatusJSON(cmd *cobra.Command, reg *registry.Registry, projects map[string]registry.Allocation, portStatus map[int]bool, httpsEnabled bool) error {
 	currentKey := currentProjectKey(reg)
 	var entries []statusEntryJSON
 
-	keys := sortedMapKeys(reg.Projects)
+	keys := slices.Sorted(maps.Keys(projects))
 	for _, key := range keys {
-		alloc := reg.Projects[key]
+		alloc := projects[key]
 		cfg := loadProjectConfig(alloc.ProjectDir)
 		_, instanceName := registry.ParseKey(key)
 
@@ -143,7 +147,7 @@ func printStatusJSON(cmd *cobra.Command, reg *registry.Registry, portStatus map[
 
 		var computed map[string]computedJSON
 		if cfg != nil && statusComputedFlag {
-			computed = buildComputedMap(cfg.Computed, resolveComputedFromAlloc(cfg, instanceName, alloc.Ports, alloc.Hostnames, httpsEnabled, nil))
+			computed = buildComputedMap(cfg.Computed, allocation.ResolveComputed(cfg, instanceName, alloc.Ports, alloc.Hostnames, httpsEnabled, nil))
 		}
 
 		entries = append(entries, statusEntryJSON{
@@ -155,24 +159,19 @@ func printStatusJSON(cmd *cobra.Command, reg *registry.Registry, portStatus map[
 		})
 	}
 
-	data, err := json.MarshalIndent(entries, "", "  ")
-	if err != nil {
-		return err
-	}
-	fmt.Fprintln(cmd.OutOrStdout(), string(data))
-	return nil
+	return writeJSON(cmd, entries)
 }
 
 var currentMarker = lipgloss.NewStyle().Foreground(ui.Green).Bold(true)
 
-func printStatusStyled(cmd *cobra.Command, reg *registry.Registry, portStatus map[int]bool, httpsEnabled bool) error {
+func printStatusStyled(cmd *cobra.Command, reg *registry.Registry, projects map[string]registry.Allocation, portStatus map[int]bool, httpsEnabled bool) error {
 	w := cmd.OutOrStdout()
 	currentKey := currentProjectKey(reg)
 
-	keys := sortedMapKeys(reg.Projects)
+	keys := slices.Sorted(maps.Keys(projects))
 
 	for i, key := range keys {
-		alloc := reg.Projects[key]
+		alloc := projects[key]
 		cfg := loadProjectConfig(alloc.ProjectDir)
 		_, instanceName := registry.ParseKey(key)
 
@@ -189,7 +188,7 @@ func printStatusStyled(cmd *cobra.Command, reg *registry.Registry, portStatus ma
 		header := ui.ProjectStyle.Render(displayName) + " " + ui.DimStyle.Render(alloc.ProjectDir) + marker
 		lipgloss.Fprintln(w, header)
 
-		svcNames := sortedMapKeys(alloc.Ports)
+		svcNames := slices.Sorted(maps.Keys(alloc.Ports))
 
 		// Use a minimal config for rendering if the real one is missing
 		renderCfg := cfg
@@ -197,11 +196,11 @@ func printStatusStyled(cmd *cobra.Command, reg *registry.Registry, portStatus ma
 			renderCfg = &config.Config{Services: make(map[string]config.Service)}
 		}
 		for _, svcName := range svcNames {
-			printServiceLine(w, renderCfg, svcName, alloc.Ports[svcName], alloc.Hostnames, portStatus, httpsEnabled, false)
+			printServiceLineCompact(w, renderCfg, svcName, alloc.Ports[svcName], alloc.Hostnames, portStatus, httpsEnabled)
 		}
 
 		if cfg != nil && statusComputedFlag {
-			if resolved := resolveComputedFromAlloc(cfg, instanceName, alloc.Ports, alloc.Hostnames, httpsEnabled, nil); len(resolved) > 0 {
+			if resolved := allocation.ResolveComputed(cfg, instanceName, alloc.Ports, alloc.Hostnames, httpsEnabled, nil); len(resolved) > 0 {
 				printComputedValues(w, resolved)
 			}
 		}

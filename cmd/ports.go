@@ -1,9 +1,11 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
+	"maps"
+	"slices"
 
+	"github.com/outport-app/outport/internal/allocation"
 	"github.com/outport-app/outport/internal/certmanager"
 	"github.com/outport-app/outport/internal/config"
 	"github.com/outport-app/outport/internal/portcheck"
@@ -65,21 +67,16 @@ func printPortsJSON(cmd *cobra.Command, cfg *config.Config, instanceName string,
 		Services: services,
 	}
 	if portsComputedFlag {
-		out.Computed = buildComputedMap(cfg.Computed, resolveComputedFromAlloc(cfg, instanceName, alloc.Ports, alloc.Hostnames, httpsEnabled, nil))
+		out.Computed = buildComputedMap(cfg.Computed, allocation.ResolveComputed(cfg, instanceName, alloc.Ports, alloc.Hostnames, httpsEnabled, nil))
 	}
-	data, err := json.MarshalIndent(out, "", "  ")
-	if err != nil {
-		return err
-	}
-	fmt.Fprintln(cmd.OutOrStdout(), string(data))
-	return nil
+	return writeJSON(cmd, out)
 }
 
 func printPortsStyled(cmd *cobra.Command, cfg *config.Config, instanceName string, alloc registry.Allocation, httpsEnabled bool) error {
 	w := cmd.OutOrStdout()
 	printHeader(w, cfg.Name, instanceName)
 
-	serviceNames := sortedMapKeys(alloc.Ports)
+	serviceNames := slices.Sorted(maps.Keys(alloc.Ports))
 
 	var portStatus map[int]bool
 	if portsCheckFlag {
@@ -89,7 +86,7 @@ func printPortsStyled(cmd *cobra.Command, cfg *config.Config, instanceName strin
 	printFlatServices(w, cfg, serviceNames, alloc.Ports, alloc.Hostnames, portStatus, httpsEnabled)
 
 	if portsComputedFlag {
-		if resolved := resolveComputedFromAlloc(cfg, instanceName, alloc.Ports, alloc.Hostnames, httpsEnabled, nil); len(resolved) > 0 {
+		if resolved := allocation.ResolveComputed(cfg, instanceName, alloc.Ports, alloc.Hostnames, httpsEnabled, nil); len(resolved) > 0 {
 			printComputedValues(w, resolved)
 		}
 	}
@@ -99,9 +96,5 @@ func printPortsStyled(cmd *cobra.Command, cfg *config.Config, instanceName strin
 
 // checkPorts collects all port values and checks them concurrently.
 func checkPorts(ports map[string]int) map[int]bool {
-	var allPorts []int
-	for _, port := range ports {
-		allPorts = append(allPorts, port)
-	}
-	return portcheck.CheckAll(allPorts)
+	return portcheck.CheckAll(slices.Collect(maps.Values(ports)))
 }

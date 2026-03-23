@@ -28,7 +28,7 @@ func TestProxyRoutesToBackend(t *testing.T) {
 
 	port := backendPort(t, backend)
 	routes := &RouteTable{}
-	routes.Update(map[string]int{"myapp.test": port})
+	routes.update(map[string]int{"myapp.test": port})
 
 	proxy := NewProxy(routes)
 	srv := httptest.NewServer(proxy)
@@ -58,7 +58,7 @@ func TestProxyPreservesPath(t *testing.T) {
 
 	port := backendPort(t, backend)
 	routes := &RouteTable{}
-	routes.Update(map[string]int{"myapp.test": port})
+	routes.update(map[string]int{"myapp.test": port})
 
 	proxy := NewProxy(routes)
 	srv := httptest.NewServer(proxy)
@@ -79,7 +79,7 @@ func TestProxyPreservesPath(t *testing.T) {
 
 func TestProxyUnknownHostReturnsError(t *testing.T) {
 	routes := &RouteTable{}
-	routes.Update(map[string]int{})
+	routes.update(map[string]int{})
 
 	proxy := NewProxy(routes)
 	srv := httptest.NewServer(proxy)
@@ -105,7 +105,7 @@ func TestProxyUnknownHostReturnsError(t *testing.T) {
 
 func TestProxyBackendDownReturnsError(t *testing.T) {
 	routes := &RouteTable{}
-	routes.Update(map[string]int{"myapp.test": 59999})
+	routes.update(map[string]int{"myapp.test": 59999})
 
 	proxy := NewProxy(routes)
 	srv := httptest.NewServer(proxy)
@@ -137,7 +137,7 @@ func TestProxyStripsPortFromHost(t *testing.T) {
 
 	port := backendPort(t, backend)
 	routes := &RouteTable{}
-	routes.Update(map[string]int{"myapp.test": port})
+	routes.update(map[string]int{"myapp.test": port})
 
 	proxy := NewProxy(routes)
 	srv := httptest.NewServer(proxy)
@@ -159,7 +159,7 @@ func TestProxyStripsPortFromHost(t *testing.T) {
 
 func TestProxyRoutesOutportTestToDashboard(t *testing.T) {
 	routes := &RouteTable{}
-	routes.Update(map[string]int{})
+	routes.update(map[string]int{})
 
 	dashHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte("dashboard"))
@@ -201,7 +201,7 @@ func TestProxyWebSocketUpgrade(t *testing.T) {
 
 	port := backendPort(t, backend)
 	routes := &RouteTable{}
-	routes.Update(map[string]int{"myapp.test": port})
+	routes.update(map[string]int{"myapp.test": port})
 
 	proxy := NewProxy(routes)
 	srv := httptest.NewServer(proxy)

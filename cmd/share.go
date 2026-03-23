@@ -78,8 +78,11 @@ func runShare(cmd *cobra.Command, args []string) error {
 		}
 		mgr.StopAll()
 		// Revert .env files to local URLs (best-effort; user can run 'outport up' if this fails)
-		if _, err := writeEnvFiles(ctx.Dir, ctx.Cfg, ctx.Instance, alloc.Ports, alloc.Hostnames, httpsEnabled, nil,
-			true, alloc.ApprovedExternalFiles, nil, os.Stderr); err != nil {
+		if _, err := writeEnvFiles(ctx.Dir, ctx.Cfg, ctx.Instance, alloc.Ports, alloc.Hostnames, httpsEnabled, EnvWriteOptions{
+			AutoApprove:   true,
+			ApprovedPaths: alloc.ApprovedExternalFiles,
+			Stderr:        os.Stderr,
+		}); err != nil {
 			fmt.Fprintf(os.Stderr, "Warning: failed to restore .env files: %v\n", err)
 		}
 		fmt.Fprintln(cmd.OutOrStdout())
@@ -105,8 +108,13 @@ func runShare(cmd *cobra.Command, args []string) error {
 		_ = tunnel.WriteState(statePath, key, tunnelURLs) // best-effort
 	}
 
-	result, err := writeEnvFiles(ctx.Dir, ctx.Cfg, ctx.Instance, alloc.Ports, alloc.Hostnames, httpsEnabled, tunnelURLs,
-		yesFlag, alloc.ApprovedExternalFiles, os.Stdin, os.Stderr)
+	result, err := writeEnvFiles(ctx.Dir, ctx.Cfg, ctx.Instance, alloc.Ports, alloc.Hostnames, httpsEnabled, EnvWriteOptions{
+		AutoApprove:   yesFlag,
+		ApprovedPaths: alloc.ApprovedExternalFiles,
+		TunnelURLs:    tunnelURLs,
+		Stdin:         os.Stdin,
+		Stderr:        os.Stderr,
+	})
 	if err != nil {
 		return fmt.Errorf("writing tunnel URLs to .env: %w", err)
 	}

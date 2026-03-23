@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/fs"
+	"maps"
 	"net/http"
+	"slices"
 	"sort"
 
 	"github.com/outport-app/outport/internal/lanip"
@@ -300,11 +302,7 @@ func (h *Handler) buildStatus() StatusResponse {
 			Services:   make(map[string]ServiceJSON),
 		}
 
-		svcNames := make([]string, 0, len(alloc.Ports))
-		for svc := range alloc.Ports {
-			svcNames = append(svcNames, svc)
-		}
-		sort.Strings(svcNames)
+		svcNames := slices.Sorted(maps.Keys(alloc.Ports))
 
 		for _, name := range svcNames {
 			port := alloc.Ports[name]

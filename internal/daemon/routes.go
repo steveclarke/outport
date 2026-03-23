@@ -30,8 +30,9 @@ func (rt *RouteTable) Lookup(hostname string) (int, bool) {
 	return port, ok
 }
 
-// Update swaps the routing table atomically and fires the OnUpdate callback.
-func (rt *RouteTable) Update(routes map[string]int) {
+// update swaps the routing table atomically and fires the OnUpdate callback.
+// Used only in tests to set up minimal route tables without allocation data.
+func (rt *RouteTable) update(routes map[string]int) {
 	rt.mu.Lock()
 	rt.routes = routes
 	rt.mu.Unlock()

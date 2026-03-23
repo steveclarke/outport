@@ -4,9 +4,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"path/filepath"
+	"slices"
 
 	"charm.land/lipgloss/v2"
+	"github.com/outport-app/outport/internal/allocation"
 	"github.com/outport-app/outport/internal/config"
 	"github.com/outport-app/outport/internal/dotenv"
 	"github.com/outport-app/outport/internal/envpath"
@@ -27,6 +30,15 @@ func handleConfirmError(err error) error {
 		return &FlagError{err: err}
 	}
 	return fmt.Errorf("confirming external env files: %w", err)
+}
+
+// EnvWriteOptions groups the approval and I/O parameters for env file operations.
+type EnvWriteOptions struct {
+	AutoApprove   bool
+	ApprovedPaths []string
+	TunnelURLs    map[string]string
+	Stdin         io.Reader
+	Stderr        io.Writer
 }
 
 // WriteResult bundles the results of writeEnvFiles.
@@ -56,7 +68,7 @@ func collectEnvFiles(cfg *config.Config) []string {
 			seen[f] = true
 		}
 	}
-	return sortedMapKeys(seen)
+	return slices.Sorted(maps.Keys(seen))
 }
 
 // classifyAndConfirm collects env file paths from config, classifies them as
@@ -85,16 +97,14 @@ func classifyAndConfirm(
 func writeEnvFiles(
 	dir string, cfg *config.Config, instanceName string,
 	ports map[string]int, hostnames map[string]string,
-	httpsEnabled bool, tunnelURLs map[string]string,
-	autoApprove bool, approvedPaths []string,
-	stdin io.Reader, stderr io.Writer,
+	httpsEnabled bool, opts EnvWriteOptions,
 ) (*WriteResult, error) {
-	classified, newlyApproved, err := classifyAndConfirm(dir, cfg, autoApprove, approvedPaths, stdin, stderr)
+	classified, newlyApproved, err := classifyAndConfirm(dir, cfg, opts.AutoApprove, opts.ApprovedPaths, opts.Stdin, opts.Stderr)
 	if err != nil {
 		return nil, err
 	}
 
-	resolvedComputed, err := mergeEnvFiles(dir, cfg, instanceName, ports, hostnames, httpsEnabled, tunnelURLs)
+	resolvedComputed, err := mergeEnvFiles(dir, cfg, instanceName, ports, hostnames, httpsEnabled, opts.TunnelURLs)
 	if err != nil {
 		return nil, fmt.Errorf("writing env files: %w", err)
 	}
@@ -104,6 +114,44 @@ func writeEnvFiles(
 		ExternalFiles:    envpath.ExternalPaths(classified),
 		NewlyApproved:    newlyApproved,
 	}, nil
+}
+
+// mergeEnvFiles rebuilds and writes env file vars for an allocation.
+// Called by writeEnvFiles after external file confirmation.
+// Returns the resolved computed values so callers can reuse them for display.
+func mergeEnvFiles(dir string, cfg *config.Config, instanceName string, ports map[string]int, hostnames map[string]string, httpsEnabled bool, tunnelURLs map[string]string) (map[string]map[string]string, error) {
+	envFileVars := make(map[string]map[string]string)
+
+	for svcName, svc := range cfg.Services {
+		port := ports[svcName]
+		for _, envFile := range svc.EnvFiles {
+			if envFileVars[envFile] == nil {
+				envFileVars[envFile] = make(map[string]string)
+			}
+			envFileVars[envFile][svc.EnvVar] = fmt.Sprintf("%d", port)
+		}
+	}
+
+	// Resolve computed values and add to envFileVars
+	resolvedComputed := allocation.ResolveComputed(cfg, instanceName, ports, hostnames, httpsEnabled, tunnelURLs)
+	for name, fileValues := range resolvedComputed {
+		for file, value := range fileValues {
+			if envFileVars[file] == nil {
+				envFileVars[file] = make(map[string]string)
+			}
+			envFileVars[file][name] = value
+		}
+	}
+
+	envFiles := slices.Sorted(maps.Keys(envFileVars))
+	for _, envFile := range envFiles {
+		envPath := filepath.Join(dir, envFile)
+		if err := dotenv.Merge(envPath, envFileVars[envFile]); err != nil {
+			return nil, fmt.Errorf("writing %s: %w", envFile, err)
+		}
+	}
+
+	return resolvedComputed, nil
 }
 
 // cleanEnvFiles removes the outport fenced block from all .env files
@@ -119,12 +167,8 @@ func cleanEnvFiles(dir string, cfg *config.Config) []string {
 }
 
 // removeEnvFiles classifies, confirms, and removes the outport fenced block from env files.
-func removeEnvFiles(
-	dir string, cfg *config.Config,
-	autoApprove bool, approvedPaths []string,
-	stdin io.Reader, stderr io.Writer,
-) (*RemoveResult, error) {
-	classified, newlyApproved, err := classifyAndConfirm(dir, cfg, autoApprove, approvedPaths, stdin, stderr)
+func removeEnvFiles(dir string, cfg *config.Config, opts EnvWriteOptions) (*RemoveResult, error) {
+	classified, newlyApproved, err := classifyAndConfirm(dir, cfg, opts.AutoApprove, opts.ApprovedPaths, opts.Stdin, opts.Stderr)
 	if err != nil {
 		return nil, err
 	}

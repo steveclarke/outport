@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
-	"fmt"
 	"io"
 
 	"github.com/spf13/cobra"
@@ -24,10 +22,5 @@ type systemStatusResponse struct {
 }
 
 func printSystemStatusJSON(w io.Writer, status string) error {
-	data, err := json.MarshalIndent(systemStatusResponse{Status: status}, "", "  ")
-	if err != nil {
-		return err
-	}
-	fmt.Fprintln(w, string(data))
-	return nil
+	return writeJSONTo(w, systemStatusResponse{Status: status})
 }

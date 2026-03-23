@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 
 	"github.com/spf13/cobra"
 )
@@ -19,6 +20,16 @@ func writeJSON(cmd *cobra.Command, v any) error {
 		return err
 	}
 	fmt.Fprintln(cmd.OutOrStdout(), string(data))
+	return nil
+}
+
+// writeJSONTo marshals v as indented JSON and writes it to the writer.
+func writeJSONTo(w io.Writer, v any) error {
+	data, err := json.MarshalIndent(v, "", "  ")
+	if err != nil {
+		return err
+	}
+	fmt.Fprintln(w, string(data))
 	return nil
 }
 

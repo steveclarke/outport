@@ -35,8 +35,12 @@ func runDown(cmd *cobra.Command, args []string) error {
 	}
 
 	// Clean managed blocks from .env files
-	result, err := removeEnvFiles(ctx.Dir, cfg,
-		yesFlag, alloc.ApprovedExternalFiles, os.Stdin, os.Stderr)
+	result, err := removeEnvFiles(ctx.Dir, cfg, EnvWriteOptions{
+		AutoApprove:   yesFlag,
+		ApprovedPaths: alloc.ApprovedExternalFiles,
+		Stdin:         os.Stdin,
+		Stderr:        os.Stderr,
+	})
 	if err != nil {
 		return err
 	}

@@ -2,8 +2,10 @@ package cmd
 
 import (
 	"fmt"
+	"maps"
 	"os/exec"
 	"runtime"
+	"slices"
 
 	"github.com/outport-app/outport/internal/certmanager"
 	"github.com/outport-app/outport/internal/config"
@@ -43,7 +45,7 @@ func runOpen(cmd *cobra.Command, args []string) error {
 	}
 
 	opened := 0
-	for _, svcName := range sortedMapKeys(ctx.Cfg.Services) {
+	for _, svcName := range slices.Sorted(maps.Keys(ctx.Cfg.Services)) {
 		svc := ctx.Cfg.Services[svcName]
 		var url string
 		if h, ok := alloc.Hostnames[svcName]; ok {

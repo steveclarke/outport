@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 
@@ -199,15 +198,10 @@ type systemStartJSON struct {
 }
 
 func printSystemStartJSON(cmd *cobra.Command, caGenerated, caTrusted bool) error {
-	data, err := json.MarshalIndent(systemStartJSON{
+	return writeJSON(cmd, systemStartJSON{
 		CAGenerated: caGenerated,
 		CATrusted:   caTrusted,
-	}, "", "  ")
-	if err != nil {
-		return err
-	}
-	fmt.Fprintln(cmd.OutOrStdout(), string(data))
-	return nil
+	})
 }
 
 type systemUninstallJSON struct {
@@ -216,13 +210,8 @@ type systemUninstallJSON struct {
 }
 
 func printSystemUninstallJSON(cmd *cobra.Command, caRemoved, certsCleaned bool) error {
-	data, err := json.MarshalIndent(systemUninstallJSON{
+	return writeJSON(cmd, systemUninstallJSON{
 		CARemoved:    caRemoved,
 		CertsCleaned: certsCleaned,
-	}, "", "  ")
-	if err != nil {
-		return err
-	}
-	fmt.Fprintln(cmd.OutOrStdout(), string(data))
-	return nil
+	})
 }
