@@ -14,7 +14,29 @@ Outport allocates deterministic, non-conflicting ports for all your projects, as
 
 You're running Rails on 3000, Nuxt on 5173, Postgres on 5432. You start a second project — port conflict. You spin up another instance for an AI agent — more conflicts. Your Nuxt frontend needs your Rails API URL. Your Rails backend needs the frontend URL for CORS. You're juggling port numbers across `.env` files, and if you get one wrong, nothing works.
 
-Outport fixes this. Declare your services once, run `outport up`, and never think about ports again.
+Outport fixes this. Declare your services once in `outport.yml`, check it into your repo, and run `outport up`. Every developer, every machine, every instance gets deterministic ports — no coordination required.
+
+## Install
+
+### Homebrew
+
+```bash
+brew install steveclarke/tap/outport
+```
+
+### From Source
+
+```bash
+go install github.com/outport-app/outport@latest
+```
+
+### Build Locally
+
+```bash
+git clone https://github.com/steveclarke/outport.git
+cd outport
+go build -o outport .
+```
 
 ## Quick Start
 
@@ -36,7 +58,7 @@ myapp [main]
 
 ## How It Works
 
-Drop a `outport.yml` in your project:
+Drop an `outport.yml` in your project:
 
 ```yaml
 name: myapp
@@ -207,28 +229,6 @@ outport system uninstall       Remove DNS resolver, daemon, and CA
 
 All commands support `--json` for machine-readable output. Use `--yes`/`-y` to auto-approve writing env files outside the project directory.
 
-## Install
-
-### Homebrew
-
-```bash
-brew install steveclarke/tap/outport
-```
-
-### From Source
-
-```bash
-go install github.com/outport-app/outport@latest
-```
-
-### Build Locally
-
-```bash
-git clone https://github.com/steveclarke/outport.git
-cd outport
-go build -o outport .
-```
-
 ## AI Agent Skill
 
 Install the Outport skill so your AI coding agent knows how to configure ports:
@@ -238,32 +238,6 @@ npx skills add steveclarke/outport/skills
 ```
 
 The agent can run `outport up` in any instance, read `outport ports --json` for structured output, and configure `outport.yml` for new services.
-
-## How Outport Compares
-
-Most local dev tools solve one piece of the puzzle — naming ports, or providing SSL, or tunneling. Outport takes a different approach: it owns the full service map and writes finished, computed environment variables to `.env`. This matters most when your project has multiple services that need to discover each other, or when you're running parallel instances with AI agents.
-
-| | Outport | [Portless](https://github.com/vercel-labs/portless) | [portree](https://github.com/fairy-pitta/portree) | [dot-test](https://github.com/zarpay/dot-test) | [puma-dev](https://github.com/puma/puma-dev) | [Laravel Valet](https://laravel.com/docs/valet) |
-|---|:---:|:---:|:---:|:---:|:---:|:---:|
-| **Deterministic ports** | Yes (hash) | Ephemeral | Yes (hash) | Sequential | No | No |
-| **Instance-aware** | Yes | Yes | Yes | No | No | No |
-| **Multi-service wiring** | Yes | No | Partial | No | No | No |
-| **Writes to .env** | Yes | No | No | Yes | No | No |
-| **Friendly hostnames** | Yes (.test) | Yes | Yes | Yes | Yes | Yes |
-| **SSL certificates** | Planned | Yes | Yes | No | Yes | Yes |
-| **Framework-agnostic** | Yes | Yes | Yes | Rails only | Ruby/Rack | PHP/Laravel |
-| **No runtime wrapper** | Yes | No | No | Yes | No | No |
-| **Single binary** | Yes (Go) | No (Node.js) | Yes (Rust) | Yes (Go) | Yes (Go) | No (PHP) |
-| **Per-project config** | Yes | No | Yes | No | No | No |
-
-### Why This Matters for Agentic Development
-
-If you're a single developer running one Rails app, most of these tools work fine. The differences show up when things get real:
-
-- **Multiple projects at once** — three Rails apps all defaulting to port 3000, each with their own Postgres and Redis. You need them all running simultaneously, completely segregated.
-- **Parallel AI agents** — you tell three agents to work on three features, each in its own instance. Every instance gets non-conflicting ports and a unique `.test` hostname — complete isolation.
-- **Multi-service apps** — your Nuxt frontend needs your Rails backend's URL. Your backend needs the frontend's URL for CORS. Outport's [computed values](#computed-values) wire this up declaratively — one config file, and every `.env` gets finished URLs.
-- **Declare once, apply anywhere** — check `outport.yml` into your repo. Every developer, every machine, every instance gets deterministic ports with `outport up`.
 
 ## FAQ
 
@@ -301,11 +275,12 @@ just clean        # Clean build artifacts
 
 ## Roadmap
 
-- **v1:** Port allocation + `.env` writing
-- **v2 (current):** DNS server + reverse proxy for `.test` domains, instance model
-- **v3:** Local SSL with real certificates for `.test` domains
-- **v4:** QR codes for mobile device access
-- **v5:** Public URL sharing via Cloudflare Tunnel with multi-service orchestration
+- ~~**v1:** Port allocation + `.env` writing~~
+- ~~**v2:** DNS server + reverse proxy for `.test` domains, instance model~~
+- ~~**v3:** Local HTTPS with automatic certificates for `.test` domains~~
+- ~~**v4:** QR codes for mobile device access~~
+- ~~**v5:** Public URL sharing via Cloudflare Tunnel with multi-service orchestration~~
+- **Next:** Linux support, team configuration sharing
 
 ## License
 
