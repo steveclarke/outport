@@ -158,4 +158,37 @@ Cobra is used idiomatically: `RunE` for error-returning handlers, `PersistentPre
 
 ## Action Plan
 
-*Empty until implementation phases are planned. Run `/architect` and request planning to populate.*
+### Phase 1: Quick Wins [NOT STARTED]
+**Target findings:** Dotenv non-atomic writes, sortedMapKeys duplication, writeJSON inconsistency, mergeEnvFiles misplacement, RouteTable.Update dead API, port collection duplication
+**Scope:** Mechanical changes across `internal/dotenv`, `cmd/`, `internal/daemon`, `internal/doctor`, `internal/dashboard`. No design decisions — each is a direct replacement or move.
+**Risk:** Low
+**Estimated effort:** 1-2 hours
+**Dependencies:** None
+
+### Phase 2: Rendering Extraction [NOT STARTED]
+**Target findings:** `cmd/up.go` dual responsibility, `printServiceLine` boolean flag
+**Scope:** Extract shared rendering functions, JSON types, and display helpers from `cmd/up.go` into `cmd/render.go`. Split `printServiceLine` into two focused functions.
+**Risk:** Low — purely moving code within the `cmd` package
+**Estimated effort:** Half a day
+**Dependencies:** Phase 1 (sortedMapKeys removal simplifies this extraction)
+
+### Phase 3: Registry API Hardening [NOT STARTED]
+**Target findings:** Hostname uniqueness check bypasses registry API, gc.go/status.go direct map access
+**Scope:** Add `FindHostname`, `RemoveStale`, `All` methods to `internal/registry`. Update `cmd/up.go`, `cmd/gc.go`, `cmd/status.go` to use them.
+**Risk:** Low — adding methods to registry, then updating callers
+**Estimated effort:** Half a day
+**Dependencies:** Phase 2 (up.go is smaller and cleaner to work with)
+
+### Phase 4: EnvWriteOptions Struct [NOT STARTED]
+**Target findings:** writeEnvFiles 11 positional parameters, resolveComputedFromAlloc repeated 6-arg calls
+**Scope:** Introduce `EnvWriteOptions` struct in `cmd/envfiles.go`. Update all 6 call sites. Add convenience wrapper for `resolveComputedFromAlloc`.
+**Risk:** Low — struct introduction with call site updates
+**Estimated effort:** Half a day
+**Dependencies:** Phase 1 (mergeEnvFiles must be in envfiles.go first)
+
+### Phase 5: Domain Logic Extraction [NOT STARTED]
+**Target findings:** Domain logic (allocation building, hostname computation) lives in cmd/
+**Scope:** Create `internal/allocation/` package. Move `buildAllocation`, `computeHostnames`, `computeProtocols`, `computeEnvVars`, `buildTemplateVars`, and `resolveComputedFromAlloc` out of `cmd/`. Add independent tests.
+**Risk:** Medium — crosses package boundaries, requires updating imports in multiple commands
+**Estimated effort:** 1 day
+**Dependencies:** Phase 2 and Phase 4 (rendering extracted, options struct in place)
