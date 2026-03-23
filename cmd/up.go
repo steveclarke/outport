@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"io"
 	"maps"
 	"os"
 	"slices"
@@ -204,15 +203,6 @@ func computeEnvVars(cfg *config.Config) map[string]string {
 	return envVars
 }
 
-// resolvedHostname returns the effective hostname for a service,
-// preferring the allocated hostname over the config default.
-func resolvedHostname(svc config.Service, hostnames map[string]string, name string) string {
-	if h, ok := hostnames[name]; ok {
-		return h
-	}
-	return svc.Hostname
-}
-
 // computeHostnames builds hostname map for an allocation.
 // For "main" instance, hostnames are stem + ".test".
 // For other instances, the project name in the stem is suffixed with "-instance".
@@ -301,89 +291,6 @@ func resolveComputedFromAlloc(cfg *config.Config, instanceName string, ports map
 	return config.ResolveComputed(cfg.Computed, templateVars)
 }
 
-// JSON types
-
-type svcJSON struct {
-	Port          int      `json:"port"`
-	PreferredPort int      `json:"preferred_port,omitempty"`
-	EnvVar        string   `json:"env_var"`
-	Protocol      string   `json:"protocol,omitempty"`
-	Hostname      string   `json:"hostname,omitempty"`
-	URL           string   `json:"url,omitempty"`
-	EnvFiles      []string `json:"env_files"`
-	Up            *bool    `json:"up,omitempty"`
-}
-
-func boolPtr(b bool) *bool { return &b }
-
-type computedJSON struct {
-	Value    string            `json:"value,omitempty"`     // when all files share a value
-	EnvFiles []string          `json:"env_files,omitempty"` // when all files share a value
-	Values   map[string]string `json:"values,omitempty"`    // file → value when per-file
-}
-
-type upJSON struct {
-	Project       string                  `json:"project"`
-	Instance      string                  `json:"instance"`
-	Services      map[string]svcJSON      `json:"services"`
-	Computed      map[string]computedJSON `json:"computed,omitempty"`
-	EnvFiles      []string                `json:"env_files"`
-	ExternalFiles []externalFileJSON      `json:"external_files,omitempty"`
-}
-
-
-func buildServiceMap(cfg *config.Config, ports map[string]int, hostnames map[string]string, httpsEnabled bool) map[string]svcJSON {
-	services := make(map[string]svcJSON)
-	for name, svc := range cfg.Services {
-		hostname := resolvedHostname(svc, hostnames, name)
-		services[name] = svcJSON{
-			Port:          ports[name],
-			PreferredPort: svc.PreferredPort,
-			EnvVar:        svc.EnvVar,
-			Protocol:      svc.Protocol,
-			Hostname:      hostname,
-			URL:           urlutil.ServiceURL(svc.Protocol, hostname, ports[name], httpsEnabled),
-			EnvFiles:      svc.EnvFiles,
-		}
-	}
-	return services
-}
-
-// uniformValue returns the common value if all entries share the same value,
-// or ("", false) if values differ across files.
-func uniformValue(fileValues map[string]string) (string, bool) {
-	var first string
-	for _, v := range fileValues {
-		if first == "" {
-			first = v
-		} else if v != first {
-			return "", false
-		}
-	}
-	return first, true
-}
-
-func buildComputedMap(computed map[string]config.ComputedValue, resolved map[string]map[string]string) map[string]computedJSON {
-	if len(resolved) == 0 {
-		return nil
-	}
-	m := make(map[string]computedJSON)
-	for name, fileValues := range resolved {
-		dv := computed[name]
-		if val, ok := uniformValue(fileValues); ok {
-			m[name] = computedJSON{
-				Value:    val,
-				EnvFiles: dv.EnvFiles,
-			}
-		} else {
-			m[name] = computedJSON{
-				Values: fileValues,
-			}
-		}
-	}
-	return m
-}
-
 func printUpJSON(cmd *cobra.Command, cfg *config.Config, instanceName string, ports map[string]int, hostnames map[string]string, resolvedComputed map[string]map[string]string, envFiles []string, httpsEnabled bool, externalFiles []envpath.EnvFilePath) error {
 	out := upJSON{
 		Project:       cfg.Name,
@@ -394,12 +301,6 @@ func printUpJSON(cmd *cobra.Command, cfg *config.Config, instanceName string, po
 		ExternalFiles: toExternalFileJSON(externalFiles),
 	}
 	return writeJSON(cmd, out)
-}
-
-func printHeader(w io.Writer, projectName, instanceName string) {
-	header := ui.ProjectStyle.Render(projectName) + " " + ui.InstanceStyle.Render("["+instanceName+"]")
-	lipgloss.Fprintln(w, header)
-	lipgloss.Fprintln(w)
 }
 
 func printUpStyled(cmd *cobra.Command, cfg *config.Config, instanceName string, serviceNames []string, ports map[string]int, hostnames map[string]string, resolvedComputed map[string]map[string]string, envFiles []string, httpsEnabled bool) error {
@@ -425,95 +326,3 @@ func printUpStyled(cmd *cobra.Command, cfg *config.Config, instanceName string, 
 	return nil
 }
 
-func truncate(s string, max int) string {
-	if len(s) > max {
-		return s[:max-3] + "..."
-	}
-	return s
-}
-
-func printComputedValues(w io.Writer, resolved map[string]map[string]string) {
-	lipgloss.Fprintln(w)
-	lipgloss.Fprintln(w, ui.DimStyle.Render("    computed:"))
-	names := slices.Sorted(maps.Keys(resolved))
-	for _, name := range names {
-		fileValues := resolved[name]
-		if commonValue, allSame := uniformValue(fileValues); allSame {
-			line := fmt.Sprintf("    %s  %s %s",
-				ui.EnvVarStyle.Render(fmt.Sprintf("%-36s", name)),
-				ui.Arrow,
-				ui.DimStyle.Render(truncate(commonValue, 50)),
-			)
-			lipgloss.Fprintln(w, line)
-		} else {
-			lipgloss.Fprintln(w, fmt.Sprintf("    %s",
-				ui.EnvVarStyle.Render(name)))
-			files := slices.Sorted(maps.Keys(fileValues))
-			for _, file := range files {
-				line := fmt.Sprintf("      %s  %s %s",
-					ui.DimStyle.Render(fmt.Sprintf("%-34s", file)),
-					ui.Arrow,
-					ui.DimStyle.Render(truncate(fileValues[file], 50)),
-				)
-				lipgloss.Fprintln(w, line)
-			}
-		}
-	}
-}
-
-func printFlatServices(w io.Writer, cfg *config.Config, serviceNames []string, ports map[string]int, hostnames map[string]string, portStatus map[int]bool, httpsEnabled bool) {
-	for _, svcName := range serviceNames {
-		printServiceLine(w, cfg, svcName, ports[svcName], hostnames, portStatus, httpsEnabled, true)
-	}
-}
-
-// printServiceLine renders a single service line. When showEnvVar is true,
-// the env var column is included with a 4-space indent (used by up/ports).
-// When false, the line uses a 2-space indent without the env var (used by status).
-func printServiceLine(w io.Writer, cfg *config.Config, svcName string, port int, hostnames map[string]string, portStatus map[int]bool, httpsEnabled bool, showEnvVar bool) {
-	svc, ok := cfg.Services[svcName]
-
-	status := ""
-	if portStatus != nil {
-		if portStatus[port] {
-			status = "  " + ui.StatusUp
-		} else {
-			status = "  " + ui.StatusDown
-		}
-	}
-
-	extra := ""
-	if ok {
-		hostname := resolvedHostname(svc, hostnames, svcName)
-		if u := urlutil.ServiceURL(svc.Protocol, hostname, port, httpsEnabled); u != "" {
-			extra = "  " + ui.UrlStyle.Render(u)
-		} else if hostname != "" {
-			extra = "  " + ui.HostnameStyle.Render(hostname)
-		}
-	}
-
-	var line string
-	if showEnvVar {
-		envVar := ""
-		if ok {
-			envVar = svc.EnvVar
-		}
-		line = fmt.Sprintf("    %s  %s  %s %-5s%s%s",
-			ui.ServiceStyle.Render(fmt.Sprintf("%-16s", svcName)),
-			ui.EnvVarStyle.Render(fmt.Sprintf("%-20s", envVar)),
-			ui.Arrow,
-			ui.PortStyle.Render(fmt.Sprintf("%d", port)),
-			status,
-			extra,
-		)
-	} else {
-		line = fmt.Sprintf("  %s  %s %-5s%s%s",
-			ui.ServiceStyle.Render(fmt.Sprintf("%-16s", svcName)),
-			ui.Arrow,
-			ui.PortStyle.Render(fmt.Sprintf("%d", port)),
-			status,
-			extra,
-		)
-	}
-	lipgloss.Fprintln(w, line)
-}

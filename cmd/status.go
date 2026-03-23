@@ -193,7 +193,7 @@ func printStatusStyled(cmd *cobra.Command, reg *registry.Registry, portStatus ma
 			renderCfg = &config.Config{Services: make(map[string]config.Service)}
 		}
 		for _, svcName := range svcNames {
-			printServiceLine(w, renderCfg, svcName, alloc.Ports[svcName], alloc.Hostnames, portStatus, httpsEnabled, false)
+			printServiceLineCompact(w, renderCfg, svcName, alloc.Ports[svcName], alloc.Hostnames, portStatus, httpsEnabled)
 		}
 
 		if cfg != nil && statusComputedFlag {
