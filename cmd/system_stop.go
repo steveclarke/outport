@@ -88,20 +88,7 @@ func runSystemRestart(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Re-write plist to pick up new binary path after upgrades
-	if err := resolveAndWritePlist(); err != nil {
-		return err
-	}
-
-	// Stop if running
-	if platform.IsAgentLoaded() {
-		if err := platform.UnloadAgent(); err != nil {
-			return err
-		}
-	}
-
-	// Start
-	if err := platform.LoadAgent(); err != nil {
+	if err := restartDaemon(); err != nil {
 		return err
 	}
 

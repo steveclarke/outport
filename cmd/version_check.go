@@ -19,39 +19,39 @@ import (
 //
 // Best-effort: any failure is silently ignored so it never blocks a command.
 func maybeRestartDaemon(cmd *cobra.Command) {
-	// Skip for commands that manage the daemon directly
 	if cmd == daemonCmd || cmd == setupCmd || isSystemCommand(cmd) {
 		return
 	}
 
-	// Skip if the system isn't set up or the daemon isn't running
 	if !platform.IsSetup() || !platform.IsAgentLoaded() {
 		return
 	}
 
 	daemonVersion, err := fetchDaemonVersion()
-	if err != nil {
+	if err != nil || daemonVersion == version {
 		return
 	}
 
-	if daemonVersion == version {
-		return
-	}
-
-	// Version mismatch — restart the daemon
-	if err := resolveAndWritePlist(); err != nil {
-		return
-	}
-	if platform.IsAgentLoaded() {
-		if err := platform.UnloadAgent(); err != nil {
-			return
-		}
-	}
-	if err := platform.LoadAgent(); err != nil {
+	if err := restartDaemon(); err != nil {
 		return
 	}
 
 	fmt.Fprintf(os.Stderr, "Daemon updated to %s.\n", version)
+}
+
+// restartDaemon re-writes the plist and restarts the LaunchAgent.
+// Used by both the explicit "system restart" command and the automatic
+// version-mismatch restart.
+func restartDaemon() error {
+	if err := resolveAndWritePlist(); err != nil {
+		return err
+	}
+	if platform.IsAgentLoaded() {
+		if err := platform.UnloadAgent(); err != nil {
+			return err
+		}
+	}
+	return platform.LoadAgent()
 }
 
 func isSystemCommand(cmd *cobra.Command) bool {
@@ -69,18 +69,18 @@ func fetchDaemonVersion() (string, error) {
 		scheme = "https"
 	}
 
-	client := &http.Client{Timeout: time.Second}
-	resp, err := client.Get(scheme + "://outport.test/api/status")
+	client := &http.Client{Timeout: 300 * time.Millisecond}
+	resp, err := client.Get(scheme + "://outport.test/api/version")
 	if err != nil {
 		return "", err
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	var status struct {
+	var data struct {
 		Version string `json:"version"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&status); err != nil {
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
 		return "", err
 	}
-	return status.Version, nil
+	return data.Version, nil
 }

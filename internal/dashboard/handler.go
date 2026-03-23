@@ -78,6 +78,7 @@ func NewHandler(provider AllocProvider, httpsEnabled bool, version string) *Hand
 	h.rebuildPortIndex()
 
 	h.mux.HandleFunc("GET /api/status", h.handleStatus)
+	h.mux.HandleFunc("GET /api/version", h.handleVersion)
 	h.mux.HandleFunc("GET /api/events", h.handleSSE)
 
 	staticSub, err := fs.Sub(staticFiles, "static")
@@ -108,6 +109,15 @@ func (h *Handler) handleStatus(w http.ResponseWriter, r *http.Request) {
 	if err := enc.Encode(resp); err != nil {
 		http.Error(w, "encoding status: "+err.Error(), http.StatusInternalServerError)
 	}
+}
+
+// handleVersion returns only the daemon version, used by the CLI to detect
+// version mismatches without the overhead of building the full status response.
+func (h *Handler) handleVersion(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(struct {
+		Version string `json:"version"`
+	}{Version: h.version})
 }
 
 // handleSSE streams server-sent events to the client.
