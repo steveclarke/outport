@@ -185,6 +185,94 @@ func TestFindByProject(t *testing.T) {
 	}
 }
 
+func TestAll(t *testing.T) {
+	reg := &Registry{Projects: make(map[string]Allocation)}
+	reg.Set("app1", "main", Allocation{ProjectDir: "/src/app1", Ports: map[string]int{"web": 10001}})
+	reg.Set("app2", "main", Allocation{ProjectDir: "/src/app2", Ports: map[string]int{"web": 10002}})
+
+	all := reg.All()
+	if len(all) != 2 {
+		t.Fatalf("All() returned %d entries, want 2", len(all))
+	}
+
+	// Verify it's a copy — mutating the returned map shouldn't affect the registry
+	delete(all, "app1/main")
+	if _, ok := reg.Get("app1", "main"); !ok {
+		t.Error("deleting from All() result should not affect the registry")
+	}
+}
+
+func TestFindHostname(t *testing.T) {
+	reg := &Registry{Projects: make(map[string]Allocation)}
+	reg.Set("app1", "main", Allocation{
+		ProjectDir: "/src/app1",
+		Hostnames:  map[string]string{"rails": "app1.test"},
+	})
+	reg.Set("app2", "main", Allocation{
+		ProjectDir: "/src/app2",
+		Hostnames:  map[string]string{"rails": "app2.test"},
+	})
+
+	// Find existing hostname belonging to another project
+	key, found := reg.FindHostname("app1.test", "app2/main")
+	if !found {
+		t.Fatal("expected to find hostname conflict")
+	}
+	if key != "app1/main" {
+		t.Errorf("conflicting key = %q, want %q", key, "app1/main")
+	}
+
+	// Self is excluded
+	_, found = reg.FindHostname("app1.test", "app1/main")
+	if found {
+		t.Error("self should be excluded from hostname search")
+	}
+
+	// Non-existent hostname
+	_, found = reg.FindHostname("nonexistent.test", "app1/main")
+	if found {
+		t.Error("should not find nonexistent hostname")
+	}
+}
+
+func TestRemoveStale(t *testing.T) {
+	reg := &Registry{Projects: make(map[string]Allocation)}
+	reg.Set("app1", "main", Allocation{ProjectDir: "/src/app1"})
+	reg.Set("app2", "main", Allocation{ProjectDir: "/src/app2"})
+	reg.Set("app3", "main", Allocation{ProjectDir: "/src/app3"})
+
+	removed := reg.RemoveStale(func(dir string) bool {
+		return dir == "/src/app1" || dir == "/src/app3"
+	})
+
+	if len(removed) != 2 {
+		t.Fatalf("removed %d entries, want 2", len(removed))
+	}
+
+	// app2 should still exist
+	if _, ok := reg.Get("app2", "main"); !ok {
+		t.Error("app2 should not have been removed")
+	}
+
+	// app1 and app3 should be gone
+	if _, ok := reg.Get("app1", "main"); ok {
+		t.Error("app1 should have been removed")
+	}
+	if _, ok := reg.Get("app3", "main"); ok {
+		t.Error("app3 should have been removed")
+	}
+}
+
+func TestRemoveStale_NoneStale(t *testing.T) {
+	reg := &Registry{Projects: make(map[string]Allocation)}
+	reg.Set("app1", "main", Allocation{ProjectDir: "/src/app1"})
+
+	removed := reg.RemoveStale(func(dir string) bool { return false })
+	if len(removed) != 0 {
+		t.Errorf("removed %d entries, want 0", len(removed))
+	}
+}
+
 func TestDefaultPath(t *testing.T) {
 	home, err := os.UserHomeDir()
 	if err != nil {
