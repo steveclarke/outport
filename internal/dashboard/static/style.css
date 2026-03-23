@@ -83,13 +83,24 @@ body {
   gap: 0;
 }
 
-#dashboard:empty::after {
-  content: "No projects registered.";
-  display: block;
+.dashboard-empty {
   text-align: center;
+  margin-top: 4rem;
+}
+.empty-heading {
+  color: var(--text-3);
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+.empty-hint {
   color: var(--text-4);
-  font-size: 15px;
-  margin-top: 3rem;
+  font-size: 14px;
+}
+.empty-action {
+  color: var(--text-4);
+  font-size: 14px;
+  margin-top: 0.25rem;
 }
 
 /* ── Project section ── */
