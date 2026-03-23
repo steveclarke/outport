@@ -29,28 +29,28 @@ Go's composition model is used correctly throughout. No inheritance hierarchies.
 ### Coupling & Cohesion
 **Health: Needs Attention**
 
-#### Finding: Domain logic (allocation building, hostname computation) lives in cmd/
+#### Finding: Domain logic (allocation building, hostname computation) lives in cmd/ [RESOLVED]
 - **Severity:** Medium
 - **Location:** `cmd/up.go:185-302`
 - **What:** `buildAllocation`, `computeHostnames`, `computeProtocols`, `computeEnvVars`, and `buildTemplateVars` are pure domain logic called from 3 commands (up, rename, promote). They transform config + instance + ports into allocations and template maps with no knowledge of CLI flags or output.
 - **Why it matters:** Violates the skinny-controller philosophy. New commands that need allocations must import from `up.go`. These functions aren't independently testable outside the `cmd` package.
 - **Recommendation:** Extract into `internal/allocation/` or add to `internal/registry/` (since they produce `registry.Allocation` structs). Makes them independently testable and reusable from any command.
 
-#### Finding: `cmd/up.go` has dual responsibility — allocation orchestration + output formatting
+#### Finding: `cmd/up.go` has dual responsibility — allocation orchestration + output formatting [RESOLVED]
 - **Severity:** Medium
 - **Location:** `cmd/up.go` (534 lines)
 - **What:** `up.go` is simultaneously the busiest command and a shared utility library. `printFlatServices`, `printServiceLine`, `printHeader`, `sortedMapKeys`, JSON types (`svcJSON`, `upJSON`, `computedJSON`), and display helpers are called from `ports.go`, `status.go`, and `share.go`.
 - **Why it matters:** Debugging output for `outport ports` means reading `up.go`. New contributors copy from the wrong file. The file has two reasons to change: command logic and shared rendering.
 - **Recommendation:** Extract shared rendering into `cmd/render.go`. Leave `up.go` as a thin command handler.
 
-#### Finding: Hostname uniqueness check bypasses registry API
+#### Finding: Hostname uniqueness check bypasses registry API [RESOLVED]
 - **Severity:** Medium
 - **Location:** `cmd/up.go:104-116`
 - **What:** Manually iterates `reg.Projects` and reconstructs registry keys by hand (`cfg.Name + "/" + ctx.Instance`) instead of using `registry.Key()`. This is the only place that reconstructs a registry key manually.
 - **Why it matters:** If registry storage structure changes, this code silently breaks. The domain question "is this hostname taken?" belongs in the registry package, not command code.
 - **Recommendation:** Add `Registry.FindHostname(hostname, excludeKey string) (string, bool)` and call it from `up.go`.
 
-#### Finding: `gc.go` and `status.go` directly mutate/iterate `reg.Projects`
+#### Finding: `gc.go` and `status.go` directly mutate/iterate `reg.Projects` [RESOLVED]
 - **Severity:** Low
 - **Location:** `cmd/gc.go:28-32`, `cmd/status.go:86-175`
 - **What:** `gc.go` uses `delete(reg.Projects, key)` instead of `reg.Remove()`. `status.go` iterates the map directly for both zero-check and display.
@@ -64,7 +64,7 @@ Go's composition model is used correctly throughout. No inheritance hierarchies.
 - **Why it matters:** When looking for the env writing pipeline, `envfiles.go` is the obvious place — but the core implementation is one file away.
 - **Recommendation:** Move `mergeEnvFiles` from `cmd/rename.go` to `cmd/envfiles.go`.
 
-#### Finding: `resolveComputedFromAlloc` called identically from 3 commands with same 6 args
+#### Finding: `resolveComputedFromAlloc` called identically from 3 commands with same 6 args [RESOLVED]
 - **Severity:** Low
 - **Location:** `cmd/ports.go:68,92`, `cmd/status.go:146,204`, `cmd/up.go:150`
 - **What:** The 6-argument pattern appears verbatim in 4+ call sites. Callers always unpack the same fields from `Allocation` plus `httpsEnabled`, with `tunnelURLs` always `nil` except in share.
@@ -79,7 +79,7 @@ Cobra is used idiomatically: `RunE` for error-returning handlers, `PersistentPre
 ### API & Interface Design
 **Health: Needs Attention**
 
-#### Finding: `writeEnvFiles` has 11 positional parameters
+#### Finding: `writeEnvFiles` has 11 positional parameters [RESOLVED]
 - **Severity:** Medium
 - **Location:** `cmd/envfiles.go:85-107`
 - **What:** Called from 6 sites. Multiple `bool` and `map[string]string` params of the same type can be silently swapped. Every call passes `nil` for `tunnelURLs` except the share command.
@@ -100,7 +100,7 @@ Cobra is used idiomatically: `RunE` for error-returning handlers, `PersistentPre
 - **Why it matters:** Future contributors may use `Update` in production, silently leaving allocations and ports stale.
 - **Recommendation:** Make unexported (`update`) or delete. Tests can use `UpdateWithAllocations(routes, nil)`.
 
-#### Finding: `printServiceLine` boolean flag selects two different layouts
+#### Finding: `printServiceLine` boolean flag selects two different layouts [RESOLVED]
 - **Severity:** Low
 - **Location:** `cmd/up.go:487-533`
 - **What:** `showEnvVar bool` parameter completely changes rendered output. Two branches share only port/URL rendering. Exactly 2 call sites, each hardcoding a constant bool.
@@ -165,28 +165,28 @@ Cobra is used idiomatically: `RunE` for error-returning handlers, `PersistentPre
 **Estimated effort:** 1-2 hours
 **Dependencies:** None
 
-### Phase 2: Rendering Extraction [NOT STARTED]
+### Phase 2: Rendering Extraction [COMPLETE]
 **Target findings:** `cmd/up.go` dual responsibility, `printServiceLine` boolean flag
 **Scope:** Extract shared rendering functions, JSON types, and display helpers from `cmd/up.go` into `cmd/render.go`. Split `printServiceLine` into two focused functions.
 **Risk:** Low — purely moving code within the `cmd` package
 **Estimated effort:** Half a day
 **Dependencies:** Phase 1 (sortedMapKeys removal simplifies this extraction)
 
-### Phase 3: Registry API Hardening [NOT STARTED]
+### Phase 3: Registry API Hardening [COMPLETE]
 **Target findings:** Hostname uniqueness check bypasses registry API, gc.go/status.go direct map access
 **Scope:** Add `FindHostname`, `RemoveStale`, `All` methods to `internal/registry`. Update `cmd/up.go`, `cmd/gc.go`, `cmd/status.go` to use them.
 **Risk:** Low — adding methods to registry, then updating callers
 **Estimated effort:** Half a day
 **Dependencies:** Phase 2 (up.go is smaller and cleaner to work with)
 
-### Phase 4: EnvWriteOptions Struct [NOT STARTED]
+### Phase 4: EnvWriteOptions Struct [COMPLETE]
 **Target findings:** writeEnvFiles 11 positional parameters, resolveComputedFromAlloc repeated 6-arg calls
 **Scope:** Introduce `EnvWriteOptions` struct in `cmd/envfiles.go`. Update all 6 call sites. Add convenience wrapper for `resolveComputedFromAlloc`.
 **Risk:** Low — struct introduction with call site updates
 **Estimated effort:** Half a day
 **Dependencies:** Phase 1 (mergeEnvFiles must be in envfiles.go first)
 
-### Phase 5: Domain Logic Extraction [NOT STARTED]
+### Phase 5: Domain Logic Extraction [COMPLETE]
 **Target findings:** Domain logic (allocation building, hostname computation) lives in cmd/
 **Scope:** Create `internal/allocation/` package. Move `buildAllocation`, `computeHostnames`, `computeProtocols`, `computeEnvVars`, `buildTemplateVars`, and `resolveComputedFromAlloc` out of `cmd/`. Add independent tests.
 **Risk:** Medium — crosses package boundaries, requires updating imports in multiple commands
