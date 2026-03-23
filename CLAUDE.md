@@ -1,11 +1,3 @@
-# CLAUDE.md
-
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
-## What is Outport?
-
-Outport is a deterministic port manager for multi-project, multi-instance development. It allocates stable, non-conflicting ports for services (Rails, Postgres, Redis, etc.), assigns `.test` hostnames, and writes everything to `.env` files. Each project instance (main checkout, worktree, or feature branch) gets its own port and hostname allocations so they don't collide with each other.
-
 ## Development Commands
 
 All tasks use the `justfile`:
@@ -49,34 +41,10 @@ Entry point: `main.go` → `cmd.Execute()` (Cobra CLI).
 
 ### CLI commands (`cmd/`)
 
-Project commands (top-level):
+Commands are defined in `cmd/*.go` — read them for details. Key conventions:
 
-- **setup** — Interactive first-run system setup. Uses charmbracelet/huh for a branded confirm prompt asking whether to enable `.test` domains with HTTPS. If yes, delegates to `runSystemStart`. If no, prints a tip about enabling later. JSON mode delegates entirely to `system start`.
-- **up** — Main workflow: load config → resolve instance → load registry → allocate ports → compute hostnames → check hostname uniqueness → resolve computed values → merge `.env` → display results. Use `--force` to re-allocate all ports from scratch.
-- **down** — Reverse of up: clean managed blocks from all `.env` files and remove the project/instance from the registry.
-- **init** — Creates a commented `outport.yml` template in the current directory.
-- **ports** — Show current project's allocated ports.
-- **open** — Open HTTP/HTTPS services in the default browser. Requires `protocol: http` on services.
-- **qr** — Display QR codes for accessing HTTP services from mobile devices. Shows LAN URL (IP + port) QR by default. `--tunnel` for tunnel URLs (requires active `outport share`). `--interface` to override LAN IP detection.
-- **share** — Tunnel HTTP services to public URLs via Cloudflare quick tunnels. Shares all HTTP services by default, or specify service names. Requires `cloudflared` binary. Rewrites `.env` files so `${service.url}` computed values resolve to tunnel URLs (`${service.url:direct}` stays localhost). Reverts `.env` on exit. Blocks until Ctrl+C.
-- **rename** — Rename an instance of the current project. Updates hostnames and re-merges `.env` files.
-- **promote** — Promote the current instance to "main". Demotes the existing main instance to a generated code name. Updates hostnames for both instances.
-- **doctor** — Diagnostic command that checks the health of all Outport infrastructure: DNS resolver, LaunchAgent daemon, CA certificates, registry, and project config (when `outport.yml` is found). Reports pass/warn/fail for each check with actionable fix suggestions. Read-only — never modifies system state.
-
-System commands (under `outport system`):
-
-- **system start** — Install the `.test` DNS resolver, LaunchAgent daemon, and local CA for HTTPS. Auto-runs setup on first use. Requires sudo for `/etc/resolver/test`. Generates a CA certificate and adds it to the macOS login keychain trust store (GUI password prompt). Listens on ports 80 (HTTP->HTTPS redirect) and 443 (TLS proxy).
-- **system stop** — Stop the daemon (unload the LaunchAgent).
-- **system restart** — Re-write plist and restart the daemon.
-- **system status** — Show all registered projects across the system. Marks stale entries with a hint to run `system gc`.
-- **system gc** — Remove stale registry entries where the project directory no longer exists.
-- **system uninstall** — Remove the DNS resolver, daemon, CA certificate, and cached server certs. Reverse of start.
-
-Hidden:
-
-- **daemon** — (hidden) Run the DNS and proxy daemon directly. Invoked by launchd, not by users.
-
-All commands support `--json` for machine-readable output. Each command has paired `print*Styled()` and `print*JSON()` output functions.
+- All commands support `--json` for machine-readable output. Each command has paired `print*Styled()` and `print*JSON()` output functions.
+- **daemon** is a hidden command invoked by launchd, not by users.
 
 ## Key Design Decisions
 
@@ -86,15 +54,9 @@ All commands support `--json` for machine-readable output. Each command has pair
 - **`.test` hostnames** — Services with `hostname` + `protocol: http/https` get `.test` domain hostnames (e.g., `myapp.test`). Non-main instances get suffixed hostnames (e.g., `myapp-bxcf.test`). Hostnames are globally unique across all registered projects.
 - **Template expansion** — Computed values use bash-style parameter expansion. Service fields: `${service.port}`, `${service.hostname}`, `${service.url}`, `${service.url:direct}`, `${service.protocol}`, `${service.env_var}`. Standalone variables: `${instance}` (empty for main, instance code for worktrees), `${project_name}` (project name from config). Operators: `${var:-default}` (use default if empty), `${var:+replacement}` (use replacement if non-empty). Example: `"${project_name}${instance:+-${instance}}"` → `myapp` for main, `myapp-xbjf` for worktrees.
 - **Fenced .env blocks** — Managed variables are written in a `# --- begin/end outport.dev ---` fenced section. User content outside the block is never touched. Vars claimed by Outport are removed from the user section and relocated into the block.
-- **Daemon architecture** — A LaunchAgent runs a DNS server (port 15353, `*.test` -> 127.0.0.1), HTTP reverse proxy (port 80), and TLS reverse proxy (port 443). When the CA is installed, port 80 issues 307 redirects to HTTPS. The daemon watches the registry file and rebuilds routes on changes.
-- **Automatic HTTPS** — When the CA is installed (after `outport system start`), all `.test` hostnames automatically get HTTPS. Port 80 redirects to HTTPS via 307. Port 443 terminates TLS and proxies to the backend over plain HTTP. `${service.url}` produces `https://` URLs when the CA exists. No per-service opt-in required.
-- **Tunnel state file** — `outport share` writes `~/.local/share/outport/tunnels.json` with PID and tunnel URLs on start, removes on exit. Dashboard and `outport qr --tunnel` read this file to discover active tunnels. PID checked for liveness to handle stale state from dirty exits. The daemon watcher fires dashboard updates when this file changes.
-- **Command structure** — Project commands (`setup`, `up`, `down`, `init`, `ports`, `open`, `qr`, `rename`, `promote`) are top-level. Machine-wide operations (`start`, `stop`, `restart`, `status`, `gc`, `uninstall`) live under `outport system`. `setup` is the recommended first-run command (interactive, delegates to `system start`). `up`/`down` follow the Docker Compose mental model (project-scoped).
-- **XDG directory layout** — Registry at `~/.local/share/outport/registry.json`, CA at `~/.local/share/outport/`, cert cache at `~/.cache/outport/certs/`. `~/.config/outport/` reserved for future global config.
-- **Error wrapping** — Uses `fmt.Errorf("context: %w", err)` throughout.
-- **External env file safety** — Env file paths outside the project directory (where `outport.yml` lives) require explicit developer approval. Paths are resolved through symlinks using `filepath.EvalSymlinks` before boundary checking. Approval can be interactive (prompt), auto (`-y` flag), or persisted (approved paths stored in registry allocation). All write commands (`up`, `down`, `rename`, `promote`, `share`) enforce this through `writeEnvFiles`/`removeEnvFiles` wrappers. A persistent warning is shown after every write that touches external files.
-- **Auto-restart on version mismatch** — Every CLI command (except `daemon`, `setup`, and `system` subcommands) checks the running daemon's version via `/api/status`. If they differ (e.g. after `brew upgrade`), the daemon is silently restarted so users get dashboard and proxy updates without needing `outport system restart`. Best-effort — failures are silently ignored and never block command execution. Implementation in `cmd/version_check.go`.
-- **Dashboard at `outport.test`** — The daemon serves a web dashboard at the reserved hostname `outport.test`. The proxy handler intercepts this hostname before route lookup and delegates to the embedded dashboard handler. HTTPS works automatically via the existing cert manager. The dashboard uses SSE for real-time updates — registry changes push immediately, health status polls every 3s only when clients are connected. Config validation rejects `outport.test` as a project hostname.
+- **External env file safety** — Env file paths outside the project directory require explicit developer approval. Paths are resolved through symlinks using `filepath.EvalSymlinks` before boundary checking. All write commands enforce this through `writeEnvFiles`/`removeEnvFiles` wrappers.
+- **Auto-restart on version mismatch** — Every CLI command (except `daemon`, `setup`, and `system` subcommands) checks the running daemon's version via `/api/status`. If they differ, the daemon is silently restarted. Best-effort — failures are silently ignored. Implementation in `cmd/version_check.go`.
+- **Dashboard at `outport.test`** — The proxy handler intercepts this hostname before route lookup and delegates to the embedded dashboard handler. SSE for real-time updates. Config validation rejects `outport.test` as a project hostname.
 
 ## Testing
 
