@@ -22,16 +22,6 @@ The people who juggle the most projects have the fewest tools. Every developer t
 
 For years, this was manageable friction. Not a crisis. I changed ports manually, kept mental notes, shut things down and spun them back up. It was never worth building a tool over. The time to build it would have exceeded the time saved by years. "Just change the port, Steve." That's one of the downsides of working at a small shop. You live with things.
 
-## The agentic era changed the math
-
-Two shifts happened at once. First: AI coding agents can build the tool. What would have taken months of solo dev time is now feasible. Second, and more important: agents *need* the tool.
-
-With four or five Claude Code sessions open, working on multiple projects and multiple instances of the same project simultaneously, port conflicts went from occasional annoyance to constant blocker. Agents can't read an error message and pick a different port. They can't keep a mental spreadsheet. They need deterministic, non-conflicting ports — declared once and guaranteed.
-
-The ROI flipped from "not worth building" to "can't work without it."
-
-Agents also need to know how to run your stack — that's what [`DEVSTACK.md`](/guide/devstack) solves.
-
 ## "Just change the port"
 
 And sure, you can change the port. But it's never just the port.
@@ -42,7 +32,16 @@ A real app might have a Rails API, two frontend apps, Postgres, Redis, Mailpit, 
 
 That's not a port problem. That's an orchestration problem. And it's the kind of thing that's invisible if you've only ever worked on one app at a time.
 
+## The agentic era changed the math
+
+Two shifts happened at once. First: AI coding agents can build the tool. What would have taken months of solo dev time is now feasible. Second, and more important: agents *need* the tool.
+
+With four or five Claude Code sessions open, working on multiple projects and multiple instances of the same project simultaneously, port conflicts went from occasional annoyance to constant blocker. Agents can't read an error message and pick a different port. They can't keep a mental spreadsheet. They need deterministic, non-conflicting ports — declared once and guaranteed.
+
+The ROI flipped from "not worth building" to "can't work without it."
+
+Agents also need to know how to run your stack — that's what [`DEVSTACK.md`](/guide/devstack) solves.
+
 ## The name
 
 An outport is a small, isolated community on the coast of Newfoundland. That's where this was built, and that's who it's for — developers working outside the big-company bubble where these problems get solved by dedicated teams.
-

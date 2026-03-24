@@ -6,7 +6,7 @@ description: Install Outport, run setup, create your first outport.yml config, a
 
 ## Prerequisites
 
-- macOS (Linux support is experimental)
+- macOS (Linux support is planned)
 - [Homebrew](https://brew.sh) (recommended) or [Go 1.22+](https://go.dev/dl/)
 
 ## Install
@@ -25,7 +25,7 @@ Run the one-time setup:
 outport setup
 ```
 
-Outport will ask whether to enable `.test` domains with HTTPS. This is optional — say yes for the full experience (local DNS, reverse proxy, automatic HTTPS) or no to use just the port orchestration.
+Outport will ask whether to enable `.test` domains with HTTPS. This is recommended — say yes for the full experience (local DNS, reverse proxy, automatic HTTPS) or no to use just the port orchestration.
 
 If you choose yes, you'll be prompted for your password (to configure DNS) and may see a macOS keychain dialog (to trust the local certificate authority). This only happens once.
 
@@ -51,9 +51,12 @@ services:
     env_var: DB_PORT
   redis:
     env_var: REDIS_PORT
+computed:
+  MYAPP_URL:
+    value: "${web.url}"
 ```
 
-Each service needs at least an `env_var` — the environment variable that will hold the allocated port.
+Each service needs at least an `env_var` — the environment variable that will hold the allocated port. The `computed` section wires up values that depend on your services — URLs, CORS origins, API endpoints — so your app gets finished environment variables, not just port numbers.
 
 ## Bring It Up
 
@@ -95,7 +98,7 @@ When you run `outport up`:
 2. **Instance resolved** — The first checkout of a project is "main". Additional checkouts (worktrees, clones) get auto-generated codes like "bxcf".
 3. **Ports allocated** — Each service gets a deterministic port via FNV-32a hash on `"{project}/{instance}/{service}"`. Range: 10000–39999.
 4. **Registry updated** — Allocations are saved to `~/.local/share/outport/registry.json`.
-5. **.env written** — Ports are written inside a fenced block (`# --- begin/end outport.dev ---`). Your existing `.env` content is preserved.
+5. **.env written** — Ports and computed values are written inside a fenced block (`# --- begin/end outport.dev ---`). Your existing `.env` content is preserved. Each service can target a different `.env` file — monorepos, sibling directories, even files outside your project — so one `outport up` wires everything.
 
 ## Dashboard
 
@@ -119,11 +122,12 @@ Need to show your app to someone outside your network, test a webhook, or view i
 outport share
 ```
 
-This tunnels all HTTP services to public Cloudflare URLs and rewrites `.env` files so computed values (CORS, API URLs) automatically point to the tunnel URLs. On exit, everything reverts. Requires `cloudflared` (`brew install cloudflared`). See [Tips & Troubleshooting](/guide/tips#sharing-services-with-outport-share) for details.
+This tunnels all HTTP services to public Cloudflare URLs and rewrites `.env` files so computed values (CORS, API URLs) automatically point to the tunnel URLs. On exit, everything reverts. Requires `cloudflared` (`brew install cloudflared`). See [Sharing & Mobile](/guide/sharing) for details.
 
 ## Next Steps
 
-- [Dashboard](/guide/dashboard) — live web view of all your projects and services
-- [VS Code Extension](/guide/vscode) — ports, URLs, and service health right in the editor
+- [Examples](/guide/examples) — real-world configs for common project setups
 - [Configuration Reference](/reference/configuration) — full `outport.yml` schema
-- [Commands Reference](/reference/commands) — all CLI commands
+- [Sharing & Mobile](/guide/sharing) — tunnel services and test on mobile devices
+- [Dashboard](/guide/dashboard) — live web view of all your projects and services
+- [VS Code Extension](/guide/vscode) — ports, URLs, and service health in the editor

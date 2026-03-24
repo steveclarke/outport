@@ -194,7 +194,7 @@ CORS_ORIGINS=<span class="success">https://myapp-frontend.test</span>
         <div><span class="dollar">$</span> brew install steveclarke/tap/outport</div>
         <div><span class="dollar">$</span> outport setup</div>
       </div>
-      <p class="install-note">macOS only. Linux support is experimental.</p>
+      <p class="install-note">macOS only. Linux support is planned.</p>
     </section>
 
     <!-- FOOTER -->

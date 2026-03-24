@@ -20,24 +20,20 @@ Entry point: `main.go` → `cmd.Execute()` (Cobra CLI).
 
 ### Core packages (`internal/`)
 
-- **allocation** — Builds registry allocations from config and ports. Handles hostname computation (instance-qualified `.test` hostnames), protocol/env-var extraction, template variable building (`${service.port}`, `${service.url}`, etc.), and computed value resolution. Pure domain logic with no CLI dependencies.
-- **allocator** — Port allocation via FNV-32a hash on `"{project}/{instance}/{service}"`. An optional preferred_port can be specified per service; when omitted, the hash is the primary allocation method. Port range: 10000–39999 (port 15353 reserved for daemon DNS). Collisions resolved by linear probing with wraparound.
-- **certmanager** — Local CA and server certificate lifecycle. Generates a CA (EC P-256, 10-year) during `outport system start`, creates per-hostname server certs on demand via TLS SNI callback, caches to disk (`~/.cache/outport/certs/`) and memory. Exports path helpers (`CACertPath`, `CAKeyPath`, `CertCacheDir`) used by `up` and `open` to detect HTTPS availability.
-- **registry** — Persistent JSON store at `~/.local/share/outport/registry.json`. Keys are `"{project}/{instance}"` (e.g., `"myapp/main"`, `"myapp/bxcf"`). Each allocation stores ports, hostnames, protocols, and env_var names. Atomic writes via temp file + rename. Supports lookup by directory (`FindByDir`), by project name (`FindByProject`), hostname conflict detection (`FindHostname`), stale entry cleanup (`RemoveStale`), and snapshot access (`All`).
-- **config** — Loads/validates `outport.yml`. Supports per-service env_file (string or array), preferred_port, protocol, hostname, and computed values with bash-style parameter expansion (`${service.field}`, `${service.field:modifier}`, `${var:-default}`, `${var:+replacement}`). The `${instance}` variable is empty for main instances and set to the instance code for worktrees. `FindDir()` walks up from the current directory to locate the config. Validates env_var uniqueness per file, hostname format (must contain project name, requires http/https protocol), and computed value reference validity.
-- **instance** — Resolves instance names for projects. First instance of a project is "main". Additional instances get random 4-character consonant codes (e.g., "bxcf"). Looks up the registry by directory to find existing instances. Provides name validation (lowercase alphanumeric + hyphens).
-- **daemon** — Long-running process providing DNS server (port 15353, resolves `*.test` to 127.0.0.1), HTTP reverse proxy (port 80, 307 redirect to HTTPS when CA exists), and TLS reverse proxy (port 443, SNI-based cert selection). Watches the registry file for changes and rebuilds the route table automatically. Supports WebSocket proxying. Serves the web dashboard at `outport.test` (see **dashboard** package).
-- **dashboard** — Web dashboard served by the daemon at `https://outport.test`. Embedded HTML/CSS/JS via `go:embed`. JSON API (`/api/status`) returns all registered projects, services, ports, health status, LAN IP, and tunnel URLs. SVG QR endpoint (`/api/qr?url=`). SSE endpoint (`/api/events`) pushes live updates for registry changes, tunnel state changes, and port health transitions. Health checker probes ports every 3 seconds only when dashboard clients are connected. Per-service QR panel with LAN/Tunnel toggle.
-- **qrcode** — QR code generation for terminal (Unicode block characters) and SVG (dashboard API). Wraps `github.com/skip2/go-qrcode`.
-- **lanip** — LAN IP auto-detection. Prefers `en0`/`en1` on macOS, skips virtual/VPN interfaces. Supports explicit interface override via `Detect(interfaceName)`.
-- **platform** — macOS-specific integration for the daemon. Manages the LaunchAgent plist (`~/Library/LaunchAgents/`) and `/etc/resolver/test` file for `.test` domain resolution. Provides setup/uninstall/start/stop/restart operations and CA trust/untrust via macOS `security` CLI.
-- **doctor** — Diagnostic checks for the `outport doctor` command. `Check`, `Result`, and `Runner` types. `SystemChecks()` returns checks for DNS, daemon, CA, registry, and cloudflared. `ProjectChecks()` returns checks for config validation, registry lookup, and port availability. Each check returns pass/warn/fail with a fix suggestion.
-- **envpath** — Env file path classification and external file approval. `ClassifyEnvFiles` resolves paths through symlinks (`filepath.EvalSymlinks`) and classifies each as internal or external to the project directory. `ConfirmExternalFiles` handles the interactive approval prompt, auto-approve (`-y`), and non-interactive error. `ExternalPaths` filters to external-only paths.
-- **dotenv** — Writes allocated ports and computed values into a fenced block (`# --- begin outport.dev ---` / `# --- end outport.dev ---`) at the bottom of `.env` files. User content outside the block is preserved. Managed vars in the user section are removed and relocated into the block. Also provides `RemoveBlock()` for cleanup.
-- **tunnel** — Tunnel provider abstraction and concurrent manager. Provider interface allows swapping tunnel backends (Cloudflare, etc.) without changing command code. Manager starts/stops multiple tunnels with all-or-nothing semantics and configurable timeout.
-- **tunnel/cloudflare** — Cloudflare quick tunnel provider. Shells out to `cloudflared tunnel --url`, parses tunnel URL from stderr output.
-- **urlutil** — Shared URL construction for `.test` hostnames. `ServiceURL` builds the browser-facing URL for a service, upgrading to `https://` for `.test` domains when the CA is installed. Used by `cmd/` commands and the dashboard.
-- **ui** — Lipgloss terminal styling constants.
+- **allocation** — Builds registry allocations from config. Pure domain logic with no CLI dependencies.
+- **allocator** — Port allocation via FNV-32a hash on `"{project}/{instance}/{service}"`. Port range: 10000–39999 (15353 reserved for daemon DNS). Collisions resolved by linear probing with wraparound.
+- **certmanager** — Local CA and per-hostname server certificate lifecycle. Caches to `~/.cache/outport/certs/`.
+- **registry** — Persistent JSON store at `~/.local/share/outport/registry.json`. Keys: `"{project}/{instance}"`. Atomic writes via temp file + rename.
+- **config** — Loads/validates `outport.yml`. `FindDir()` walks up to locate config.
+- **instance** — Resolves instance names. Validation: lowercase alphanumeric + hyphens.
+- **daemon** — DNS server (port 15353), HTTP proxy (port 80), TLS proxy (port 443, SNI-based). Watches registry for route rebuilds. Serves dashboard at `outport.test`.
+- **dashboard** — Embedded web dashboard (`go:embed`). JSON API, SSE live updates, health checker (3s interval, only when clients connected).
+- **platform** — macOS LaunchAgent plist, `/etc/resolver/test`, CA trust via `security` CLI.
+- **doctor** — Diagnostic checks returning pass/warn/fail with fix suggestions.
+- **envpath** — Env file path classification. Resolves symlinks before boundary checking.
+- **dotenv** — Fenced `.env` block writer. Also provides `RemoveBlock()` for cleanup.
+- **tunnel** — Provider abstraction + concurrent manager with all-or-nothing semantics.
+- **tunnel/cloudflare** — Shells out to `cloudflared tunnel --url`, parses URL from stderr.
 
 ### CLI commands (`cmd/`)
 
@@ -66,7 +62,7 @@ Tests use table-driven patterns and `t.TempDir()` for filesystem isolation. No m
 
 ## Release
 
-GoReleaser builds for macOS + Linux (amd64 + arm64). Version injected via ldflags: `-X github.com/steveclarke/outport/cmd.version={{.Version}}`. Releases triggered by pushing `v*` tags. Publishes to Homebrew tap `steveclarke/homebrew-tap`. Release process docs are in the private `backstage` repo.
+Version injected via ldflags: `-X github.com/steveclarke/outport/cmd.version={{.Version}}`. Releases triggered by pushing `v*` tags. Publishes to Homebrew tap `steveclarke/homebrew-tap`. Release process docs are in the private `backstage` repo.
 
 ## Git Conventions
 
@@ -79,7 +75,7 @@ GoReleaser builds for macOS + Linux (amd64 + arm64). Version injected via ldflag
 
 - **Users:** Solo developer managing multiple local projects. Primary job: find a `.test` URL and click it. Secondary: glance at service health.
 - **Brand personality:** Reliable, clean, smart.
-- **Aesthetic:** Polished product (not a dev utility dump). Reference: Docker Desktop containers view. Light mode only (astigmatism).
+- **Aesthetic:** Polished product (not a dev utility dump). Reference: Docker Desktop containers view. Light and dark mode.
 - **Colors:** Navy `#031C54` (headings), steel blue `#2E86AB` (links/accent), warm cream `#faf8f5` (background), `#f5f0e8` (soft bg), white (surface).
 - **Fonts:** Barlow Bold (headings, tight letter-spacing), Inter (body), SF Mono/Fira Code (mono).
 - **Principles:** URL-first, full-width no waste, on-brand, progressive disclosure, polished not utilitarian.
