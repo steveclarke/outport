@@ -14,7 +14,7 @@ Outport allocates deterministic, non-conflicting ports for all your projects, as
 
 ## The Problem
 
-You're running Rails on 3000, Nuxt on 5173, Postgres on 5432. You start a second project — port conflict. You spin up another instance for an AI agent — more conflicts. Your Nuxt frontend needs your Rails API URL. Your Rails backend needs the frontend URL for CORS. You're juggling port numbers across `.env` files, and if you get one wrong, nothing works.
+You're running Rails on 3000, Nuxt on 9000, Postgres on 5432. You start a second project — port conflict. You spin up another instance for an AI agent — more conflicts. Your Nuxt frontend needs your Rails API URL. Your Rails backend needs the frontend URL for CORS. You're juggling port numbers across `.env` files, and if you get one wrong, nothing works.
 
 Outport fixes this. Declare your services once in `outport.yml`, check it into your repo, and run `outport up`. Every developer, every machine, every instance gets deterministic ports — no coordination required.
 
@@ -32,6 +32,7 @@ brew install steveclarke/tap/outport
 ```bash
 outport setup         # One-time setup (optional .test domains + HTTPS)
 outport init          # Create outport.yml
+vim outport.yml       # Define your services
 outport up            # Allocate ports, write .env
 ```
 
@@ -45,7 +46,7 @@ myapp [main]
     redis     REDIS_PORT  → 29454
 ```
 
-That's it. Outport writes finished environment variables to `.env` — every framework that reads `.env` works with zero configuration.
+That's it. Outport writes finished environment variables to `.env` — every framework that reads `.env` works with zero configuration. Monorepos with separate `.env` files per service work too — each service can target a different file.
 
 > [!NOTE]
 > See the [Getting Started guide](https://outport.dev/guide/getting-started) for a full walkthrough.
@@ -58,11 +59,23 @@ Run `outport system start` once to enable `.test` hostnames. This installs a loc
 
 ### Multiple Instances
 
-Every clone, worktree, or checkout is an **instance**. The first is "main" — additional instances get auto-generated codes with their own ports and hostnames (`myapp-bkrm.test`). Cookie isolation is automatic.
+Every clone, worktree, or checkout is an **instance**. The first is "main" — additional instances get auto-generated codes with their own ports and hostnames (`myapp-bkrm.test`).
 
 ### Computed Values
 
-Services don't just need port numbers — they need URLs. Outport computes environment variables from your service map and writes finished values to `.env`. CORS origins, API URLs, WebSocket endpoints — declare them once in `outport.yml`.
+Port numbers alone aren't enough. Your Nuxt frontend needs your Rails API URL. Your Rails backend needs the frontend origin for CORS. These values depend on each other — and they change when ports change.
+
+```yaml
+computed:
+  API_URL:
+    value: "${rails.url}/api/v1"
+    env_file: frontend/.env
+  CORS_ORIGINS:
+    value: "${frontend.url}"
+    env_file: backend/.env
+```
+
+Outport resolves these from your service map and writes finished values to `.env` — not port numbers, but complete URLs your app can use directly. When ports change, URLs update automatically. When you spin up a second instance, everything rewires to the new ports and hostnames.
 
 See the [Configuration reference](https://outport.dev/reference/configuration) for template syntax and examples.
 
@@ -70,17 +83,21 @@ See the [Configuration reference](https://outport.dev/reference/configuration) f
 
 Open `https://outport.test` for a live dashboard showing all your projects, services, ports, and health status. Updates in real-time as you run `outport up` across projects.
 
+<img src="docs/public/dashboard-screenshot.png" width="720" alt="Outport dashboard showing projects with service health status">
+
 See the [Dashboard guide](https://outport.dev/guide/dashboard).
 
 ### Sharing and Mobile Access
 
 `outport share` tunnels your HTTP services to public URLs via Cloudflare. `outport qr` shows QR codes for testing on mobile devices over your local network.
 
-See [Tips & Troubleshooting](https://outport.dev/guide/tips) for details on tunneling and sharing.
+See the [Sharing & Mobile guide](https://outport.dev/guide/sharing) for setup details.
 
 ### VS Code Extension
 
 The [Outport for VS Code](https://outport.dev/guide/vscode) extension shows ports, URLs, and service health in the editor sidebar with clickable links.
+
+<img src="docs/public/vscode-screenshot.png" width="360" alt="Outport VS Code extension showing ports, computed values, and sharing in the sidebar">
 
 ### AI Agent Support
 
@@ -91,28 +108,6 @@ npx skills add steveclarke/outport/skills
 ```
 
 See [Work with AI](https://outport.dev/guide/work-with-ai) for example prompts and what's included.
-
-## FAQ
-
-### "My frontend and backend need to know each other's URLs"
-
-Use [computed values](https://outport.dev/reference/configuration#computed-values). `${service.url}` gives browser-facing URLs, `${service.url:direct}` gives server-to-server URLs. Outport resolves everything and writes finished values to `.env`.
-
-### "My sessions are colliding across instances"
-
-Enable `.test` domains with `outport system start`. Each instance gets its own hostname (`myapp.test` vs `myapp-bkrm.test`), so cookies are isolated automatically.
-
-### "How do I add Outport to my project's setup script?"
-
-Make it optional so developers without Outport aren't blocked:
-
-```bash
-if command -v outport > /dev/null 2>&1; then
-  outport up
-else
-  echo "Outport not found — install: brew install steveclarke/tap/outport"
-fi
-```
 
 ## All Commands
 
@@ -154,7 +149,7 @@ just run up       # Build and run with args
 - ~~**v3:** Local HTTPS with automatic certificates for `.test` domains~~
 - ~~**v4:** QR codes for mobile device access~~
 - ~~**v5:** Public URL sharing via Cloudflare Tunnel with multi-service orchestration~~
-- **Next:** Linux support, team configuration sharing
+- **Next:** Linux support
 
 ## License
 

@@ -46,6 +46,7 @@ export default defineConfig({
           { text: 'Examples', link: '/guide/examples' },
           { text: 'VS Code Extension', link: '/guide/vscode' },
           { text: 'Dashboard', link: '/guide/dashboard' },
+          { text: 'Sharing & Mobile', link: '/guide/sharing' },
           { text: 'Work with AI', link: '/guide/work-with-ai' },
           { text: 'DEVSTACK.md', link: '/guide/devstack' },
           { text: 'Tips & Troubleshooting', link: '/guide/tips' },

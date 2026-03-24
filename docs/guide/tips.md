@@ -1,5 +1,5 @@
 ---
-description: Troubleshooting Outport issues including DNS, daemon, port conflicts, worktree setup, Docker Compose isolation, and sharing via Cloudflare tunnels.
+description: Troubleshooting Outport issues including DNS, daemon, port conflicts, worktree setup, and Docker Compose isolation.
 ---
 
 # Tips & Troubleshooting
@@ -104,46 +104,6 @@ computed:
 
 This gives each instance a unique Docker Compose project name.
 
-## Sharing services with outport share
-
-`outport share` tunnels your HTTP services to public URLs via Cloudflare quick tunnels. Requires `cloudflared` (`brew install cloudflared`).
-
-```bash
-outport share              # tunnel all HTTP services
-outport share web          # tunnel a specific service
-```
-
-The command blocks until you press Ctrl+C.
-
-While sharing, `.env` files are rewritten so computed values using `${service.url}` resolve to the tunnel URLs automatically. CORS origins, API base URLs, and other cross-service values just work. Values using `${service.url:direct}` stay as localhost (server-to-server calls still go direct). On exit, `.env` files revert to local URLs. Restart your services after starting and stopping `outport share`.
-
-### Vite/Nuxt blocks the tunnel hostname
-
-If you see "Blocked request" and a message about `server.allowedHosts`, add `.trycloudflare.com` to your Vite/Nuxt config:
-
-```ts
-// nuxt.config.ts
-vite: {
-  server: {
-    allowedHosts: [".test", ".trycloudflare.com"]
-  }
-}
-```
-
-### Rails blocks the tunnel hostname
-
-If you see a red "Blocked hosts" error page, Rails is rejecting the `.trycloudflare.com` hostname. Add it to your `config/environments/development.rb`:
-
-```ruby
-config.hosts << ".trycloudflare.com"
-```
-
-Restart your Rails server after adding this.
-
-### 502 Bad Gateway
-
-The tunnel connected but nothing is listening on the local port. Make sure the service is actually running on the port shown in `outport share` output.
-
 ## Port 80 or 443 already in use
 
 If `outport system start` fails with "port 80 is already in use", another server (nginx, Apache, another dev tool) is using that port. Stop it first, then retry.
@@ -164,3 +124,15 @@ outport system start        # reinstall from scratch
 ```
 
 Then re-register each project with `outport up`.
+
+## Adding Outport to a project setup script
+
+Make it optional so developers without Outport aren't blocked:
+
+```bash
+if command -v outport > /dev/null 2>&1; then
+  outport up
+else
+  echo "Outport not found — install: brew install steveclarke/tap/outport"
+fi
+```
