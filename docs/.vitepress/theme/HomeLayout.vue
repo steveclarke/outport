@@ -224,12 +224,12 @@ CORS_ORIGINS=<span class="success">https://myapp-frontend.test</span>
   font-family: 'Barlow', ui-sans-serif, system-ui, sans-serif;
   font-weight: 700;
   font-size: 3.25rem;
-  color: #031C54;
+  color: var(--outport-heading);
   letter-spacing: -0.02em;
   line-height: 1.15;
   margin-bottom: 1rem;
 }
-.hero h1 .accent { color: #2E86AB; }
+.hero h1 .accent { color: var(--outport-accent); }
 .hero .subtitle {
   font-size: 1.2rem;
   color: var(--vp-c-text-3);
@@ -261,7 +261,7 @@ CORS_ORIGINS=<span class="success">https://myapp-frontend.test</span>
   margin-bottom: 3rem;
 }
 .btn-primary {
-  background: #2E86AB;
+  background: var(--outport-accent);
   color: white;
   padding: 0.75rem 1.75rem;
   border-radius: 8px;
@@ -271,7 +271,7 @@ CORS_ORIGINS=<span class="success">https://myapp-frontend.test</span>
   transition: background 0.15s;
   border: none;
 }
-.btn-primary:hover { background: #3a9ac2; }
+.btn-primary:hover { background: var(--outport-accent-hover); }
 .btn-secondary {
   background: transparent;
   color: var(--vp-c-text-1);
@@ -291,7 +291,7 @@ CORS_ORIGINS=<span class="success">https://myapp-frontend.test</span>
   border-radius: 10px;
   overflow: hidden;
   text-align: left;
-  box-shadow: 0 20px 60px rgba(3,28,84,0.12), 0 4px 16px rgba(3,28,84,0.06);
+  box-shadow: 0 20px 60px var(--outport-shadow), 0 4px 16px var(--outport-shadow-soft);
 }
 .terminal-bar {
   display: flex;
@@ -345,7 +345,7 @@ CORS_ORIGINS=<span class="success">https://myapp-frontend.test</span>
   margin-top: 2rem;
 }
 .hero-callout a {
-  color: #2E86AB;
+  color: var(--outport-accent);
   text-decoration: none;
   font-weight: 500;
 }
@@ -373,7 +373,7 @@ CORS_ORIGINS=<span class="success">https://myapp-frontend.test</span>
   font-family: 'Barlow', ui-sans-serif, system-ui, sans-serif;
   font-weight: 700;
   font-size: 2rem;
-  color: #031C54;
+  color: var(--outport-heading);
   letter-spacing: -0.01em;
 }
 .feature-grid {
@@ -385,14 +385,14 @@ CORS_ORIGINS=<span class="success">https://myapp-frontend.test</span>
 .feature-card {
   flex: 0 1 calc(50% - 0.625rem);
   min-width: 280px;
-  background: #ffffff;
+  background: var(--outport-surface);
   border: 1px solid var(--vp-c-divider);
   border-radius: 10px;
   padding: 1.75rem;
   transition: box-shadow 0.2s;
 }
 .feature-card:hover {
-  box-shadow: 0 4px 16px rgba(3,28,84,0.06);
+  box-shadow: 0 4px 16px var(--outport-shadow-soft);
 }
 .feature-icon {
   width: 40px; height: 40px;
@@ -403,7 +403,7 @@ CORS_ORIGINS=<span class="success">https://myapp-frontend.test</span>
   justify-content: center;
   margin-bottom: 1rem;
   font-size: 1.25rem;
-  color: #031C54;
+  color: var(--outport-heading);
   font-weight: 700;
   font-family: var(--vp-font-family-mono);
 }
@@ -414,7 +414,7 @@ CORS_ORIGINS=<span class="success">https://myapp-frontend.test</span>
   font-family: 'Barlow', ui-sans-serif, system-ui, sans-serif;
   font-weight: 700;
   font-size: 1.1rem;
-  color: #031C54;
+  color: var(--outport-heading);
   margin-bottom: 0.5rem;
 }
 .feature-card p {
@@ -423,7 +423,7 @@ CORS_ORIGINS=<span class="success">https://myapp-frontend.test</span>
   line-height: 1.6;
 }
 .feature-card a {
-  color: #2E86AB;
+  color: var(--outport-accent);
   text-decoration: none;
   font-weight: 500;
   cursor: pointer;
@@ -449,7 +449,7 @@ CORS_ORIGINS=<span class="success">https://myapp-frontend.test</span>
   font-family: 'Barlow', ui-sans-serif, system-ui, sans-serif;
   font-weight: 700;
   font-size: 2rem;
-  color: #031C54;
+  color: var(--outport-heading);
   letter-spacing: -0.01em;
   margin-bottom: 0.75rem;
 }
@@ -463,8 +463,8 @@ CORS_ORIGINS=<span class="success">https://myapp-frontend.test</span>
 .dashboard-frame {
   border-radius: 12px;
   overflow: hidden;
-  box-shadow: 0 20px 60px rgba(3,28,84,0.10), 0 4px 16px rgba(3,28,84,0.05);
-  border: 1px solid rgba(3,28,84,0.08);
+  box-shadow: 0 20px 60px var(--outport-shadow), 0 4px 16px var(--outport-shadow-soft);
+  border: 1px solid var(--vp-c-divider);
 }
 .dashboard-frame img {
   display: block;
@@ -511,7 +511,7 @@ CORS_ORIGINS=<span class="success">https://myapp-frontend.test</span>
   font-family: 'Barlow', ui-sans-serif, system-ui, sans-serif;
   font-weight: 700;
   font-size: 2rem;
-  color: #031C54;
+  color: var(--outport-heading);
   text-align: center;
   margin-bottom: 0.75rem;
 }
@@ -573,7 +573,7 @@ CORS_ORIGINS=<span class="success">https://myapp-frontend.test</span>
   font-family: 'Barlow', ui-sans-serif, system-ui, sans-serif;
   font-weight: 700;
   font-size: 2rem;
-  color: #031C54;
+  color: var(--outport-heading);
   margin-bottom: 2rem;
 }
 .install p {
@@ -589,7 +589,7 @@ CORS_ORIGINS=<span class="success">https://myapp-frontend.test</span>
   border-radius: 10px;
   font-family: var(--vp-font-family-mono);
   font-size: 0.9rem;
-  box-shadow: 0 4px 16px rgba(3,28,84,0.08);
+  box-shadow: 0 4px 16px var(--outport-shadow-soft);
 }
 .install-cmd .dollar { color: #7aa2f7; }
 .install-note {

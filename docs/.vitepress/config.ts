@@ -3,7 +3,7 @@ import { defineConfig } from 'vitepress'
 export default defineConfig({
   title: 'Outport',
   description: 'Deterministic port orchestration for the agentic era',
-  appearance: false,
+  appearance: true,
   cleanUrls: true,
   sitemap: {
     hostname: 'https://outport.dev',
@@ -28,7 +28,10 @@ export default defineConfig({
   ],
 
   themeConfig: {
-    logo: '/logo-horizontal-color.svg',
+    logo: {
+      light: '/logo-horizontal-color.svg',
+      dark: '/logo-horizontal-white.svg',
+    },
     siteTitle: false,
 
     nav: [

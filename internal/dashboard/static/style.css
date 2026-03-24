@@ -8,6 +8,7 @@
   --bg-soft: #f5f0e8;
   --surface: #ffffff;
   --border: #e8e3da;
+  --border-soft: #f0ede6;
   --text-1: #1e293b;
   --text-2: #475569;
   --text-3: #64748b;
@@ -16,7 +17,30 @@
   --green-soft: #e8f0e6;
   --red: #b54a4a;
   --red-soft: #f2e4e1;
+  --idle: #cbd5e1;
+  --warning: #f59e0b;
   --mono: 'SF Mono', 'Fira Code', ui-monospace, monospace;
+}
+
+html.dark {
+  --navy: #e2e8f0;
+  --blue: #3a9ac2;
+  --blue-hover: #4eaed4;
+  --bg: #0f172a;
+  --bg-soft: #1e293b;
+  --surface: #1e293b;
+  --border: #2d3748;
+  --border-soft: #253347;
+  --text-1: #e2e8f0;
+  --text-2: #94a3b8;
+  --text-3: #64748b;
+  --text-4: #475569;
+  --green: #5cb88a;
+  --green-soft: #1a2e1f;
+  --red: #e06060;
+  --red-soft: #2e1a1a;
+  --idle: #475569;
+  --warning: #f59e0b;
 }
 
 html, body { height: 100%; overflow: hidden; }
@@ -45,6 +69,10 @@ body {
 }
 
 .header-logo { height: 24px; width: auto; }
+.header-logo-light { display: block; }
+.header-logo-dark { display: none; }
+html.dark .header-logo-light { display: none; }
+html.dark .header-logo-dark { display: block; }
 .header-sep { width: 1px; height: 20px; background: var(--border); margin: 0 4px; }
 .header-stats { font-size: 13px; color: var(--text-3); }
 .header-spacer { flex: 1; }
@@ -64,8 +92,48 @@ body {
 
 .header-conn { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-3); }
 .header-conn-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); }
-.header-conn-dot.reconnecting { background: #f59e0b; }
+.header-conn-dot.reconnecting { background: var(--warning); }
 .header-version { font-family: var(--mono); font-size: 11px; color: var(--text-4); }
+
+.theme-switch {
+  position: relative;
+  width: 40px;
+  height: 22px;
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: var(--bg-soft);
+  cursor: pointer;
+  padding: 0;
+  transition: border-color 0.2s ease;
+}
+.theme-switch:hover { border-color: var(--text-4); }
+.theme-switch .check {
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  transition: transform 0.25s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+html.dark .theme-switch .check { transform: translateX(18px); }
+.theme-switch .icon {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  color: var(--text-3);
+  transition: opacity 0.25s ease;
+}
+.theme-switch .sun-icon { opacity: 1; }
+.theme-switch .moon-icon { opacity: 0; }
+html.dark .theme-switch .sun-icon { opacity: 0; }
+html.dark .theme-switch .moon-icon { opacity: 1; }
 
 /* ── Main scroll area ── */
 .main {
@@ -183,7 +251,7 @@ body {
   align-items: center;
   gap: 8px;
   padding: 8px 16px;
-  border-bottom: 1px solid #f0ede6;
+  border-bottom: 1px solid var(--border-soft);
   transition: background 0.1s ease;
 }
 
@@ -194,7 +262,7 @@ body {
   width: 9px;
   height: 9px;
   border-radius: 50%;
-  background: #cbd5e1;
+  background: var(--idle);
   justify-self: center;
 }
 
@@ -242,7 +310,7 @@ body {
 /* ── Infra toggle ── */
 .infra-toggle {
   padding: 6px 16px;
-  border-bottom: 1px solid #f0ede6;
+  border-bottom: 1px solid var(--border-soft);
 }
 
 .infra-toggle:last-child { border-bottom: none; }
@@ -278,7 +346,7 @@ body {
 .infra-toggle[open] summary::before { transform: rotate(90deg); }
 
 .idots { display: flex; gap: 3px; }
-.idot { width: 6px; height: 6px; border-radius: 50%; background: #cbd5e1; }
+.idot { width: 6px; height: 6px; border-radius: 50%; background: var(--idle); }
 .idot.up { background: var(--green); }
 .idot.down { background: var(--red); }
 
@@ -340,7 +408,7 @@ body {
 .wt-dots { display: flex; gap: 3px; }
 .wt-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
 .wt-dot.down { background: var(--red); }
-.wt-dot.idle { background: #cbd5e1; }
+.wt-dot.idle { background: var(--idle); }
 
 /* ── QR panel ── */
 .qr-btn {
@@ -369,7 +437,7 @@ body {
   flex-direction: column;
   align-items: center;
   gap: 12px;
-  border-top: 1px solid #f0ede6;
+  border-top: 1px solid var(--border-soft);
   background: var(--bg);
 }
 
@@ -393,7 +461,7 @@ body {
   transition: background 0.1s ease, color 0.1s ease;
 }
 
-.qr-toggle button.active { background: var(--navy); color: white; }
+.qr-toggle button.active { background: var(--blue); color: white; }
 .qr-toggle button:not(.active):hover { background: var(--bg-soft); }
 .qr-toggle-sep { width: 1px; background: var(--border); }
 

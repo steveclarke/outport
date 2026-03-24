@@ -7,10 +7,19 @@
 <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
 <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon.png">
 <link rel="stylesheet" href="/static/style.css">
+<script>
+  (function() {
+    var t = localStorage.getItem('outport-theme');
+    if (t === 'dark' || (!t && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+      document.documentElement.classList.add('dark');
+    }
+  })();
+</script>
 </head>
 <body>
 <header class="header">
-  <img class="header-logo" src="/static/logo.svg" alt="outport">
+  <img class="header-logo header-logo-light" src="/static/logo.svg" alt="outport">
+  <img class="header-logo header-logo-dark" src="/static/logo-white.svg" alt="outport">
   <span class="header-sep"></span>
   <span class="header-stats" id="header-stats"></span>
   <span class="header-spacer"></span>
@@ -18,6 +27,13 @@
   <span class="header-sep"></span>
   <span class="header-conn"><span class="header-conn-dot" id="conn-dot"></span><span id="conn-text">Connecting&hellip;</span></span>
   <span class="header-version" id="header-version"></span>
+  <span class="header-sep"></span>
+  <button class="theme-switch" id="theme-toggle" title="Toggle dark mode">
+    <span class="check">
+      <svg class="icon sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+      <svg class="icon moon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+    </span>
+  </button>
 </header>
 <div class="main">
   <div class="content" id="dashboard"></div>

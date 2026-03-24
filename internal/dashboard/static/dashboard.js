@@ -7,6 +7,13 @@
   var headerStats = document.getElementById("header-stats");
   var toggleBtn = document.getElementById("toggle-inactive");
   var headerVersion = document.getElementById("header-version");
+  var themeToggle = document.getElementById("theme-toggle");
+
+  // Theme toggle
+  themeToggle.addEventListener("click", function () {
+    var isDark = document.documentElement.classList.toggle("dark");
+    localStorage.setItem("outport-theme", isDark ? "dark" : "light");
+  });
 
   var showInactive = false;
   var lastData = null;
