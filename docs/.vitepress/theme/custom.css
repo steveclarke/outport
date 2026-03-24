@@ -87,6 +87,9 @@ h1, h2, h3, h4, h5, h6,
   display: flex;
   align-items: center;
 }
+.VPNavBarAppearance.VPNavBarAppearance {
+  display: flex;
+}
 .VPNavBarExtra.VPNavBarExtra {
   display: none;
 }
@@ -124,6 +127,11 @@ h1, h2, h3, h4, h5, h6,
   border-top: 1px solid var(--vp-c-divider);
 }
 .site-footer a { color: var(--outport-accent); text-decoration: none; }
+
+/* Dashboard screenshot swap */
+.screenshot-dark { display: none; }
+html.dark .screenshot-light { display: none; }
+html.dark .screenshot-dark { display: block; }
 .nfld-flag {
   display: inline-block;
   width: 20px;

@@ -120,8 +120,17 @@
       </p>
       <div class="dashboard-frame">
         <img
-          src="/dashboard-screenshot.png"
+          class="screenshot-light"
+          src="/dashboard-light.png"
           alt="Outport live dashboard showing projects with .test URLs, ports, and health status"
+          width="1200"
+          height="800"
+          loading="lazy"
+        />
+        <img
+          class="screenshot-dark"
+          src="/dashboard-dark.png"
+          alt="Outport live dashboard in dark mode showing projects with .test URLs, ports, and health status"
           width="1200"
           height="800"
           loading="lazy"

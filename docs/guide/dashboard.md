@@ -6,7 +6,8 @@ description: The Outport dashboard at outport.test shows all your projects, serv
 
 The Outport daemon serves a live web dashboard at [https://outport.test](https://outport.test). It shows all your registered projects, services, ports, and health status in one place — no terminal needed.
 
-![Outport dashboard showing projects with service health status](/dashboard-screenshot.png)
+<img class="screenshot-light" src="/dashboard-light.png" alt="Outport dashboard showing projects with service health status">
+<img class="screenshot-dark" src="/dashboard-dark.png" alt="Outport dashboard in dark mode showing projects with service health status">
 
 ## Prerequisites
 

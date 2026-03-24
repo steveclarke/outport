@@ -83,7 +83,7 @@ See the [Configuration reference](https://outport.dev/reference/configuration) f
 
 Open `https://outport.test` for a live dashboard showing all your projects, services, ports, and health status. Updates in real-time as you run `outport up` across projects.
 
-<img src="docs/public/dashboard-screenshot.png" width="720" alt="Outport dashboard showing projects with service health status">
+<img src="docs/public/dashboard-light.png" width="720" alt="Outport dashboard showing projects with service health status">
 
 See the [Dashboard guide](https://outport.dev/guide/dashboard).
 
