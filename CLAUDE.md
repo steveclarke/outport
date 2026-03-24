@@ -75,7 +75,7 @@ Version injected via ldflags: `-X github.com/steveclarke/outport/cmd.version={{.
 
 - **Users:** Solo developer managing multiple local projects. Primary job: find a `.test` URL and click it. Secondary: glance at service health.
 - **Brand personality:** Reliable, clean, smart.
-- **Aesthetic:** Polished product (not a dev utility dump). Reference: Docker Desktop containers view. Light and dark mode.
+- **Aesthetic:** Polished product (not a dev utility dump). Reference: Docker Desktop containers view.
 - **Colors:** Navy `#031C54` (headings), steel blue `#2E86AB` (links/accent), warm cream `#faf8f5` (background), `#f5f0e8` (soft bg), white (surface).
 - **Fonts:** Barlow Bold (headings, tight letter-spacing), Inter (body), SF Mono/Fira Code (mono).
 - **Principles:** URL-first, full-width no waste, on-brand, progressive disclosure, polished not utilitarian.
