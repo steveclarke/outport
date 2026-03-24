@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/outport-app/outport/internal/registry"
+	"github.com/steveclarke/outport/internal/registry"
 )
 
 const consonants = "bcdfghjkmnpqrstvwxz"

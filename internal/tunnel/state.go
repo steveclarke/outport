@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"syscall"
 
-	"github.com/outport-app/outport/internal/paths"
+	"github.com/steveclarke/outport/internal/paths"
 )
 
 // StateFilename is the name of the tunnel state file in the data directory.

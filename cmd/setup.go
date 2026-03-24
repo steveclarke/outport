@@ -5,9 +5,9 @@ import (
 	"fmt"
 
 	"charm.land/huh/v2"
-	"github.com/outport-app/outport/internal/certmanager"
-	"github.com/outport-app/outport/internal/platform"
-	"github.com/outport-app/outport/internal/ui"
+	"github.com/steveclarke/outport/internal/certmanager"
+	"github.com/steveclarke/outport/internal/platform"
+	"github.com/steveclarke/outport/internal/ui"
 	"github.com/spf13/cobra"
 )
 

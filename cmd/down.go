@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/outport-app/outport/internal/envpath"
-	"github.com/outport-app/outport/internal/ui"
+	"github.com/steveclarke/outport/internal/envpath"
+	"github.com/steveclarke/outport/internal/ui"
 	"github.com/spf13/cobra"
 )
 

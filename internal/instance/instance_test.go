@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/outport-app/outport/internal/registry"
+	"github.com/steveclarke/outport/internal/registry"
 )
 
 func buildTestRegistry(projects map[string]struct{ dir string }) *registry.Registry {

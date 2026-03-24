@@ -21,14 +21,10 @@ brew upgrade outport
 Requires [Go 1.26+](https://go.dev/dl/):
 
 ```bash
-go install github.com/outport-app/outport@latest
+go install github.com/steveclarke/outport@latest
 ```
 
 This installs to `$GOPATH/bin`. Make sure it's in your `PATH`.
-
-::: info
-The Go module path (`github.com/outport-app/outport`) differs from the GitHub repository URL (`github.com/steveclarke/outport`). Use the module path for `go install`.
-:::
 
 ## Build Locally
 

@@ -7,9 +7,9 @@ import (
 	"slices"
 
 	"charm.land/lipgloss/v2"
-	"github.com/outport-app/outport/internal/config"
-	"github.com/outport-app/outport/internal/ui"
-	"github.com/outport-app/outport/internal/urlutil"
+	"github.com/steveclarke/outport/internal/config"
+	"github.com/steveclarke/outport/internal/ui"
+	"github.com/steveclarke/outport/internal/urlutil"
 )
 
 // JSON types shared across multiple commands (up, ports, status, share).

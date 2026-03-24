@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/outport-app/outport/internal/certmanager"
-	"github.com/outport-app/outport/internal/platform"
-	"github.com/outport-app/outport/internal/portcheck"
-	"github.com/outport-app/outport/internal/registry"
-	"github.com/outport-app/outport/internal/ui"
+	"github.com/steveclarke/outport/internal/certmanager"
+	"github.com/steveclarke/outport/internal/platform"
+	"github.com/steveclarke/outport/internal/portcheck"
+	"github.com/steveclarke/outport/internal/registry"
+	"github.com/steveclarke/outport/internal/ui"
 	"github.com/spf13/cobra"
 )
 

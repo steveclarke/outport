@@ -10,7 +10,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/outport-app/outport/internal/tunnel"
+	"github.com/steveclarke/outport/internal/tunnel"
 )
 
 // Provider implements tunnel.Provider using Cloudflare quick tunnels.

@@ -7,10 +7,10 @@ import (
 	"runtime"
 	"slices"
 
-	"github.com/outport-app/outport/internal/certmanager"
-	"github.com/outport-app/outport/internal/config"
-	"github.com/outport-app/outport/internal/registry"
-	"github.com/outport-app/outport/internal/urlutil"
+	"github.com/steveclarke/outport/internal/certmanager"
+	"github.com/steveclarke/outport/internal/config"
+	"github.com/steveclarke/outport/internal/registry"
+	"github.com/steveclarke/outport/internal/urlutil"
 	"github.com/spf13/cobra"
 )
 

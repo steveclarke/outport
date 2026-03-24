@@ -10,13 +10,13 @@ import (
 	"time"
 
 	"charm.land/lipgloss/v2"
-	"github.com/outport-app/outport/internal/certmanager"
-	"github.com/outport-app/outport/internal/config"
-	"github.com/outport-app/outport/internal/envpath"
-	"github.com/outport-app/outport/internal/registry"
-	"github.com/outport-app/outport/internal/tunnel"
-	"github.com/outport-app/outport/internal/tunnel/cloudflare"
-	"github.com/outport-app/outport/internal/ui"
+	"github.com/steveclarke/outport/internal/certmanager"
+	"github.com/steveclarke/outport/internal/config"
+	"github.com/steveclarke/outport/internal/envpath"
+	"github.com/steveclarke/outport/internal/registry"
+	"github.com/steveclarke/outport/internal/tunnel"
+	"github.com/steveclarke/outport/internal/tunnel/cloudflare"
+	"github.com/steveclarke/outport/internal/ui"
 	"github.com/spf13/cobra"
 )
 

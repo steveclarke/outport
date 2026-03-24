@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/outport-app/outport/internal/config"
+	"github.com/steveclarke/outport/internal/config"
 )
 
 func TestProjectChecksValidConfig(t *testing.T) {

@@ -3,7 +3,7 @@ package registry
 import (
 	"path/filepath"
 
-	"github.com/outport-app/outport/internal/paths"
+	"github.com/steveclarke/outport/internal/paths"
 )
 
 func DefaultPath() (string, error) {

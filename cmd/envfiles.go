@@ -9,11 +9,11 @@ import (
 	"slices"
 
 	"charm.land/lipgloss/v2"
-	"github.com/outport-app/outport/internal/allocation"
-	"github.com/outport-app/outport/internal/config"
-	"github.com/outport-app/outport/internal/dotenv"
-	"github.com/outport-app/outport/internal/envpath"
-	"github.com/outport-app/outport/internal/ui"
+	"github.com/steveclarke/outport/internal/allocation"
+	"github.com/steveclarke/outport/internal/config"
+	"github.com/steveclarke/outport/internal/dotenv"
+	"github.com/steveclarke/outport/internal/envpath"
+	"github.com/steveclarke/outport/internal/ui"
 )
 
 // handleConfirmError translates envpath confirmation errors into cmd-layer errors.

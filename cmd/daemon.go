@@ -7,9 +7,9 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/outport-app/outport/internal/certmanager"
-	"github.com/outport-app/outport/internal/daemon"
-	"github.com/outport-app/outport/internal/registry"
+	"github.com/steveclarke/outport/internal/certmanager"
+	"github.com/steveclarke/outport/internal/daemon"
+	"github.com/steveclarke/outport/internal/registry"
 	"github.com/spf13/cobra"
 )
 

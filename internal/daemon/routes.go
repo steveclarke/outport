@@ -9,8 +9,8 @@ import (
 	"sync"
 
 	"github.com/fsnotify/fsnotify"
-	"github.com/outport-app/outport/internal/registry"
-	"github.com/outport-app/outport/internal/tunnel"
+	"github.com/steveclarke/outport/internal/registry"
+	"github.com/steveclarke/outport/internal/tunnel"
 )
 
 // RouteTable is a thread-safe hostname -> port mapping.

@@ -9,11 +9,11 @@ import (
 	"time"
 
 	"charm.land/lipgloss/v2"
-	"github.com/outport-app/outport/internal/lanip"
-	"github.com/outport-app/outport/internal/qrcode"
-	"github.com/outport-app/outport/internal/registry"
-	"github.com/outport-app/outport/internal/tunnel"
-	"github.com/outport-app/outport/internal/ui"
+	"github.com/steveclarke/outport/internal/lanip"
+	"github.com/steveclarke/outport/internal/qrcode"
+	"github.com/steveclarke/outport/internal/registry"
+	"github.com/steveclarke/outport/internal/tunnel"
+	"github.com/steveclarke/outport/internal/ui"
 	"github.com/spf13/cobra"
 )
 

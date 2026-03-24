@@ -9,11 +9,11 @@ import (
 	"slices"
 	"sort"
 
-	"github.com/outport-app/outport/internal/lanip"
-	"github.com/outport-app/outport/internal/qrcode"
-	"github.com/outport-app/outport/internal/registry"
-	"github.com/outport-app/outport/internal/tunnel"
-	"github.com/outport-app/outport/internal/urlutil"
+	"github.com/steveclarke/outport/internal/lanip"
+	"github.com/steveclarke/outport/internal/qrcode"
+	"github.com/steveclarke/outport/internal/registry"
+	"github.com/steveclarke/outport/internal/tunnel"
+	"github.com/steveclarke/outport/internal/urlutil"
 )
 
 // AllocProvider gives access to the current registry state.

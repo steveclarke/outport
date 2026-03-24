@@ -1,4 +1,4 @@
-module github.com/outport-app/outport
+module github.com/steveclarke/outport
 
 go 1.26.1
 

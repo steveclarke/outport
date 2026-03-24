@@ -4,7 +4,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/outport-app/outport/internal/portcheck"
+	"github.com/steveclarke/outport/internal/portcheck"
 )
 
 const healthInterval = 3 * time.Second

@@ -8,8 +8,8 @@ import (
 	"net/http"
 
 	"github.com/miekg/dns"
-	"github.com/outport-app/outport/internal/dashboard"
-	"github.com/outport-app/outport/internal/registry"
+	"github.com/steveclarke/outport/internal/dashboard"
+	"github.com/steveclarke/outport/internal/registry"
 )
 
 // DaemonConfig holds configuration for the daemon process.

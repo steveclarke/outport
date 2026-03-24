@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/outport-app/outport/internal/paths"
+	"github.com/steveclarke/outport/internal/paths"
 )
 
 // DataDir returns ~/.local/share/outport/ (persistent, machine-specific data).

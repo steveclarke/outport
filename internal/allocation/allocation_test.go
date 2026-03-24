@@ -3,7 +3,7 @@ package allocation
 import (
 	"testing"
 
-	"github.com/outport-app/outport/internal/config"
+	"github.com/steveclarke/outport/internal/config"
 )
 
 func TestBuild(t *testing.T) {

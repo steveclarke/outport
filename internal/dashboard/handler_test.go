@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/outport-app/outport/internal/registry"
+	"github.com/steveclarke/outport/internal/registry"
 )
 
 type mockAllocProvider struct {

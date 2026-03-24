@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/outport-app/outport/cmd"
+	"github.com/steveclarke/outport/cmd"
 )
 
 func main() {

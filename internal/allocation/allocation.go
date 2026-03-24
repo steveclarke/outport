@@ -7,9 +7,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/outport-app/outport/internal/config"
-	"github.com/outport-app/outport/internal/registry"
-	"github.com/outport-app/outport/internal/urlutil"
+	"github.com/steveclarke/outport/internal/config"
+	"github.com/steveclarke/outport/internal/registry"
+	"github.com/steveclarke/outport/internal/urlutil"
 )
 
 // Build constructs a registry Allocation from config, instance, directory, and ports.

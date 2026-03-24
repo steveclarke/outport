@@ -5,9 +5,9 @@ import (
 	"maps"
 	"slices"
 
-	"github.com/outport-app/outport/internal/config"
-	"github.com/outport-app/outport/internal/portcheck"
-	"github.com/outport-app/outport/internal/registry"
+	"github.com/steveclarke/outport/internal/config"
+	"github.com/steveclarke/outport/internal/portcheck"
+	"github.com/steveclarke/outport/internal/registry"
 )
 
 // checkPortStatus reports whether an allocated port is in use (service running)

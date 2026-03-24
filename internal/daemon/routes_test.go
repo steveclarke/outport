@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/outport-app/outport/internal/registry"
+	"github.com/steveclarke/outport/internal/registry"
 )
 
 func TestBuildRoutes(t *testing.T) {

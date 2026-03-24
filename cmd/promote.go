@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/outport-app/outport/internal/allocation"
-	"github.com/outport-app/outport/internal/certmanager"
-	"github.com/outport-app/outport/internal/envpath"
-	"github.com/outport-app/outport/internal/instance"
-	"github.com/outport-app/outport/internal/registry"
-	"github.com/outport-app/outport/internal/ui"
+	"github.com/steveclarke/outport/internal/allocation"
+	"github.com/steveclarke/outport/internal/certmanager"
+	"github.com/steveclarke/outport/internal/envpath"
+	"github.com/steveclarke/outport/internal/instance"
+	"github.com/steveclarke/outport/internal/registry"
+	"github.com/steveclarke/outport/internal/ui"
 	"github.com/spf13/cobra"
 )
 

@@ -15,8 +15,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/outport-app/outport/internal/certmanager"
-	"github.com/outport-app/outport/internal/registry"
+	"github.com/steveclarke/outport/internal/certmanager"
+	"github.com/steveclarke/outport/internal/registry"
 )
 
 func TestDaemonStartAndShutdown(t *testing.T) {

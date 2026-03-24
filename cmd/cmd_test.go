@@ -9,11 +9,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/outport-app/outport/internal/allocation"
-	"github.com/outport-app/outport/internal/certmanager"
-	"github.com/outport-app/outport/internal/config"
-	"github.com/outport-app/outport/internal/registry"
-	"github.com/outport-app/outport/internal/tunnel"
+	"github.com/steveclarke/outport/internal/allocation"
+	"github.com/steveclarke/outport/internal/certmanager"
+	"github.com/steveclarke/outport/internal/config"
+	"github.com/steveclarke/outport/internal/registry"
+	"github.com/steveclarke/outport/internal/tunnel"
 	"github.com/spf13/cobra"
 )
 

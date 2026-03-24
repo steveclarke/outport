@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/outport-app/outport/internal/config"
+	"github.com/steveclarke/outport/internal/config"
 	"github.com/spf13/cobra"
 )
 

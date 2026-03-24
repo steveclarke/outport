@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/outport-app/outport/internal/config"
-	"github.com/outport-app/outport/internal/instance"
-	"github.com/outport-app/outport/internal/registry"
+	"github.com/steveclarke/outport/internal/config"
+	"github.com/steveclarke/outport/internal/instance"
+	"github.com/steveclarke/outport/internal/registry"
 )
 
 type projectContext struct {
