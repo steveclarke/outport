@@ -26,6 +26,7 @@ func TestGenerateCA(t *testing.T) {
 	block, _ := pem.Decode(certData)
 	if block == nil {
 		t.Fatal("no PEM block in cert")
+		return
 	}
 	cert, err := x509.ParseCertificate(block.Bytes)
 	if err != nil {
@@ -90,6 +91,7 @@ func TestLoadCA(t *testing.T) {
 	}
 	if cert == nil {
 		t.Fatal("cert is nil")
+		return
 	}
 	if key == nil {
 		t.Fatal("key is nil")

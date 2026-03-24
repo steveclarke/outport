@@ -16,6 +16,7 @@ func TestNewRegistry_CreatesFile(t *testing.T) {
 	}
 	if reg == nil {
 		t.Fatal("registry is nil")
+		return
 	}
 	if len(reg.Projects) != 0 {
 		t.Errorf("new registry should have 0 projects, got %d", len(reg.Projects))

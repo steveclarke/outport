@@ -41,6 +41,7 @@ func TestReadState_ReturnsWrittenData(t *testing.T) {
 	}
 	if state == nil {
 		t.Fatal("expected non-nil state")
+		return
 	}
 	url, ok := state.Tunnels["myapp/main"]["rails"]
 	if !ok || url != "https://abc-123.trycloudflare.com" {
