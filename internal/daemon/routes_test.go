@@ -17,7 +17,6 @@ func TestBuildRoutes(t *testing.T) {
 		ProjectDir: "/src/myapp",
 		Ports:      map[string]int{"rails": 24920, "postgres": 5432},
 		Hostnames:  map[string]string{"rails": "myapp.test"},
-		Protocols:  map[string]string{"rails": "http"},
 	})
 
 	routes := BuildRoutes(reg)
@@ -42,28 +41,12 @@ func TestBuildRoutesSkipsNilHostnames(t *testing.T) {
 	}
 }
 
-func TestBuildRoutesSkipsNonHTTPProtocols(t *testing.T) {
-	reg := &registry.Registry{Projects: make(map[string]registry.Allocation)}
-	reg.Set("myapp", "main", registry.Allocation{
-		ProjectDir: "/src/myapp",
-		Ports:      map[string]int{"redis": 16379},
-		Hostnames:  map[string]string{"redis": "redis.myapp.test"},
-		Protocols:  map[string]string{"redis": "tcp"},
-	})
-
-	routes := BuildRoutes(reg)
-	if len(routes) != 0 {
-		t.Errorf("expected 0 routes, got %d", len(routes))
-	}
-}
-
-func TestBuildRoutesIncludesHTTPS(t *testing.T) {
+func TestBuildRoutesIncludesAllHostnames(t *testing.T) {
 	reg := &registry.Registry{Projects: make(map[string]registry.Allocation)}
 	reg.Set("myapp", "main", registry.Allocation{
 		ProjectDir: "/src/myapp",
 		Ports:      map[string]int{"web": 24920},
 		Hostnames:  map[string]string{"web": "myapp.test"},
-		Protocols:  map[string]string{"web": "https"},
 	})
 
 	routes := BuildRoutes(reg)
@@ -78,13 +61,11 @@ func TestBuildRoutesMultipleProjects(t *testing.T) {
 		ProjectDir: "/src/app1",
 		Ports:      map[string]int{"web": 10001},
 		Hostnames:  map[string]string{"web": "app1.test"},
-		Protocols:  map[string]string{"web": "http"},
 	})
 	reg.Set("app2", "main", registry.Allocation{
 		ProjectDir: "/src/app2",
 		Ports:      map[string]int{"web": 10002},
 		Hostnames:  map[string]string{"web": "app2.test"},
-		Protocols:  map[string]string{"web": "http"},
 	})
 
 	routes := BuildRoutes(reg)
@@ -160,7 +141,6 @@ func TestWatchAndRebuild(t *testing.T) {
 		ProjectDir: "/src/app1",
 		Ports:      map[string]int{"web": 10001},
 		Hostnames:  map[string]string{"web": "app1.test"},
-		Protocols:  map[string]string{"web": "http"},
 	})
 	writeRegistryJSON(t, regPath, reg)
 
@@ -199,7 +179,6 @@ func TestWatchAndRebuild(t *testing.T) {
 		ProjectDir: "/src/app2",
 		Ports:      map[string]int{"web": 10002},
 		Hostnames:  map[string]string{"web": "app2.test"},
-		Protocols:  map[string]string{"web": "http"},
 	})
 	writeRegistryJSON(t, regPath, reg)
 
@@ -253,8 +232,7 @@ func TestRouteTableAllocations(t *testing.T) {
 			ProjectDir: "/src/myapp",
 			Ports:      map[string]int{"web": 10001, "postgres": 5432},
 			Hostnames:  map[string]string{"web": "myapp.test"},
-			Protocols:  map[string]string{"web": "http"},
-		},
+			},
 	}
 	rt.UpdateWithAllocations(map[string]int{"myapp.test": 10001}, allocs)
 

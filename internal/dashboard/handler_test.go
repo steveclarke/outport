@@ -34,8 +34,7 @@ func TestHandlerAPIStatus(t *testing.T) {
 				ProjectDir: "/home/dev/myapp",
 				Ports:      map[string]int{"web": 13000, "postgres": 15432},
 				Hostnames:  map[string]string{"web": "myapp.test"},
-				Protocols:  map[string]string{"web": "http"},
-			},
+				},
 		},
 	}
 
@@ -113,14 +112,12 @@ func TestHandlerAPIStatusMultipleInstances(t *testing.T) {
 				ProjectDir: "/home/dev/myapp",
 				Ports:      map[string]int{"web": 13000},
 				Hostnames:  map[string]string{"web": "myapp.test"},
-				Protocols:  map[string]string{"web": "http"},
-			},
+				},
 			"myapp/bxcf": {
 				ProjectDir: "/home/dev/myapp-bxcf",
 				Ports:      map[string]int{"web": 13100},
 				Hostnames:  map[string]string{"web": "myapp-bxcf.test"},
-				Protocols:  map[string]string{"web": "http"},
-			},
+				},
 		},
 	}
 
@@ -204,8 +201,7 @@ func TestHandlerStatusHTTPScheme(t *testing.T) {
 				ProjectDir: "/home/dev/myapp",
 				Ports:      map[string]int{"web": 13000},
 				Hostnames:  map[string]string{"web": "myapp.test"},
-				Protocols:  map[string]string{"web": "http"},
-			},
+				},
 		},
 	}
 
@@ -234,7 +230,6 @@ func TestHandlerStatusNoURLForNonWebServices(t *testing.T) {
 				ProjectDir: "/home/dev/myapp",
 				Ports:      map[string]int{"redis": 16379},
 				Hostnames:  map[string]string{},
-				Protocols:  map[string]string{},
 			},
 		},
 	}
@@ -265,7 +260,6 @@ func TestHandlerAPIStatusIncludesEnvVar(t *testing.T) {
 			ProjectDir: "/home/dev/myapp",
 			Ports:      map[string]int{"web": 10001, "postgres": 15432},
 			Hostnames:  map[string]string{"web": "myapp.test"},
-			Protocols:  map[string]string{"web": "http"},
 			EnvVars:    map[string]string{"web": "PORT", "postgres": "DB_PORT"},
 		},
 	}

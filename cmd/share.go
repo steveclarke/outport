@@ -150,23 +150,23 @@ func resolveShareServices(ctx *projectContext, args []string) ([]string, error) 
 			if !ok {
 				return nil, FlagErrorf("unknown service %q", name)
 			}
-			if svc.Protocol != "http" && svc.Protocol != "https" {
-				return nil, FlagErrorf("service %q does not have an HTTP protocol and cannot be shared", name)
+			if svc.Hostname == "" {
+				return nil, FlagErrorf("service %q has no hostname and cannot be shared", name)
 			}
 		}
 		sort.Strings(args)
 		return args, nil
 	}
 
-	// Default: all HTTP services
+	// Default: all web services (those with a hostname)
 	var services []string
 	for name, svc := range ctx.Cfg.Services {
-		if svc.Protocol == "http" || svc.Protocol == "https" {
+		if svc.Hostname != "" {
 			services = append(services, name)
 		}
 	}
 	if len(services) == 0 {
-		return nil, fmt.Errorf("no shareable services found. Add 'protocol: http' to a service in outport.yml")
+		return nil, fmt.Errorf("no shareable services found. Add 'hostname' to a service in outport.yml")
 	}
 	sort.Strings(services)
 	return services, nil

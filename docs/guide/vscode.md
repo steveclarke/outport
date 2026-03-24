@@ -46,7 +46,7 @@ A status bar item shows your project name and instance at a glance. Click it to 
 
 When editing `outport.yml`, you get:
 
-- **Autocomplete** for service fields (`env_var`, `hostname`, `protocol`, `preferred_port`, `env_file`)
+- **Autocomplete** for service fields (`env_var`, `hostname`, `preferred_port`, `env_file`)
 - **Validation** for required fields and value formats
 - **Hover documentation** for config options
 

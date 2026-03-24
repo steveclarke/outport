@@ -34,17 +34,15 @@ name: %s
 services:
   web:
     env_var: PORT
-    protocol: http
     hostname: %s.test
 #
 #  postgres:
 #    env_var: DB_PORT
 #
-# Multiple HTTP services get subdomain hostnames:
+# Multiple web services get subdomain hostnames:
 #
 #  frontend:
 #    env_var: FRONTEND_PORT
-#    protocol: http
 #    hostname: app.%s.test
 #
 # Write to a different .env file (default is .env in project root):

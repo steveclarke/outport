@@ -46,26 +46,26 @@ func runQR(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("No ports allocated. Run 'outport up' first.")
 	}
 
-	services := resolveHTTPServices(ctx, alloc)
+	services := resolveWebServices(ctx, alloc)
 
 	if len(args) == 1 {
 		name := args[0]
-		if _, ok := ctx.Cfg.Services[name]; !ok {
+		svc, ok := ctx.Cfg.Services[name]
+		if !ok {
 			return fmt.Errorf("Service %q not found in outport.yml.", name)
 		}
 		port, ok := alloc.Ports[name]
 		if !ok {
 			return fmt.Errorf("No port allocated for %q. Run 'outport up' first.", name)
 		}
-		protocol := ctx.Cfg.Services[name].Protocol
-		if protocol != "http" && protocol != "https" {
-			return fmt.Errorf("Service %q has no HTTP protocol. QR codes are only available for HTTP services.", name)
+		if svc.Hostname == "" {
+			return fmt.Errorf("Service %q has no hostname. QR codes are only available for web services.", name)
 		}
 		services = map[string]int{name: port}
 	}
 
 	if len(services) == 0 {
-		fmt.Fprintln(cmd.OutOrStdout(), "No HTTP services found. Add 'protocol: http' to services in outport.yml.")
+		fmt.Fprintln(cmd.OutOrStdout(), "No web services found. Add 'hostname' to services in outport.yml.")
 		return nil
 	}
 
@@ -150,11 +150,11 @@ func printTunnelQR(cmd *cobra.Command, ctx *projectContext, services map[string]
 	return nil
 }
 
-// resolveHTTPServices returns a map of service name -> port for all HTTP services.
-func resolveHTTPServices(ctx *projectContext, alloc registry.Allocation) map[string]int {
+// resolveWebServices returns a map of service name -> port for all web services (those with a hostname).
+func resolveWebServices(ctx *projectContext, alloc registry.Allocation) map[string]int {
 	services := make(map[string]int)
 	for name, svc := range ctx.Cfg.Services {
-		if svc.Protocol == "http" || svc.Protocol == "https" {
+		if svc.Hostname != "" {
 			if port, ok := alloc.Ports[name]; ok {
 				services[name] = port
 			}

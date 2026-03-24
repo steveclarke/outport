@@ -18,12 +18,6 @@ This checks DNS, the daemon, TLS certificates, the registry, and (if you're in a
 
 Pin [https://outport.test](https://outport.test) in your browser for a live view of all your projects and services. It shows which services are up or down and gives you clickable links to every `.test` URL. The dashboard updates automatically via server-sent events — no need to refresh. See the [Dashboard guide](/guide/dashboard) for details.
 
-## protocol: http vs https
-
-Set `protocol: http` even though your `.test` URLs show `https://`. The `protocol` field describes what your app speaks — your Rails server, Nuxt dev server, and Mailpit all listen on plain HTTP. The outport daemon terminates TLS at the proxy and forwards to your app over HTTP.
-
-The URLs automatically show `https://` when the local CA is installed (after `outport system start`). You don't need to change `protocol` to make that happen.
-
 ## Daemon not running
 
 If `outport up` shows this hint:

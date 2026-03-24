@@ -29,7 +29,6 @@ func TestDaemonStartAndShutdown(t *testing.T) {
 		ProjectDir: "/src/app1",
 		Ports:      map[string]int{"web": 10001},
 		Hostnames:  map[string]string{"web": "app1.test"},
-		Protocols:  map[string]string{"web": "http"},
 	})
 	data, err := json.MarshalIndent(reg, "", "  ")
 	if err != nil {
@@ -124,7 +123,6 @@ func TestDaemonHTTPS(t *testing.T) {
 		ProjectDir: "/src/app1",
 		Ports:      map[string]int{"web": backendPort},
 		Hostnames:  map[string]string{"web": "app1.test"},
-		Protocols:  map[string]string{"web": "https"},
 	})
 	data, _ := json.MarshalIndent(reg, "", "  ")
 	if err := os.WriteFile(regPath, data, 0644); err != nil {
@@ -268,7 +266,6 @@ func TestDaemonHTTPProxyWithoutTLS(t *testing.T) {
 		ProjectDir: "/src/app1",
 		Ports:      map[string]int{"web": backendPort},
 		Hostnames:  map[string]string{"web": "app1.test"},
-		Protocols:  map[string]string{"web": "http"},
 	})
 	data, _ := json.MarshalIndent(reg, "", "  ")
 	if err := os.WriteFile(regPath, data, 0644); err != nil {
@@ -322,7 +319,6 @@ func TestDaemonServesDashboard(t *testing.T) {
 		ProjectDir: "/src/myapp",
 		Ports:      map[string]int{"web": 10001},
 		Hostnames:  map[string]string{"web": "myapp.test"},
-		Protocols:  map[string]string{"web": "http"},
 	})
 	writeRegistryJSON(t, regPath, reg)
 
@@ -360,7 +356,6 @@ func TestDaemonAPIStatus(t *testing.T) {
 		ProjectDir: "/src/myapp",
 		Ports:      map[string]int{"web": 10001},
 		Hostnames:  map[string]string{"web": "myapp.test"},
-		Protocols:  map[string]string{"web": "http"},
 	})
 	writeRegistryJSON(t, regPath, reg)
 

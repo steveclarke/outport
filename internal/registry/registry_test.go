@@ -122,7 +122,6 @@ func TestAllocationWithHostnames(t *testing.T) {
 		ProjectDir: "/src/myapp",
 		Ports:      map[string]int{"rails": 24920},
 		Hostnames:  map[string]string{"rails": "myapp.test"},
-		Protocols:  map[string]string{"rails": "http"},
 	})
 
 	err := reg.Save()
@@ -141,9 +140,6 @@ func TestAllocationWithHostnames(t *testing.T) {
 	}
 	if alloc.Hostnames["rails"] != "myapp.test" {
 		t.Errorf("hostname: got %q, want %q", alloc.Hostnames["rails"], "myapp.test")
-	}
-	if alloc.Protocols["rails"] != "http" {
-		t.Errorf("protocol: got %q, want %q", alloc.Protocols["rails"], "http")
 	}
 }
 
