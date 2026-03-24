@@ -12,7 +12,6 @@ type Allocation struct {
 	ProjectDir            string            `json:"project_dir"`
 	Ports                 map[string]int    `json:"ports"`
 	Hostnames             map[string]string `json:"hostnames,omitempty"`
-	Protocols             map[string]string `json:"protocols,omitempty"`
 	EnvVars               map[string]string `json:"env_vars,omitempty"`
 	ApprovedExternalFiles []string          `json:"approved_external_files,omitempty"`
 }
@@ -63,9 +62,6 @@ func Load(path string) (*Registry, error) {
 	for key, alloc := range reg.Projects {
 		if alloc.Hostnames == nil {
 			alloc.Hostnames = make(map[string]string)
-		}
-		if alloc.Protocols == nil {
-			alloc.Protocols = make(map[string]string)
 		}
 		reg.Projects[key] = alloc
 	}

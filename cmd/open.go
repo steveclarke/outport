@@ -16,8 +16,8 @@ import (
 
 var openCmd = &cobra.Command{
 	Use:     "open [service]",
-	Short:   "Open HTTP services in the browser",
-	Long:    "Opens all HTTP/HTTPS services for the current project in your default browser. Specify a service name to open just one.",
+	Short:   "Open web services in the browser",
+	Long:    "Opens all web services (those with a hostname) for the current project in your default browser. Specify a service name to open just one.",
 	GroupID: "project",
 	Args:    MaximumArgs(1, "accepts at most one service name"),
 	RunE:    runOpen,
@@ -47,19 +47,14 @@ func runOpen(cmd *cobra.Command, args []string) error {
 	opened := 0
 	for _, svcName := range slices.Sorted(maps.Keys(ctx.Cfg.Services)) {
 		svc := ctx.Cfg.Services[svcName]
-		var url string
-		if h, ok := alloc.Hostnames[svcName]; ok {
-			protocol := svc.Protocol
-			if protocol == "" {
-				continue
-			}
-			url = fmt.Sprintf("%s://%s", urlutil.EffectiveScheme(protocol, h, httpsEnabled), h)
-		} else {
-			url = urlutil.ServiceURL(svc.Protocol, svc.Hostname, alloc.Ports[svcName], httpsEnabled)
-		}
-		if url == "" {
+		if svc.Hostname == "" {
 			continue
 		}
+		h := svc.Hostname
+		if allocated, ok := alloc.Hostnames[svcName]; ok {
+			h = allocated
+		}
+		url := fmt.Sprintf("%s://%s", urlutil.EffectiveScheme(h, httpsEnabled), h)
 		if err := openBrowser(url); err != nil {
 			fmt.Fprintf(cmd.ErrOrStderr(), "Could not open %s: %v\n", svcName, err)
 			continue
@@ -69,7 +64,7 @@ func runOpen(cmd *cobra.Command, args []string) error {
 	}
 
 	if opened == 0 {
-		fmt.Fprintln(cmd.OutOrStdout(), "No HTTP services found. Add 'protocol: http' to services in outport.yml.")
+		fmt.Fprintln(cmd.OutOrStdout(), "No web services found. Add 'hostname' to services in outport.yml.")
 	}
 
 	return nil
@@ -81,23 +76,20 @@ func openService(cmd *cobra.Command, cfg *config.Config, alloc registry.Allocati
 		return fmt.Errorf("Service %q not found in outport.yml.", name)
 	}
 
-	port, ok := alloc.Ports[name]
+	_, ok = alloc.Ports[name]
 	if !ok {
 		return fmt.Errorf("No port allocated for %q. Run 'outport up' first.", name)
 	}
 
-	var url string
-	if h, hok := alloc.Hostnames[name]; hok {
-		if svc.Protocol == "" {
-			return fmt.Errorf("Service %q has no protocol set. Add 'protocol: http' to open it in the browser.", name)
-		}
-		url = fmt.Sprintf("%s://%s", urlutil.EffectiveScheme(svc.Protocol, h, httpsEnabled), h)
-	} else {
-		url = urlutil.ServiceURL(svc.Protocol, svc.Hostname, port, httpsEnabled)
+	if svc.Hostname == "" {
+		return fmt.Errorf("Service %q has no hostname. Add 'hostname' to open it in the browser.", name)
 	}
-	if url == "" {
-		return fmt.Errorf("Service %q has no protocol set. Add 'protocol: http' to open it in the browser.", name)
+
+	h := svc.Hostname
+	if allocated, hok := alloc.Hostnames[name]; hok {
+		h = allocated
 	}
+	url := fmt.Sprintf("%s://%s", urlutil.EffectiveScheme(h, httpsEnabled), h)
 
 	if err := openBrowser(url); err != nil {
 		return fmt.Errorf("Could not open browser: %w.", err)

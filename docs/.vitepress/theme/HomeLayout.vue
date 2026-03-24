@@ -147,11 +147,9 @@ services:
   rails:
     env_var: PORT
     hostname: myapp
-    protocol: http
   frontend:
     env_var: NUXT_PORT
     hostname: myapp-frontend
-    protocol: http
   postgres:
     env_var: DATABASE_PORT
 computed:

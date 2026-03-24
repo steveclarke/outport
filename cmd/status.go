@@ -135,8 +135,7 @@ func printStatusJSON(cmd *cobra.Command, reg *registry.Registry, projects map[st
 			s := svcJSON{Port: port}
 			if cfg != nil {
 				if svc, ok := cfg.Services[svcName]; ok {
-					s.Protocol = svc.Protocol
-					s.URL = urlutil.ServiceURL(svc.Protocol, resolvedHostname(svc, alloc.Hostnames, svcName), port, httpsEnabled)
+					s.URL = urlutil.ServiceURL(resolvedHostname(svc, alloc.Hostnames, svcName), port, httpsEnabled)
 				}
 			}
 			if portStatus != nil {

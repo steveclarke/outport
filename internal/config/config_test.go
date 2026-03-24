@@ -123,29 +123,6 @@ func TestLoad_NoServices(t *testing.T) {
 	}
 }
 
-func TestLoad_WithProtocol(t *testing.T) {
-	dir := writeConfig(t, `name: myapp
-services:
-  web:
-    preferred_port: 3000
-    env_var: PORT
-    protocol: http
-  postgres:
-    preferred_port: 5432
-    env_var: DATABASE_PORT
-`)
-	cfg, err := Load(dir)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if cfg.Services["web"].Protocol != "http" {
-		t.Errorf("web.Protocol = %q, want %q", cfg.Services["web"].Protocol, "http")
-	}
-	if cfg.Services["postgres"].Protocol != "" {
-		t.Errorf("postgres.Protocol = %q, want empty", cfg.Services["postgres"].Protocol)
-	}
-}
-
 func TestLoad_WithEnvFile(t *testing.T) {
 	dir := writeConfig(t, `name: myapp
 services:
@@ -250,11 +227,9 @@ func TestLoad_WithComputedValues(t *testing.T) {
 services:
   rails:
     env_var: RAILS_PORT
-    protocol: http
     env_file: backend/.env
   web:
     env_var: WEB_PORT
-    protocol: http
     env_file: frontend/.env
 
 computed:
@@ -428,7 +403,6 @@ func TestLoad_WithHostname(t *testing.T) {
 services:
   web:
     env_var: PORT
-    protocol: http
     hostname: myapp.localhost
   postgres:
     env_var: DB_PORT
@@ -719,27 +693,6 @@ func TestResolveComputed_EmptyMap(t *testing.T) {
 
 // --- Hostname Validation ---
 
-func TestHostnameRequiresHTTPProtocol(t *testing.T) {
-	yaml := `
-name: myapp
-services:
-  postgres:
-    env_var: PGPORT
-    hostname: myapp
-`
-	dir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, "outport.yml"), []byte(yaml), 0644); err != nil {
-		t.Fatal(err)
-	}
-	_, err := Load(dir)
-	if err == nil {
-		t.Fatal("expected error for hostname without http protocol")
-	}
-	if !strings.Contains(err.Error(), "hostname") {
-		t.Errorf("error should mention hostname, got: %v", err)
-	}
-}
-
 func TestHostnameValidCharacters(t *testing.T) {
 	tests := []struct {
 		hostname string
@@ -759,7 +712,6 @@ name: myapp
 services:
   web:
     env_var: PORT
-    protocol: http
     hostname: %s
 `, tt.hostname)
 		dir := t.TempDir()
@@ -779,7 +731,6 @@ name: outport
 services:
   web:
     env_var: PORT
-    protocol: http
     hostname: outport.test
 `
 	dir := t.TempDir()
@@ -803,7 +754,6 @@ name: myapp
 services:
   rails:
     env_var: PORT
-    protocol: http
     hostname: myapp
 computed:
   API_URL:
@@ -838,7 +788,6 @@ name: myapp
 services:
   rails:
     env_var: PORT
-    protocol: http
     hostname: myapp
 computed:
   BAD:
@@ -861,7 +810,6 @@ name: myapp
 services:
   rails:
     env_var: PORT
-    protocol: http
     hostname: myapp
 computed:
   SITE_URL:
@@ -920,30 +868,11 @@ func TestResolveComputed_ProjectName(t *testing.T) {
 	})
 }
 
-func TestLoad_ComputedProtocolField(t *testing.T) {
-	dir := writeConfig(t, `name: myapp
-services:
-  web:
-    env_var: PORT
-    protocol: http
-
-computed:
-  WEB_PROTOCOL:
-    value: "${web.protocol}"
-    env_file: .env
-`)
-	_, err := Load(dir)
-	if err != nil {
-		t.Fatalf("expected protocol to be a valid field, got: %v", err)
-	}
-}
-
 func TestLoad_ComputedEnvVarField(t *testing.T) {
 	dir := writeConfig(t, `name: myapp
 services:
   web:
     env_var: PORT
-    protocol: http
 
 computed:
   WEB_VAR_NAME:
@@ -953,20 +882,6 @@ computed:
 	_, err := Load(dir)
 	if err != nil {
 		t.Fatalf("expected env_var to be a valid field, got: %v", err)
-	}
-}
-
-func TestResolveComputed_ProtocolField(t *testing.T) {
-	computed := map[string]ComputedValue{
-		"PROTO": {
-			Value:    "${web.protocol}",
-			EnvFiles: []string{".env"},
-		},
-	}
-	vars := map[string]string{"web.protocol": "http", "web.port": "3000"}
-	resolved := ResolveComputed(computed, vars)
-	if got := resolved["PROTO"][".env"]; got != "http" {
-		t.Errorf("got %q, want %q", got, "http")
 	}
 }
 
@@ -989,7 +904,6 @@ func TestLoad_NoPreferredPort(t *testing.T) {
 services:
   web:
     env_var: PORT
-    protocol: http
   postgres:
     env_var: DATABASE_PORT
 `)
@@ -1005,9 +919,6 @@ services:
 	}
 	if cfg.Services["web"].EnvVar != "PORT" {
 		t.Errorf("web.EnvVar = %q, want %q", cfg.Services["web"].EnvVar, "PORT")
-	}
-	if cfg.Services["web"].Protocol != "http" {
-		t.Errorf("web.Protocol = %q, want %q", cfg.Services["web"].Protocol, "http")
 	}
 }
 

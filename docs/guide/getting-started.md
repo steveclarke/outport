@@ -45,7 +45,6 @@ name: myapp
 services:
   web:
     env_var: PORT
-    protocol: http
     hostname: myapp
   postgres:
     env_var: DB_PORT

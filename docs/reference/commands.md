@@ -89,7 +89,7 @@ outport open         # open all HTTP services
 outport open web     # open a specific service
 ```
 
-Opens services with `protocol: http` or `protocol: https` in your default browser. Works best with `.test` domains set up (`outport system start`).
+Opens HTTP services (those with a `hostname`) in your default browser. Works best with `.test` domains set up (`outport system start`).
 
 ### `outport qr`
 
@@ -121,7 +121,7 @@ outport share web          # tunnel a specific service
 outport share web vite     # tunnel specific services
 ```
 
-Creates temporary public URLs for services with `protocol: http` or `protocol: https`. Requires `cloudflared` (`brew install cloudflared`). The command blocks until you press Ctrl+C.
+Creates temporary public URLs for HTTP services (those with a `hostname`). Requires `cloudflared` (`brew install cloudflared`). The command blocks until you press Ctrl+C.
 
 While sharing, `.env` files are rewritten so computed values using `${service.url}` resolve to the tunnel URLs. This means CORS origins, API base URLs, and other computed values automatically point to the public tunnel URLs. Values using `${service.url:direct}` stay as localhost. On exit, `.env` files revert to local URLs. Restart your services after starting and stopping `outport share`.
 

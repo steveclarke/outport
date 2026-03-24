@@ -61,12 +61,10 @@ services:
   web:
     preferred_port: 3000
     env_var: PORT
-    protocol: http
     hostname: testapp.test
   vite:
     preferred_port: 5173
     env_var: VITE_PORT
-    protocol: http
     hostname: testapp-vite.test
   postgres:
     preferred_port: 5432
@@ -204,12 +202,10 @@ services:
   rails:
     preferred_port: 3000
     env_var: RAILS_PORT
-    protocol: http
     env_file: backend/.env
   web:
     preferred_port: 5173
     env_var: WEB_PORT
-    protocol: http
     env_file: frontend/.env
 
 computed:
@@ -297,7 +293,6 @@ services:
   rails:
     preferred_port: 3000
     env_var: RAILS_PORT
-    protocol: http
     env_file: backend/.env
 
 computed:
@@ -878,8 +873,8 @@ func TestOpen_UnknownService(t *testing.T) {
 	}
 }
 
-func TestOpen_NoProtocol(t *testing.T) {
-	// postgres has no protocol, so open should error
+func TestOpen_NoHostname(t *testing.T) {
+	// postgres has no hostname, so open should error
 	setupProject(t, testConfig)
 	executeCmd(t, "up")
 
@@ -889,7 +884,7 @@ func TestOpen_NoProtocol(t *testing.T) {
 
 	err := rootCmd.Execute()
 	if err == nil {
-		t.Fatal("expected error for service without protocol")
+		t.Fatal("expected error for service without hostname")
 	}
 }
 
@@ -902,7 +897,6 @@ services:
   web:
     preferred_port: 3000
     env_var: PORT
-    protocol: http
     hostname: testapp
   postgres:
     preferred_port: 5432
@@ -1134,11 +1128,9 @@ const testConfigWithMultipleHostnames = `name: myapp
 services:
   web:
     env_var: PORT
-    protocol: http
     hostname: myapp
   api:
     env_var: API_PORT
-    protocol: http
     hostname: api.myapp
   postgres:
     env_var: PGPORT
@@ -1176,9 +1168,6 @@ func TestUp_WithHostnames(t *testing.T) {
 	if webSvc.Hostname != "myapp.test" {
 		t.Errorf("web hostname = %q, want %q", webSvc.Hostname, "myapp.test")
 	}
-	if webSvc.Protocol != "http" {
-		t.Errorf("web protocol = %q, want %q", webSvc.Protocol, "http")
-	}
 	if webSvc.URL == "" {
 		t.Error("web URL should not be empty")
 	}
@@ -1194,7 +1183,7 @@ func TestUp_WithHostnames(t *testing.T) {
 		t.Errorf("postgres hostname = %q, want empty", pgSvc.Hostname)
 	}
 
-	// Verify registry contains hostnames and protocols
+	// Verify registry contains hostnames
 	regPath := filepath.Join(os.Getenv("HOME"), ".local", "share", "outport", "registry.json")
 	reg, err := registry.Load(regPath)
 	if err != nil {
@@ -1209,12 +1198,6 @@ func TestUp_WithHostnames(t *testing.T) {
 	}
 	if alloc.Hostnames["api"] != "api.myapp.test" {
 		t.Errorf("registry api hostname = %q, want api.myapp.test", alloc.Hostnames["api"])
-	}
-	if alloc.Protocols["web"] != "http" {
-		t.Errorf("registry web protocol = %q, want http", alloc.Protocols["web"])
-	}
-	if alloc.Protocols["api"] != "http" {
-		t.Errorf("registry api protocol = %q, want http", alloc.Protocols["api"])
 	}
 
 	// Verify .env contains resolved computed values with url and url:direct
@@ -1246,7 +1229,6 @@ func TestUp_HostnameUniquenessConflict(t *testing.T) {
 services:
   web:
     env_var: PORT
-    protocol: http
     hostname: myapp
 `), 0644)
 	_ = os.Mkdir(filepath.Join(dir1, ".git"), 0755)
@@ -1261,7 +1243,6 @@ services:
 services:
   web:
     env_var: PORT
-    protocol: http
     hostname: myapp2
 `), 0644)
 	_ = os.Mkdir(filepath.Join(dir2, ".git"), 0755)
@@ -1276,7 +1257,6 @@ services:
 services:
   web:
     env_var: PORT
-    protocol: http
     hostname: myapp.otherapp
 `), 0644)
 	_ = os.Mkdir(filepath.Join(dir3, ".git"), 0755)
@@ -1287,7 +1267,6 @@ services:
 services:
   web:
     env_var: PORT
-    protocol: http
     hostname: clash
 `), 0644)
 
@@ -1303,7 +1282,6 @@ services:
 services:
   web:
     env_var: PORT
-    protocol: http
     hostname: myapp.fakeapp
 `
 	_ = os.WriteFile(filepath.Join(dir4, "outport.yml"), []byte(configWithConflict), 0644)
@@ -1331,7 +1309,6 @@ services:
 services:
   web:
     env_var: PORT
-    protocol: http
     hostname: collider
 `), 0644)
 	_ = os.Mkdir(filepath.Join(dir5, ".git"), 0755)
@@ -1357,12 +1334,10 @@ services:
   web:
     env_var: PORT
     preferred_port: 3000
-    protocol: http
     hostname: myapp
   api:
     env_var: API_PORT
     preferred_port: 4000
-    protocol: http
     hostname: api.myapp
 
 computed:
@@ -1453,7 +1428,7 @@ func TestBuildTemplateVarsHTTPS(t *testing.T) {
 	cfg := &config.Config{
 		Name: "myapp",
 		Services: map[string]config.Service{
-			"rails": {EnvVar: "PORT", Protocol: "http", Hostname: "myapp.test"},
+			"rails": {EnvVar: "PORT", Hostname: "myapp.test"},
 		},
 	}
 	ports := map[string]int{"rails": 3000}
@@ -1477,7 +1452,7 @@ func TestBuildTemplateVarsHTTP(t *testing.T) {
 	cfg := &config.Config{
 		Name: "myapp",
 		Services: map[string]config.Service{
-			"rails": {EnvVar: "PORT", Protocol: "http", Hostname: "myapp.test"},
+			"rails": {EnvVar: "PORT", Hostname: "myapp.test"},
 		},
 	}
 	ports := map[string]int{"rails": 3000}
@@ -1516,7 +1491,7 @@ func TestBuildTemplateVarsNewFields(t *testing.T) {
 	cfg := &config.Config{
 		Name: "myapp",
 		Services: map[string]config.Service{
-			"web": {EnvVar: "PORT", Protocol: "http"},
+			"web": {EnvVar: "PORT"},
 			"db":  {EnvVar: "DB_PORT"},
 		},
 	}
@@ -1528,16 +1503,6 @@ func TestBuildTemplateVarsNewFields(t *testing.T) {
 	// project_name
 	if vars["project_name"] != "myapp" {
 		t.Errorf("project_name = %q, want %q", vars["project_name"], "myapp")
-	}
-
-	// protocol (set)
-	if vars["web.protocol"] != "http" {
-		t.Errorf("web.protocol = %q, want %q", vars["web.protocol"], "http")
-	}
-
-	// protocol (unset)
-	if vars["db.protocol"] != "" {
-		t.Errorf("db.protocol = %q, want empty", vars["db.protocol"])
 	}
 
 	// env_var
@@ -1601,7 +1566,7 @@ func TestShare_UnknownService(t *testing.T) {
 	}
 }
 
-func TestShare_ServiceWithoutProtocol(t *testing.T) {
+func TestShare_ServiceWithoutHostname(t *testing.T) {
 	setupProject(t, testConfigWithHTTP)
 	executeCmd(t, "up")
 
@@ -1611,19 +1576,19 @@ func TestShare_ServiceWithoutProtocol(t *testing.T) {
 
 	err := rootCmd.Execute()
 	if err == nil {
-		t.Fatal("expected error for service without protocol")
+		t.Fatal("expected error for service without hostname")
 	}
 	if !IsFlagError(err) {
 		t.Errorf("expected FlagError, got %T", err)
 	}
-	want := "does not have an HTTP protocol"
+	want := "has no hostname"
 	if got := err.Error(); !strings.Contains(got, want) {
 		t.Errorf("error = %q, want containing %q", got, want)
 	}
 }
 
 func TestShare_NoHTTPServices(t *testing.T) {
-	setupProject(t, testConfig) // testConfig has no protocol on any service
+	setupProject(t, testConfig) // testConfig has no hostname on any service
 	executeCmd(t, "up")
 
 	rootCmd.SetOut(new(bytes.Buffer))
@@ -1669,7 +1634,6 @@ func TestBuildTemplateVars_TunnelOverrides(t *testing.T) {
 		Services: map[string]config.Service{
 			"rails": {
 				EnvVar:   "RAILS_PORT",
-				Protocol: "http",
 				Hostname: "myapp.test",
 			},
 			"postgres": {
@@ -1708,7 +1672,6 @@ func TestBuildTemplateVars_NilTunnelURLs(t *testing.T) {
 		Services: map[string]config.Service{
 			"rails": {
 				EnvVar:   "RAILS_PORT",
-				Protocol: "http",
 				Hostname: "myapp.test",
 			},
 		},
@@ -1728,12 +1691,10 @@ services:
   rails:
     preferred_port: 3000
     env_var: RAILS_PORT
-    protocol: http
     hostname: testapp.test
   vite:
     preferred_port: 5173
     env_var: VITE_PORT
-    protocol: http
     hostname: testapp-vite.test
   postgres:
     preferred_port: 5432
@@ -1836,7 +1797,7 @@ func TestPrintShareJSON_IncludesComputedValues(t *testing.T) {
 	cfg := &config.Config{
 		Name: "testapp",
 		Services: map[string]config.Service{
-			"rails": {EnvVar: "RAILS_PORT", Protocol: "http", Hostname: "testapp.test"},
+			"rails": {EnvVar: "RAILS_PORT", Hostname: "testapp.test"},
 		},
 		Computed: map[string]config.ComputedValue{
 			"API_URL": {

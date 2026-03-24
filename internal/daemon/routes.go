@@ -88,7 +88,7 @@ func (rt *RouteTable) Allocations() map[string]registry.Allocation {
 }
 
 // BuildRoutes constructs a hostname -> port routing table from the registry.
-// Only services with protocol "http" or "https" are included.
+// Every service with a hostname is implicitly HTTP and gets a route.
 func BuildRoutes(reg *registry.Registry) map[string]int {
 	routes := make(map[string]int)
 	for _, alloc := range reg.Projects {
@@ -96,10 +96,7 @@ func BuildRoutes(reg *registry.Registry) map[string]int {
 			continue
 		}
 		for svcName, hostname := range alloc.Hostnames {
-			proto := alloc.Protocols[svcName]
-			if proto == "http" || proto == "https" {
-				routes[hostname] = alloc.Ports[svcName]
-			}
+			routes[hostname] = alloc.Ports[svcName]
 		}
 	}
 	return routes

@@ -15,7 +15,6 @@ name: myapp
 services:
   web:
     env_var: PORT
-    protocol: http
     hostname: myapp.test
   postgres:
     env_var: DB_PORT
@@ -35,7 +34,6 @@ name: acme
 services:
   rails:
     env_var: RAILS_PORT
-    protocol: http
     hostname: api.acme.test
     env_file:
       - backend/.env
@@ -49,7 +47,6 @@ services:
     env_file: backend/.env
   mailpit_web:
     env_var: MAILPIT_WEB_PORT
-    protocol: http
     hostname: mailpit.acme.test
     env_file: backend/.env
   mailpit_smtp:
@@ -57,14 +54,12 @@ services:
     env_file: backend/.env
   frontend_main:
     env_var: MAIN_PORT
-    protocol: http
     hostname: acme.test
     env_file:
       - frontend/apps/main/.env
       - backend/.env
   frontend_admin:
     env_var: ADMIN_PORT
-    protocol: http
     hostname: admin.acme.test
     env_file:
       - frontend/apps/admin/.env
@@ -135,7 +130,6 @@ name: myapp
 services:
   web:
     env_var: PORT
-    protocol: http
     hostname: myapp.test
   postgres:
     env_var: DB_PORT
@@ -164,7 +158,6 @@ name: myapi
 services:
   rails:
     env_var: RAILS_PORT
-    protocol: http
     hostname: api.myapi.test
     env_file:
       - .env
@@ -209,15 +202,12 @@ name: kiso
 services:
   lookbook:
     env_var: LOOKBOOK_PORT
-    protocol: http
     hostname: lookbook.kiso.test
   docs:
     env_var: DOCS_PORT
-    protocol: http
     hostname: docs.kiso.test
   dummy:
     env_var: DUMMY_PORT
-    protocol: http
     hostname: kiso.test
 ```
 

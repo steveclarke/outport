@@ -10,7 +10,7 @@ func TestBuild(t *testing.T) {
 	cfg := &config.Config{
 		Name: "myapp",
 		Services: map[string]config.Service{
-			"rails":    {EnvVar: "PORT", Protocol: "http", Hostname: "myapp.test"},
+			"rails":    {EnvVar: "PORT", Hostname: "myapp.test"},
 			"postgres": {EnvVar: "PGPORT"},
 		},
 	}
@@ -26,9 +26,6 @@ func TestBuild(t *testing.T) {
 	}
 	if alloc.Hostnames["rails"] != "myapp.test" {
 		t.Errorf("Hostnames[rails] = %q, want myapp.test", alloc.Hostnames["rails"])
-	}
-	if alloc.Protocols["rails"] != "http" {
-		t.Errorf("Protocols[rails] = %q, want http", alloc.Protocols["rails"])
 	}
 	if alloc.EnvVars["rails"] != "PORT" {
 		t.Errorf("EnvVars[rails] = %q, want PORT", alloc.EnvVars["rails"])
@@ -81,7 +78,7 @@ func TestBuildTemplateVars_Basic(t *testing.T) {
 	cfg := &config.Config{
 		Name: "myapp",
 		Services: map[string]config.Service{
-			"rails": {EnvVar: "PORT", Protocol: "http"},
+			"rails": {EnvVar: "PORT"},
 		},
 	}
 	ports := map[string]int{"rails": 24920}
@@ -110,7 +107,7 @@ func TestBuildTemplateVars_HTTPS(t *testing.T) {
 	cfg := &config.Config{
 		Name: "myapp",
 		Services: map[string]config.Service{
-			"rails": {EnvVar: "PORT", Protocol: "http"},
+			"rails": {EnvVar: "PORT"},
 		},
 	}
 	ports := map[string]int{"rails": 24920}
@@ -143,7 +140,7 @@ func TestBuildTemplateVars_TunnelOverride(t *testing.T) {
 	cfg := &config.Config{
 		Name: "myapp",
 		Services: map[string]config.Service{
-			"rails": {EnvVar: "PORT", Protocol: "http"},
+			"rails": {EnvVar: "PORT"},
 		},
 	}
 	ports := map[string]int{"rails": 24920}

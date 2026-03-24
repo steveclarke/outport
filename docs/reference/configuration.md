@@ -1,5 +1,5 @@
 ---
-description: Complete outport.yml reference — services, env_var, hostname, protocol, preferred_port, env_file, computed values, and template syntax.
+description: Complete outport.yml reference — services, env_var, hostname, preferred_port, env_file, computed values, and template syntax.
 ---
 
 # Configuration
@@ -24,7 +24,6 @@ name: myapp
 services:
   web:
     env_var: PORT
-    protocol: http
     hostname: myapp
   postgres:
     env_var: DB_PORT
@@ -65,26 +64,14 @@ services:
     env_var: PORT
 ```
 
-#### `protocol`
-
-The service protocol. Services with `http` or `https` protocol work with `outport open` and can have hostnames.
-
-```yaml
-services:
-  web:
-    env_var: PORT
-    protocol: http
-```
-
 #### `hostname`
 
-The `.test` hostname for this service. Must contain the project name. Only valid for services with `protocol: http` or `protocol: https`.
+The `.test` hostname for this service. Must contain the project name. Implies HTTP — services with a hostname work with `outport open` and get a `.test` domain.
 
 ```yaml
 services:
   web:
     env_var: PORT
-    protocol: http
     hostname: myapp
 ```
 
@@ -144,7 +131,6 @@ Computed values use bash-style parameter expansion:
 | `${service.hostname}` | `myapp.test` | `.test` hostname |
 | `${service.url}` | `https://myapp.test` | Browser-facing URLs (CORS, asset hosts) |
 | `${service.url:direct}` | `http://localhost:24920` | Server-to-server (API calls, WebSocket) |
-| `${service.protocol}` | `http` | Protocol as declared in config |
 | `${service.env_var}` | `PORT` | Env var name for the service |
 
 Use `${service.url}` for URLs the browser sees — it produces `https://` URLs when the local CA is installed (via `outport system start`). Use `${service.url:direct}` for server-to-server communication that bypasses the proxy (always `http://localhost:{port}`).

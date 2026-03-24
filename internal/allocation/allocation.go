@@ -1,5 +1,5 @@
 // Package allocation builds registry allocations from config and ports.
-// It handles hostname computation, protocol/env-var extraction,
+// It handles hostname computation, env-var extraction,
 // template variable building, and computed value resolution.
 package allocation
 
@@ -18,7 +18,6 @@ func Build(cfg *config.Config, instanceName, dir string, ports map[string]int) r
 		ProjectDir: dir,
 		Ports:      ports,
 		Hostnames:  ComputeHostnames(cfg, instanceName),
-		Protocols:  computeProtocols(cfg),
 		EnvVars:    computeEnvVars(cfg),
 	}
 }
@@ -42,17 +41,6 @@ func ComputeHostnames(cfg *config.Config, instanceName string) map[string]string
 		hostnames[name] = stem + ".test"
 	}
 	return hostnames
-}
-
-// computeProtocols builds protocol map from config.
-func computeProtocols(cfg *config.Config) map[string]string {
-	protocols := make(map[string]string)
-	for name, svc := range cfg.Services {
-		if svc.Protocol != "" {
-			protocols[name] = svc.Protocol
-		}
-	}
-	return protocols
 }
 
 // computeEnvVars builds a service name -> env_var map from config.
@@ -83,21 +71,14 @@ func BuildTemplateVars(cfg *config.Config, instanceName string, ports map[string
 		portStr := fmt.Sprintf("%d", ports[name])
 		vars[name+".port"] = portStr
 		vars[name+".env_var"] = svc.EnvVar
-		if svc.Protocol != "" {
-			vars[name+".protocol"] = svc.Protocol
-		}
 
 		if h, ok := hostnames[name]; ok {
 			vars[name+".hostname"] = h
-			protocol := svc.Protocol
-			if protocol == "" {
-				protocol = "http"
-			}
 
 			if tunnelURL, hasTunnel := tunnelURLs[name]; hasTunnel {
 				vars[name+".url"] = tunnelURL
 			} else {
-				vars[name+".url"] = fmt.Sprintf("%s://%s", urlutil.EffectiveScheme(protocol, h, httpsEnabled), h)
+				vars[name+".url"] = fmt.Sprintf("%s://%s", urlutil.EffectiveScheme(h, httpsEnabled), h)
 			}
 			vars[name+".url:direct"] = fmt.Sprintf("http://localhost:%s", portStr)
 		} else {

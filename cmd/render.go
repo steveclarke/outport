@@ -18,7 +18,6 @@ type svcJSON struct {
 	Port          int      `json:"port"`
 	PreferredPort int      `json:"preferred_port,omitempty"`
 	EnvVar        string   `json:"env_var"`
-	Protocol      string   `json:"protocol,omitempty"`
 	Hostname      string   `json:"hostname,omitempty"`
 	URL           string   `json:"url,omitempty"`
 	EnvFiles      []string `json:"env_files"`
@@ -60,9 +59,8 @@ func buildServiceMap(cfg *config.Config, ports map[string]int, hostnames map[str
 			Port:          ports[name],
 			PreferredPort: svc.PreferredPort,
 			EnvVar:        svc.EnvVar,
-			Protocol:      svc.Protocol,
 			Hostname:      hostname,
-			URL:           urlutil.ServiceURL(svc.Protocol, hostname, ports[name], httpsEnabled),
+			URL:           urlutil.ServiceURL(hostname, ports[name], httpsEnabled),
 			EnvFiles:      svc.EnvFiles,
 		}
 	}
@@ -163,7 +161,7 @@ func serviceURLSuffix(cfg *config.Config, svcName string, hostnames map[string]s
 		return ""
 	}
 	hostname := resolvedHostname(svc, hostnames, svcName)
-	if u := urlutil.ServiceURL(svc.Protocol, hostname, port, httpsEnabled); u != "" {
+	if u := urlutil.ServiceURL(hostname, port, httpsEnabled); u != "" {
 		return "  " + ui.UrlStyle.Render(u)
 	}
 	if hostname != "" {

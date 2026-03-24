@@ -25,7 +25,6 @@ var validFields = map[string]bool{
 	"port":     true,
 	"hostname": true,
 	"url":      true,
-	"protocol": true,
 	"env_var":  true,
 }
 
@@ -59,7 +58,7 @@ func validateTemplateRefs(computedName, template string, services map[string]Ser
 			return fmt.Errorf("computed %q: references unknown service %q", computedName, svcName)
 		}
 		if !validFields[field] {
-			return fmt.Errorf("computed %q: unknown field %q (valid: port, hostname, url, protocol, env_var)", computedName, field)
+			return fmt.Errorf("computed %q: unknown field %q (valid: port, hostname, url, env_var)", computedName, field)
 		}
 		if modifier != "" {
 			mods, ok := validModifiers[field]
@@ -128,7 +127,6 @@ func (e *envFileField) UnmarshalYAML(value *yaml.Node) error {
 type Service struct {
 	PreferredPort int          `yaml:"preferred_port"`
 	EnvVar        string       `yaml:"env_var"`
-	Protocol      string       `yaml:"protocol"`
 	Hostname      string       `yaml:"hostname"`
 	rawEnvFile    envFileField // populated during YAML unmarshal, resolved to EnvFiles in normalize
 	EnvFiles      []string     `yaml:"-"`
@@ -138,7 +136,6 @@ type Service struct {
 type rawService struct {
 	PreferredPort int          `yaml:"preferred_port"`
 	EnvVar        string       `yaml:"env_var"`
-	Protocol      string       `yaml:"protocol"`
 	Hostname      string       `yaml:"hostname"`
 	EnvFile       envFileField `yaml:"env_file"`
 }
@@ -264,7 +261,6 @@ func toService(rs rawService) Service {
 	return Service{
 		PreferredPort: rs.PreferredPort,
 		EnvVar:        rs.EnvVar,
-		Protocol:      rs.Protocol,
 		Hostname:      rs.Hostname,
 		rawEnvFile:    rs.EnvFile,
 	}
@@ -322,9 +318,6 @@ func (c *Config) validate() error {
 		if svc.Hostname != "" {
 			if svc.Hostname == "outport.test" {
 				return fmt.Errorf("service %q: hostname %q is reserved for the Outport dashboard", name, svc.Hostname)
-			}
-			if svc.Protocol != "http" && svc.Protocol != "https" {
-				return fmt.Errorf("service %q: hostname requires protocol http or https", name)
 			}
 			stem := strings.TrimSuffix(svc.Hostname, ".test")
 			if !hostnameRe.MatchString(stem) {

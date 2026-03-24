@@ -45,7 +45,6 @@ type ServiceJSON struct {
 	Port      int    `json:"port"`
 	EnvVar    string `json:"env_var,omitempty"`
 	Hostname  string `json:"hostname,omitempty"`
-	Protocol  string `json:"protocol,omitempty"`
 	URL       string `json:"url,omitempty"`
 	Up        *bool  `json:"up,omitempty"`
 	TunnelURL string `json:"tunnel_url,omitempty"`
@@ -311,16 +310,12 @@ func (h *Handler) buildStatus() StatusResponse {
 			sj.EnvVar = alloc.EnvVars[name]
 
 			hostname := alloc.Hostnames[name]
-			protocol := alloc.Protocols[name]
 
 			if hostname != "" {
 				sj.Hostname = hostname
 			}
-			if protocol != "" {
-				sj.Protocol = protocol
-			}
 
-			if u := urlutil.ServiceURL(protocol, hostname, port, h.https); u != "" {
+			if u := urlutil.ServiceURL(hostname, port, h.https); u != "" {
 				sj.URL = u
 			}
 
