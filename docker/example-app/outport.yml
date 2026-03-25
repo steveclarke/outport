@@ -1,0 +1,7 @@
+project: example-app
+
+services:
+  web:
+    port: auto
+    hostname: example-app
+    env_var: PORT
