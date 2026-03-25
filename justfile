@@ -23,6 +23,23 @@ test-linux:
     docker build -f docker/Dockerfile.test -t outport-test-linux .
     docker run --rm outport-test-linux
 
+# Start Linux dev environment (systemd container)
+dev-linux:
+    docker compose up -d --build dev
+    @echo ""
+    @echo "Linux dev container running. Commands:"
+    @echo "  just dev-linux-shell    # Open a shell"
+    @echo "  just dev-linux-down     # Stop container"
+    @echo ""
+
+# Open shell in Linux dev container
+dev-linux-shell:
+    docker compose exec dev bash
+
+# Stop Linux dev environment
+dev-linux-down:
+    docker compose down
+
 # Install dev build to ~/.local/bin (overrides Homebrew)
 install:
     @mkdir -p ~/.local/bin

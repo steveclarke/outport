@@ -1,0 +1,19 @@
+# Linux development environment for Outport
+# Usage: just dev-linux / just dev-linux-shell / just dev-linux-down
+services:
+  dev:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.dev
+    privileged: true
+    volumes:
+      - .:/src
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    ports:
+      - "8080:80"    # Outport HTTP proxy
+      - "8443:443"   # Outport HTTPS proxy
+    tmpfs:
+      - /run
+      - /run/lock
+    tty: true
+    stdin_open: true
