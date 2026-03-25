@@ -32,7 +32,7 @@ Entry point: `main.go` → `cmd.Execute()` (Cobra CLI).
 - **instance** — Resolves instance names. Validation: lowercase alphanumeric + hyphens.
 - **daemon** — DNS server (port 15353), HTTP proxy (port 80), TLS proxy (port 443, SNI-based). Watches registry for route rebuilds. Serves dashboard at `outport.test`.
 - **dashboard** — Embedded web dashboard (`go:embed`). JSON API, SSE live updates, health checker (configurable interval, only when clients connected).
-- **platform** — macOS LaunchAgent plist, `/etc/resolver/test`, CA trust via `security` CLI.
+- **platform** — OS-specific daemon lifecycle and trust. macOS: LaunchAgent plist, `/etc/resolver/test`, Keychain CA trust. Linux: systemd user service, systemd-resolved drop-in, distro-specific CA trust (`update-ca-certificates` / `update-ca-trust`), `setcap` for privileged ports.
 - **doctor** — Diagnostic checks returning pass/warn/fail with fix suggestions.
 - **envpath** — Env file path classification. Resolves symlinks before boundary checking.
 - **dotenv** — Fenced `.env` block writer. Also provides `RemoveBlock()` for cleanup.
@@ -58,6 +58,7 @@ Commands are defined in `cmd/*.go` — read them for details. Key conventions:
 - **External env file safety** — Env file paths outside the project directory require explicit developer approval. Paths are resolved through symlinks using `filepath.EvalSymlinks` before boundary checking. All write commands enforce this through `writeEnvFiles`/`removeEnvFiles` wrappers.
 - **Auto-restart on version mismatch** — Every CLI command (except `daemon`, `setup`, and `system` subcommands) checks the running daemon's version via `/api/status`. If they differ, the daemon is silently restarted. Best-effort — failures are silently ignored. Implementation in `cmd/version_check.go`.
 - **Dashboard at `outport.test`** — The proxy handler intercepts this hostname before route lookup and delegates to the embedded dashboard handler. SSE for real-time updates. Config validation rejects `outport.test` as a project hostname.
+- **Linux support** — The `internal/platform/` package provides Linux implementations via `//go:build linux`. systemd user services replace LaunchAgent, a systemd-resolved drop-in config (`/etc/systemd/resolved.conf.d/outport-test.conf`) replaces `/etc/resolver/test`, and `setcap CAP_NET_BIND_SERVICE` replaces launchd socket activation for privileged port binding. CA trust uses distro detection (Debian/Fedora/Arch/openSUSE paths, following mkcert's pattern).
 - **Global settings** — INI file at `~/.config/outport/config`. Two settings: `dashboard.health_interval` (default `3s`) and `dns.ttl` (default `60`). `outport setup` creates the file with commented-out defaults. The daemon loads settings once at startup and passes values down as parameters. Proxy ports (80/443) are intentionally not configurable — DNS resolves `*.test` to an IP only, so non-standard ports break hostname access.
 
 ## Testing
