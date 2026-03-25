@@ -27,13 +27,14 @@ Entry point: `main.go` → `cmd.Execute()` (Cobra CLI).
 - **config** — Loads/validates `outport.yml`. `FindDir()` walks up to locate config.
 - **instance** — Resolves instance names. Validation: lowercase alphanumeric + hyphens.
 - **daemon** — DNS server (port 15353), HTTP proxy (port 80), TLS proxy (port 443, SNI-based). Watches registry for route rebuilds. Serves dashboard at `outport.test`.
-- **dashboard** — Embedded web dashboard (`go:embed`). JSON API, SSE live updates, health checker (3s interval, only when clients connected).
+- **dashboard** — Embedded web dashboard (`go:embed`). JSON API, SSE live updates, health checker (configurable interval, only when clients connected).
 - **platform** — macOS LaunchAgent plist, `/etc/resolver/test`, CA trust via `security` CLI.
 - **doctor** — Diagnostic checks returning pass/warn/fail with fix suggestions.
 - **envpath** — Env file path classification. Resolves symlinks before boundary checking.
 - **dotenv** — Fenced `.env` block writer. Also provides `RemoveBlock()` for cleanup.
 - **tunnel** — Provider abstraction + concurrent manager with all-or-nothing semantics.
 - **tunnel/cloudflare** — Shells out to `cloudflared tunnel --url`, parses URL from stderr.
+- **settings** — Global user settings from `~/.config/outport/config` (INI format, `go-ini/ini`). `Load()` returns defaults for missing file/keys. Consumers receive values as parameters — internal packages never import this.
 
 ### CLI commands (`cmd/`)
 
@@ -53,6 +54,7 @@ Commands are defined in `cmd/*.go` — read them for details. Key conventions:
 - **External env file safety** — Env file paths outside the project directory require explicit developer approval. Paths are resolved through symlinks using `filepath.EvalSymlinks` before boundary checking. All write commands enforce this through `writeEnvFiles`/`removeEnvFiles` wrappers.
 - **Auto-restart on version mismatch** — Every CLI command (except `daemon`, `setup`, and `system` subcommands) checks the running daemon's version via `/api/status`. If they differ, the daemon is silently restarted. Best-effort — failures are silently ignored. Implementation in `cmd/version_check.go`.
 - **Dashboard at `outport.test`** — The proxy handler intercepts this hostname before route lookup and delegates to the embedded dashboard handler. SSE for real-time updates. Config validation rejects `outport.test` as a project hostname.
+- **Global settings** — INI file at `~/.config/outport/config`. Two settings: `dashboard.health_interval` (default `3s`) and `dns.ttl` (default `60`). `outport setup` creates the file with commented-out defaults. The daemon loads settings once at startup and passes values down as parameters. Proxy ports (80/443) are intentionally not configurable — DNS resolves `*.test` to an IP only, so non-standard ports break hostname access.
 
 ## Testing
 

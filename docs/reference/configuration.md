@@ -192,3 +192,25 @@ REDIS_PORT=29454
 ```
 
 Variables declared in `outport.yml` are managed by Outport — if they appear outside the fenced block, they're automatically relocated into it.
+
+## Global Settings
+
+Outport stores machine-level settings in `~/.config/outport/config` (INI format). This file is created by `outport setup` with all values commented out. To change a setting, uncomment the line and edit the value, then run `outport system restart`.
+
+```ini
+# Outport global settings
+# Uncomment and change values to override defaults.
+
+[dashboard]
+# health_interval = 3s
+
+[dns]
+# ttl = 60
+```
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `dashboard.health_interval` | `3s` | How often the dashboard polls port health. Accepts Go duration syntax (`1s`, `5s`, `500ms`). Minimum `1s`. |
+| `dns.ttl` | `60` | Time-to-live (in seconds) for `.test` DNS responses. Lower values mean faster updates when services start/stop. |
+
+Missing settings use defaults. A missing file is equivalent to all defaults — there is no behavior change for existing installations.
