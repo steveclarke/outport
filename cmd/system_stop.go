@@ -51,7 +51,7 @@ func resolveAndWritePlist() error {
 	if err != nil {
 		return fmt.Errorf("could not resolve outport binary path: %w", err)
 	}
-	return platform.WritePlist(outportBin)
+	return platform.WritePlist(outportBin, 80, 443)
 }
 
 func runSystemStop(cmd *cobra.Command, args []string) error {

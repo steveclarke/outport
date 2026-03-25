@@ -17,12 +17,12 @@ func isPlistInstalled() bool    { return false }
 func PlistPath() string                 { return "" }
 func WriteResolverFile() error          { return errUnsupported }
 func RemoveResolverFile() error         { return errUnsupported }
-func WritePlist(_ string) error         { return errUnsupported }
-func RemovePlist() error                { return errUnsupported }
-func IsAgentLoaded() bool               { return false }
-func LoadAgent() error                  { return errUnsupported }
-func UnloadAgent() error                { return errUnsupported }
-func GeneratePlist(_ string) string     { return "" }
+func WritePlist(_ string, _, _ int) error  { return errUnsupported }
+func RemovePlist() error                   { return errUnsupported }
+func IsAgentLoaded() bool                  { return false }
+func LoadAgent() error                     { return errUnsupported }
+func UnloadAgent() error                   { return errUnsupported }
+func GeneratePlist(_ string, _, _ int) string { return "" }
 func TrustCA(_ string) error            { return errUnsupported }
 func UntrustCA(_ string) error          { return errUnsupported }
 func IsCATrusted(_ string) bool         { return false }
