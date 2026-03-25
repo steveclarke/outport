@@ -4,7 +4,7 @@ description: Complete outport.yml reference — services, env_var, hostname, pre
 
 # Configuration
 
-Outport is configured with a `outport.yml` file in your project root. This file declares your services and how their ports are exposed.
+Outport is configured with an `outport.yml` file in your project root, checked into version control. It declares your services, how their ports are exposed, and any computed values that wire services together.
 
 ## Minimal Example
 
@@ -17,7 +17,7 @@ services:
     env_var: DB_PORT
 ```
 
-## Full Example
+## Typical Example
 
 ```yaml
 name: myapp

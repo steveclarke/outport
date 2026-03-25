@@ -43,13 +43,13 @@ export default defineConfig({
       {
         text: 'Guide',
         items: [
-          { text: 'Getting Started', link: '/guide/getting-started' },
-          { text: 'Installation', link: '/guide/installation' },
           { text: 'Why Outport?', link: '/guide/why-outport' },
+          { text: 'Installation', link: '/guide/installation' },
+          { text: 'Getting Started', link: '/guide/getting-started' },
           { text: 'Examples', link: '/guide/examples' },
-          { text: 'VS Code Extension', link: '/guide/vscode' },
           { text: 'Dashboard', link: '/guide/dashboard' },
           { text: 'Sharing & Mobile', link: '/guide/sharing' },
+          { text: 'VS Code Extension', link: '/guide/vscode' },
           { text: 'Work with AI', link: '/guide/work-with-ai' },
           { text: 'Running Your Dev Stack', link: '/guide/devstack' },
           { text: 'Tips & Troubleshooting', link: '/guide/tips' },

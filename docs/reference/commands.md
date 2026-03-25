@@ -4,25 +4,11 @@ description: All Outport CLI commands — setup, init, up, down, ports, open, sh
 
 # Commands
 
-All commands support `--json` for machine-readable output. Use `--yes`/`-y` to auto-approve writing env files outside the project directory.
+Outport commands fall into two groups: **project commands** that operate on the current directory's `outport.yml`, and **system commands** that manage machine-wide infrastructure like DNS, HTTPS, and the daemon. All commands support `--json` for machine-readable output.
 
 ## Project Commands
 
-These commands operate on the current project (the directory containing `outport.yml`).
-
-### `outport setup`
-
-Interactive first-run system setup.
-
-```bash
-outport setup
-```
-
-Guides you through enabling `.test` domains with HTTPS. The `.test` domain setup is optional — without it, `outport up` still works for deterministic ports and `.env` files.
-
-| Flag | Description |
-|------|-------------|
-| `--json` | Non-interactive, runs full setup |
+These commands operate on the current project (the directory containing `outport.yml`). Use `--yes`/`-y` to auto-approve writing env files outside the project directory.
 
 ### `outport init`
 
@@ -157,29 +143,23 @@ Promotes the current worktree instance to "main", demoting the existing main ins
 |------|-------------|
 | `--json` | Output results as JSON |
 
-### `outport doctor`
-
-Check the health of the outport system.
-
-```bash
-outport doctor
-```
-
-Runs diagnostic checks on all Outport infrastructure and project configuration. Reports pass/warn/fail for each check with actionable fix suggestions. Checks include:
-
-**System checks** (always run): DNS resolver file, resolver content, LaunchAgent plist, plist binary validity, daemon agent loaded, DNS resolution, HTTP proxy (port 80), HTTPS proxy (port 443), CA certificate and key existence, CA expiry, CA trust, registry validity, cloudflared availability.
-
-**Project checks** (when `outport.yml` found): config file validation, project registration in the registry, per-service port status (running or not — both are informational, not failures).
-
-Exit code 0 if all checks pass or warn. Exit code 1 if any check fails.
-
-| Flag | Description |
-|------|-------------|
-| `--json` | Output results as JSON (includes `results` array and `passed` boolean) |
-
 ## System Commands
 
 These commands manage machine-wide infrastructure: the `.test` domain DNS resolver, HTTPS reverse proxy, local Certificate Authority, and registry maintenance.
+
+### `outport setup`
+
+Interactive first-run system setup.
+
+```bash
+outport setup
+```
+
+Guides you through enabling `.test` domains with HTTPS. The `.test` domain setup is optional — without it, `outport up` still works for deterministic ports and `.env` files.
+
+| Flag | Description |
+|------|-------------|
+| `--json` | Non-interactive, runs full setup |
 
 ### `outport system start`
 
@@ -260,3 +240,23 @@ Unloads the daemon, removes the LaunchAgent plist, removes the DNS resolver file
 | Flag | Description |
 |------|-------------|
 | `--json` | Output results as JSON (includes `ca_removed`, `certs_cleaned` fields) |
+
+### `outport doctor`
+
+Diagnose issues with the Outport system.
+
+```bash
+outport doctor
+```
+
+Runs diagnostic checks on all Outport infrastructure and project configuration. Reports pass/warn/fail for each check with actionable fix suggestions. Checks include:
+
+**System checks** (always run): DNS resolver file, resolver content, LaunchAgent plist, plist binary validity, daemon agent loaded, DNS resolution, HTTP proxy (port 80), HTTPS proxy (port 443), CA certificate and key existence, CA expiry, CA trust, registry validity, cloudflared availability.
+
+**Project checks** (when `outport.yml` found): config file validation, project registration in the registry, per-service port status (running or not — both are informational, not failures).
+
+Exit code 0 if all checks pass or warn. Exit code 1 if any check fails.
+
+| Flag | Description |
+|------|-------------|
+| `--json` | Output results as JSON (includes `results` array and `passed` boolean) |

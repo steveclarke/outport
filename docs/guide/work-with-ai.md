@@ -57,4 +57,4 @@ Agents use this to read your project's port map, verify system health, and confi
 
 ## Full Stack Orchestration
 
-For running your entire dev environment — database, web servers, background workers — see the [`DEVSTACK.md` guide](/guide/devstack). It covers process-compose, health checks, and headless operation for AI agents.
+For running your entire dev environment — database, web servers, background workers — see [Running Your Dev Stack](/guide/devstack). It covers process-compose, health checks, and headless operation for AI agents.

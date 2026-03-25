@@ -7,15 +7,7 @@ description: Install Outport, run setup, create your first outport.yml config, a
 ## Prerequisites
 
 - macOS (Linux support is planned)
-- [Homebrew](https://brew.sh) (recommended) or [Go 1.22+](https://go.dev/dl/)
-
-## Install
-
-```bash
-brew install steveclarke/tap/outport
-```
-
-See [Installation](/guide/installation) for other methods.
+- Outport installed — see [Installation](/guide/installation)
 
 ## Run Setup
 
@@ -125,8 +117,5 @@ This tunnels all HTTP services to public Cloudflare URLs and rewrites `.env` fil
 
 ## Next Steps
 
-- [Examples](/guide/examples) — real-world configs for common project setups
-- [Configuration Reference](/reference/configuration) — full `outport.yml` schema
-- [Sharing & Mobile](/guide/sharing) — tunnel services and test on mobile devices
-- [Dashboard](/guide/dashboard) — live web view of all your projects and services
-- [VS Code Extension](/guide/vscode) — ports, URLs, and service health in the editor
+- [Examples](/guide/examples) — real-world configs for monorepos, worktrees, and cross-project setups
+- [Configuration Reference](/reference/configuration) — full `outport.yml` schema and template syntax
