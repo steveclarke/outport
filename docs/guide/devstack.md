@@ -133,7 +133,7 @@ Each subcommand:
 
 ## Example process-compose.yml
 
-A Rails app with Postgres and Redis. Outport writes the ports to `.env`, and process-compose reads them automatically:
+A Rails app with Postgres. Outport writes the ports to `.env`, and process-compose reads them automatically:
 
 ```yaml
 shell:
@@ -154,22 +154,10 @@ processes:
       initial_delay_seconds: 2
       period_seconds: 2
 
-  redis:
-    command: >
-      docker run --rm
-      -p ${REDIS_PORT}:6379
-      redis:7
-    readiness_probe:
-      exec:
-        command: "redis-cli -p ${REDIS_PORT} ping"
-      initial_delay_seconds: 1
-
   web:
     command: bin/rails server -p ${PORT}
     depends_on:
       postgres:
-        condition: process_healthy
-      redis:
         condition: process_healthy
     readiness_probe:
       exec:
@@ -180,7 +168,7 @@ processes:
 Key points:
 
 - **Login shell** — `shell_argument: "-lc"` ensures Homebrew, mise, and Docker Desktop are on PATH
-- **Dependency ordering** — Rails won't start until Postgres and Redis pass their health checks
+- **Dependency ordering** — Rails won't start until Postgres passes its health check
 - **Readiness probes** — exec probes check the raw port directly, not through the `.test` proxy
 - **No hardcoded ports** — everything reads from `.env`, so worktrees get isolated environments automatically
 
@@ -197,32 +185,6 @@ Outport handles port allocation and `.env` generation. process-compose handles o
 An agent working in a worktree runs the same three commands and gets an isolated environment with its own ports and databases. No configuration changes needed.
 
 See [Getting Started](/guide/getting-started) for outport setup and [Work with AI](/guide/work-with-ai) for the outport AI skill.
-
-## Worktree isolation with `.pc_env`
-
-When running multiple worktrees simultaneously, each needs its own process-compose socket. Otherwise, `bin/dev status` in one worktree talks to the wrong instance, and `bin/dev stop` could shut down the wrong stack.
-
-process-compose loads a file called `.pc_env` from the current directory at startup — before CLI flags, before `.env`, before anything else. It's designed for process-compose's own settings. By setting `PC_SOCKET_PATH` in `.pc_env`, process-compose automatically enables Unix Domain Socket (UDS) mode with a unique socket path. No flags needed.
-
-Outport can write this file for you as a [computed value](/guide/getting-started#create-your-config):
-
-```yaml
-# outport.yml
-computed:
-  PC_SOCKET_PATH:
-    value: "/tmp/process-compose-${project_name}${instance:+-${instance}}.sock"
-    env_file: .pc_env
-```
-
-After `outport up`:
-
-- **Main instance** gets `.pc_env` with `PC_SOCKET_PATH=/tmp/process-compose-myapp.sock`
-- **Worktree** gets `.pc_env` with `PC_SOCKET_PATH=/tmp/process-compose-myapp-wiki.sock`
-- `process-compose up` (no flags) auto-enables UDS with the correct socket
-- `process-compose process list` (no flags) finds the right socket
-- `bin/dev` becomes pure convenience aliases — zero plumbing
-
-Add `.pc_env` to your `.gitignore` — it's instance-specific, like `.env`.
 
 ## Gotchas we learned the hard way
 
@@ -255,6 +217,24 @@ readiness_probe:
 **What goes wrong:** process-compose auto-discovers config files in this order: `compose.yml`, `compose.yaml`, `process-compose.yml`, `process-compose.yaml`. If you have a Docker `compose.yml` in the same directory, process-compose finds it first and chokes on Docker-specific keys like `volumes` and `image`.
 
 **Fix:** Name your Docker file `docker-compose.yml` (the legacy name) so process-compose skips it.
+
+### Worktree isolation with `.pc_env`
+
+**What goes wrong:** When running multiple worktrees simultaneously, each needs its own process-compose socket. Without isolation, `bin/dev status` in one worktree talks to the wrong instance, and `bin/dev stop` shuts down the wrong stack.
+
+**Fix:** process-compose loads `.pc_env` from the current directory at startup — before CLI flags, before `.env`, before anything else. Setting `PC_SOCKET_PATH` there auto-enables UDS mode with a unique socket per worktree.
+
+Outport can write this file for you as a [computed value](/guide/getting-started#create-your-config):
+
+```yaml
+# outport.yml
+computed:
+  PC_SOCKET_PATH:
+    value: "/tmp/process-compose-${project_name}${instance:+-${instance}}.sock"
+    env_file: .pc_env
+```
+
+After `outport up`, each instance gets its own socket (e.g., `/tmp/process-compose-myapp.sock` for main, `/tmp/process-compose-myapp-wiki.sock` for a worktree). All `process-compose` and `bin/dev` commands find the right socket automatically — no flags needed. Add `.pc_env` to your `.gitignore`.
 
 ### Socket path out of sync
 
