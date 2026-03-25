@@ -18,6 +18,11 @@ test:
 test-short:
     gotestsum --format dots ./...
 
+# Run all tests on Linux via Docker
+test-linux:
+    docker build -f docker/Dockerfile.test -t outport-test-linux .
+    docker run --rm outport-test-linux
+
 # Install dev build to ~/.local/bin (overrides Homebrew)
 install:
     @mkdir -p ~/.local/bin
