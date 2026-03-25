@@ -18,16 +18,20 @@ services:
     hostname: myapp.test
   postgres:
     env_var: DB_PORT
-    preferred_port: 5432
 ```
 
 After `outport up`:
-- `PORT=23899` and `DB_PORT=5432` written to `.env`
-- `https://myapp.test` routes to your Rails server through the proxy
 
-## Monorepo with Multiple Frontends
+```
+myapp [main]
 
-A monorepo with a Rails API, two Nuxt frontends, Mailpit for email, and Bruno for API testing. Each sub-app has its own `.env` file:
+    web       PORT     → 23899  https://myapp.test
+    postgres  DB_PORT  → 21536
+```
+
+## Monorepo
+
+A Rails API with a Nuxt frontend and Postgres, each with its own `.env` file:
 
 ```yaml
 name: acme
@@ -37,91 +41,43 @@ services:
     hostname: api.acme.test
     env_file:
       - backend/.env
-      - frontend/apps/main/.env
-      - frontend/apps/admin/.env
+      - frontend/.env
+  frontend:
+    env_var: FRONTEND_PORT
+    hostname: acme.test
+    env_file:
+      - frontend/.env
+      - backend/.env
   postgres:
     env_var: DB_PORT
     env_file: backend/.env
-  redis:
-    env_var: REDIS_PORT
-    env_file: backend/.env
-  mailpit_web:
-    env_var: MAILPIT_WEB_PORT
-    hostname: mailpit.acme.test
-    env_file: backend/.env
-  mailpit_smtp:
-    env_var: MAILPIT_SMTP_PORT
-    env_file: backend/.env
-  frontend_main:
-    env_var: MAIN_PORT
-    hostname: acme.test
-    env_file:
-      - frontend/apps/main/.env
-      - backend/.env
-  frontend_admin:
-    env_var: ADMIN_PORT
-    hostname: admin.acme.test
-    env_file:
-      - frontend/apps/admin/.env
-      - backend/.env
 
 computed:
-  # Frontend API URLs — server-to-server, use :direct
-  NUXT_API_BASE_URL:
-    env_file:
-      - file: frontend/apps/main/.env
-        value: "${rails.url:direct}/api/v1"
-      - file: frontend/apps/admin/.env
-        value: "${rails.url:direct}/admin/api/v1"
+  # Server-to-server — use :direct to bypass the proxy
+  API_URL:
+    value: "${rails.url:direct}/api/v1"
+    env_file: frontend/.env
 
-  NUXT_CABLE_BASE_URL:
-    env_file:
-      - file: frontend/apps/main/.env
-        value: "${rails.url:direct}/cable"
-      - file: frontend/apps/admin/.env
-        value: "${rails.url:direct}/admin/cable"
-
-  # CORS origins — browser-facing, use .test URLs
-  APP_CORS_ORIGINS:
-    value: "${frontend_main.url},${frontend_admin.url}"
-    env_file: backend/.env
-
-  APP_FRONTEND_URL:
-    value: "${frontend_main.url}"
-    env_file: backend/.env
-
-  # Asset host for file uploads
-  ASSET_HOST:
-    value: "${rails.url}"
+  # Browser-facing — use .test URL for CORS
+  CORS_ORIGINS:
+    value: "${frontend.url}"
     env_file: backend/.env
 
   # Docker Compose isolation per worktree
   COMPOSE_PROJECT_NAME:
     value: "${project_name}${instance:+-${instance}}"
     env_file: backend/.env
-
-  # Bruno API testing
-  BRUNO_API_URL:
-    value: "${rails.url:direct}/api/v1"
-    env_file: backend/bruno/.env
-  BRUNO_ADMIN_URL:
-    value: "${rails.url:direct}/admin/api/v1"
-    env_file: backend/bruno/.env
-  BRUNO_EXTERNAL_URL:
-    value: "${rails.url:direct}/external/api/v1"
-    env_file: backend/bruno/.env
 ```
 
-Key patterns in this config:
+Key patterns:
 
-- **Per-file overrides** — `NUXT_API_BASE_URL` resolves to different paths depending on which frontend's `.env` it's written to
-- **`:direct` vs `.test` URLs** — Server-to-server calls (API, WebSocket) use `${rails.url:direct}` to bypass the proxy. Browser-facing URLs (CORS, asset host) use `${rails.url}` which resolves to the `.test` hostname
-- **Shared ports across files** — The Rails port is written to all three `.env` files so each sub-app knows where the API is
-- **Bruno integration** — API testing URLs are computed from the same port allocations, staying in sync automatically
+- **Per-directory env files** — Each sub-app gets its own `.env`. Ports are shared across files so each service knows where the others are
+- **`:direct` vs `.test` URLs** — Server-to-server calls use `${rails.url:direct}` to bypass the proxy. Browser-facing URLs use `${frontend.url}` which resolves to the `.test` hostname
+- **Cross-service references** — CORS origins and API URLs are computed from the same port allocations, staying in sync automatically
 
 ## Docker Compose Multi-Instance
 
-When working with git worktrees, each checkout needs its own Docker containers. Without unique project names, `docker compose up` from one worktree replaces the other's containers.
+When working with git worktrees, each checkout may end up with the same Docker Compose project name — especially if your `docker-compose.yml` lives in a subdirectory with a fixed name (like `backend/`). When that happens, `docker compose up` from one worktree replaces the other's containers.
 
 Add a `COMPOSE_PROJECT_NAME` computed value:
 
@@ -192,23 +148,3 @@ env_file: /Users/you/src/frontend/.env
 ```
 
 Outport resolves all paths through symlinks before checking boundaries, so tricks like symlinking an external directory into your project won't bypass the approval check.
-
-## Component Library
-
-A Ruby gem with Lookbook (component preview), docs site, and demo app:
-
-```yaml
-name: kiso
-services:
-  lookbook:
-    env_var: LOOKBOOK_PORT
-    hostname: lookbook.kiso.test
-  docs:
-    env_var: DOCS_PORT
-    hostname: docs.kiso.test
-  dummy:
-    env_var: DUMMY_PORT
-    hostname: kiso.test
-```
-
-Three services, each with its own `.test` hostname. No computed values needed since the services don't reference each other.

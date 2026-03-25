@@ -51,7 +51,7 @@ export default defineConfig({
           { text: 'Dashboard', link: '/guide/dashboard' },
           { text: 'Sharing & Mobile', link: '/guide/sharing' },
           { text: 'Work with AI', link: '/guide/work-with-ai' },
-          { text: 'DEVSTACK.md', link: '/guide/devstack' },
+          { text: 'Running Your Dev Stack', link: '/guide/devstack' },
           { text: 'Tips & Troubleshooting', link: '/guide/tips' },
         ],
       },

@@ -1,65 +1,16 @@
 ---
-description: Troubleshooting Outport issues including DNS, daemon, port conflicts, worktree setup, and Docker Compose isolation.
+description: Tips for getting the most out of Outport, and troubleshooting common issues with DNS, the daemon, ports, and worktrees.
 ---
 
 # Tips & Troubleshooting
 
-## Diagnose issues with outport doctor
+## Tips
 
-If something isn't working, start here:
+### Pin the dashboard
 
-```bash
-outport doctor
-```
+Pin [https://outport.test](https://outport.test) in your browser for a live view of all your projects and services. It shows which services are up or down and gives you clickable links to every `.test` URL. The dashboard updates automatically — no need to refresh. See the [Dashboard guide](/guide/dashboard) for details.
 
-This checks DNS, the daemon, TLS certificates, the registry, and (if you're in a project directory) your `outport.yml` and port status. Each check shows pass/fail with a fix suggestion.
-
-## Live dashboard
-
-Pin [https://outport.test](https://outport.test) in your browser for a live view of all your projects and services. It shows which services are up or down and gives you clickable links to every `.test` URL. The dashboard updates automatically via server-sent events — no need to refresh. See the [Dashboard guide](/guide/dashboard) for details.
-
-## Daemon not running
-
-If `outport up` shows this hint:
-
-```
-Hint: The outport daemon is not running.
-Run 'outport system start' to enable .test domains.
-```
-
-Port allocation and `.env` writing still work without the daemon — you just won't have `.test` hostnames or HTTPS. Run `outport system start` to enable them.
-
-## After upgrading outport
-
-After `brew upgrade outport`, bounce the daemon to pick up the new binary:
-
-```bash
-outport system restart
-```
-
-This re-writes the LaunchAgent plist with the new binary path and restarts the daemon.
-
-## Ports changed unexpectedly
-
-Outport allocates deterministic ports — the same project, instance, and service name always produce the same port. If your ports changed, one of these happened:
-
-- **You re-registered from a different directory** — the instance name may have changed
-- **You used `--force`** — this re-allocates all ports from scratch
-- **Another project claimed your preferred port** — preferred ports are first-come-first-served across all registered projects
-
-Run `outport ports` to see your current allocations and `outport system status` to see all registered projects.
-
-## Stale registry entries
-
-If `outport system status` shows stale entries (projects whose directories no longer exist):
-
-```bash
-outport system gc
-```
-
-This removes entries where the project directory or `outport.yml` is missing.
-
-## Multiple worktrees of the same project
+### Multiple worktrees of the same project
 
 Each worktree gets its own instance with unique ports and suffixed hostnames:
 
@@ -85,7 +36,7 @@ outport promote
 # This worktree becomes [main], the old main gets a generated code
 ```
 
-## Docker Compose conflicts with worktrees
+### Docker Compose conflicts with worktrees
 
 If `docker compose up` from one worktree replaces another's containers, add a `COMPOSE_PROJECT_NAME` computed value:
 
@@ -98,28 +49,7 @@ computed:
 
 This gives each instance a unique Docker Compose project name.
 
-## Port 80 or 443 already in use
-
-If `outport system start` fails with "port 80 is already in use", another server (nginx, Apache, another dev tool) is using that port. Stop it first, then retry.
-
-On macOS, find what's using the port:
-
-```bash
-sudo lsof -iTCP:80 -sTCP:LISTEN
-```
-
-## Clean reinstall
-
-To start completely fresh:
-
-```bash
-outport system uninstall    # removes daemon, DNS, certs, and registry
-outport system start        # reinstall from scratch
-```
-
-Then re-register each project with `outport up`.
-
-## Adding Outport to a project setup script
+### Adding Outport to a project setup script
 
 Make it optional so developers without Outport aren't blocked:
 
@@ -130,3 +60,77 @@ else
   echo "Outport not found — install: brew install steveclarke/tap/outport"
 fi
 ```
+
+## Troubleshooting
+
+### Start with outport doctor
+
+If something isn't working, start here:
+
+```bash
+outport doctor
+```
+
+This checks DNS, the daemon, TLS certificates, the registry, and (if you're in a project directory) your `outport.yml` and port status. Each check shows pass/fail with a fix suggestion.
+
+### Daemon not running
+
+If `outport up` shows this hint:
+
+```
+Hint: The outport daemon is not running.
+Run 'outport system start' to enable .test domains.
+```
+
+Port allocation and `.env` writing still work without the daemon — you just won't have `.test` hostnames or HTTPS. Run `outport system start` to enable them.
+
+### After upgrading Outport
+
+After `brew upgrade outport`, bounce the daemon to pick up the new binary:
+
+```bash
+outport system restart
+```
+
+This re-writes the LaunchAgent plist with the new binary path and restarts the daemon.
+
+### Ports changed unexpectedly
+
+Outport allocates deterministic ports — the same project, instance, and service name always produce the same port. If your ports changed, one of these happened:
+
+- **You re-registered from a different directory** — the instance name may have changed
+- **You used `--force`** — this re-allocates all ports from scratch
+- **Another project claimed your preferred port** — preferred ports are first-come-first-served across all registered projects
+
+Run `outport ports` to see your current allocations and `outport system status` to see all registered projects.
+
+### Stale registry entries
+
+If `outport system status` shows stale entries (projects whose directories no longer exist):
+
+```bash
+outport system gc
+```
+
+This removes entries where the project directory or `outport.yml` is missing.
+
+### Port 80 or 443 already in use
+
+If `outport system start` fails with "port 80 is already in use", another server (nginx, Apache, another dev tool) is using that port. Stop it first, then retry.
+
+On macOS, find what's using the port:
+
+```bash
+sudo lsof -iTCP:80 -sTCP:LISTEN
+```
+
+### Clean reinstall
+
+To start completely fresh:
+
+```bash
+outport system uninstall    # removes daemon, DNS, certs, and registry
+outport system start        # reinstall from scratch
+```
+
+Then re-register each project with `outport up`.

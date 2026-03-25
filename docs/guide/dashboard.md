@@ -4,7 +4,7 @@ description: The Outport dashboard at outport.test shows all your projects, serv
 
 # Dashboard
 
-The Outport daemon serves a live web dashboard at [https://outport.test](https://outport.test). It shows all your registered projects, services, ports, and health status in one place — no terminal needed.
+The Outport daemon serves a live web dashboard at [https://outport.test](https://outport.test). Every `.test` URL across all your projects is a clickable link — the dashboard is the fastest way to open any service. QR codes let you open the same URLs on your phone. It also shows ports, health status, and live updates — all in one place, no terminal needed.
 
 <img class="screenshot-light" src="/dashboard-light.png" alt="Outport dashboard showing projects with service health status">
 <img class="screenshot-dark" src="/dashboard-dark.png" alt="Outport dashboard in dark mode showing projects with service health status">
@@ -36,11 +36,11 @@ Each registered project appears as a card with:
 
 ## Live updates
 
-The dashboard updates automatically via server-sent events (SSE). You never need to refresh the page.
+The dashboard updates automatically. You never need to refresh the page.
 
 - **Registry changes** push instantly — when you `outport up` a new project or `outport down` an existing one, the dashboard reflects it immediately.
 - **Health status** is checked every 3 seconds while the dashboard is open. When a service starts or stops, the status dot updates in real-time.
-- **Connection indicator** in the header shows whether the SSE connection is active. If it drops, the dashboard reconnects automatically.
+- **Connection indicator** in the header shows whether the live connection is active. If it drops, the dashboard reconnects automatically.
 
 Health checking only runs while the dashboard tab is open — no CPU cost when nobody's watching.
 

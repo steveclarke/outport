@@ -2,17 +2,19 @@
 description: A convention for telling AI agents how to start, stop, and health-check your dev environment using process-compose and Outport.
 ---
 
-# DEVSTACK.md
+# Running Your Dev Stack
 
-`DEVSTACK.md` is a convention — a file committed to your project root that tells agents how to run your dev environment. `CLAUDE.md` tells agents how to work in a codebase. `DEVSTACK.md` tells them how to start it, stop it, and check if it's healthy.
+Outport allocates ports and writes `.env` files — it doesn't start or stop your services. But if you're using Outport, you'll also need a way to run your dev stack, and increasingly you'll want your AI coding agents to be able to start, stop, and health-check services on your behalf.
+
+This page describes a complementary convention — `DEVSTACK.md` — that solves that problem. It's not part of Outport, but it pairs well with it. A file committed to your project root that tells agents how to run your dev environment. `CLAUDE.md` tells agents how to work in a codebase. `DEVSTACK.md` tells them how to start it, stop it, and check if it's healthy.
 
 ## The problem
 
 Agents can create files, run tests, make commits. But "spin up Postgres, wait for it to be healthy, then start the app server" is where they get stuck. Background process management is the gap in agentic coding.
 
-As of early 2026, every major coding agent — Claude, Gemini, Codex — struggles with starting, monitoring, and stopping dev services. They don't own a terminal. They can't see a Foreman dashboard. They can't tell if Postgres is still booting or if the app server crashed on startup.
+As of early 2026, every major coding agent — Claude, Gemini, Codex — can figure out how to start a service. But reliably coordinating multiple services — waiting for Postgres to accept connections before starting Rails, detecting a crashed process vs one that's still booting — requires a lot of hand-holding without a structured interface.
 
-The missing piece isn't intelligence. It's a structured contract between the project and the agent that says: here's how to start everything, here's how to check if it worked, and here's how to shut it down.
+The missing piece isn't intelligence. It's a structured contract between the project and the agent that says: here's how to start everything, here's how to check if it worked, and here's how to shut it down. The approach below is the best solution we've found.
 
 ## The convention
 
@@ -72,9 +74,9 @@ Project-specific gotchas go here.
 
 The format is vendor-neutral. Claude, Gemini, Codex, or any future agent can read it. The sections are predictable — an agent knows exactly where to look for health check commands or log access.
 
-## process-compose
+## process-compose (recommended)
 
-The orchestration layer that makes this work is [process-compose](https://f1bonacc1.github.io/process-compose/) — a Go binary that manages your dev processes like docker-compose manages containers.
+The `DEVSTACK.md` convention is tool-agnostic, but we recommend [process-compose](https://f1bonacc1.github.io/process-compose/) as the orchestration layer. It's a Go binary that manages your dev processes like docker-compose manages containers.
 
 Why it's the right fit for agents:
 
@@ -93,7 +95,7 @@ brew install f1bonacc1/tap/process-compose
 
 ## The bin/dev pattern
 
-`bin/dev` is already the standard command for starting a Rails dev server (and increasingly common in other frameworks). The idea is to keep the same command humans already know, but swap the backend from Foreman to process-compose.
+`bin/dev` is a common convention for starting a dev environment. This wrapper script gives it a consistent interface that both humans and agents can use:
 
 Here's the complete wrapper script:
 
@@ -120,7 +122,60 @@ Each subcommand:
 - **`bin/dev restart <service>`** — restarts one service without touching the others. Useful after code changes that require a server restart.
 - **`bin/dev stop`** — shuts everything down cleanly.
 
-## How it works with outport
+## Example process-compose.yml
+
+A Rails app with Postgres and Redis. Outport writes the ports to `.env`, and process-compose reads them automatically:
+
+```yaml
+shell:
+  shell_command: "bash"
+  shell_argument: "-lc"
+
+processes:
+  postgres:
+    command: >
+      docker run --rm
+      -p ${DB_PORT}:5432
+      -e POSTGRES_PASSWORD=postgres
+      -v myapp-pgdata:/var/lib/postgresql/data
+      postgres:17
+    readiness_probe:
+      exec:
+        command: "pg_isready -h 127.0.0.1 -p ${DB_PORT}"
+      initial_delay_seconds: 2
+      period_seconds: 2
+
+  redis:
+    command: >
+      docker run --rm
+      -p ${REDIS_PORT}:6379
+      redis:7
+    readiness_probe:
+      exec:
+        command: "redis-cli -p ${REDIS_PORT} ping"
+      initial_delay_seconds: 1
+
+  web:
+    command: bin/rails server -p ${PORT}
+    depends_on:
+      postgres:
+        condition: process_healthy
+      redis:
+        condition: process_healthy
+    readiness_probe:
+      exec:
+        command: "curl -sf http://127.0.0.1:${PORT}/up"
+      period_seconds: 3
+```
+
+Key points:
+
+- **Login shell** — `shell_argument: "-lc"` ensures Homebrew, mise, and Docker Desktop are on PATH
+- **Dependency ordering** — Rails won't start until Postgres and Redis pass their health checks
+- **Readiness probes** — exec probes check the raw port directly, not through the `.test` proxy
+- **No hardcoded ports** — everything reads from `.env`, so worktrees get isolated environments automatically
+
+## How it works with Outport
 
 The full flow:
 
@@ -172,22 +227,10 @@ readiness_probe:
 
 **Fix:** Always pass `--no-server` when starting process-compose. CLI commands (status, logs, restart) use unix sockets, not HTTP, so nothing breaks. The `bin/dev` wrapper shown above already includes this.
 
-### Theme config path on macOS
-
-**What goes wrong:** You create `~/.config/process-compose/settings.yaml` and your theme doesn't apply.
-
-**Fix:** process-compose uses XDG paths, which resolve to `~/Library/Application Support/` on macOS. The correct path is:
-
-```
-~/Library/Application Support/process-compose/settings.yaml
-```
-
 ## Adopting `DEVSTACK.md`
 
-`DEVSTACK.md` is a vendor-neutral convention, like `CLAUDE.md` and `AGENTS.md`. It works with any agent framework, any language, any stack.
+`DEVSTACK.md` is not an official standard — no agent picks it up automatically today. You'll need to point your `CLAUDE.md` or `AGENTS.md` to it (e.g., "See DEVSTACK.md for how to start and stop services"). Our hope is that it could become a recognized convention, like `CLAUDE.md` and `AGENTS.md` are now.
 
 If your project has a `bin/dev` or `docker-compose.yml` or `Procfile` — you already have the knowledge needed for a `DEVSTACK.md`. Write it down in a format agents can follow.
 
 The pattern described on this page is a working implementation — process-compose health checks, Docker services, worktree support, and all the gotchas documented above. Use it as a starting point.
-
-Add a `DEVSTACK.md` to your project. Commit it. Your agents will thank you by actually being able to run your code.
