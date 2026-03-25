@@ -28,6 +28,7 @@ outport rename <old> <new>    # Explicit form (unchanged)
    out of range.
 
 2. **Rename command changes** in `cmd/rename.go`:
+   - Update `Use` field from `"rename <old> <new>"` to `"rename [old] <new>"`.
    - Change `Args` from `ExactArgs(2, ...)` to `RangeArgs(1, 2, ...)`.
    - In `runRename`: if 1 arg, use `ctx.Instance` as `oldName` and `args[0]` as
      `newName`. If 2 args, same as today.
@@ -35,6 +36,7 @@ outport rename <old> <new>    # Explicit form (unchanged)
 3. **Tests** in `cmd/cmd_test.go`:
    - 1-arg rename from a registered non-main instance directory.
    - 1-arg rename when current instance is "main" (valid operation).
+   - Existing 2-arg tests serve as regression coverage for the explicit form.
 
 ## Error Cases
 
