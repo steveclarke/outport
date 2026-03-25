@@ -120,10 +120,10 @@ While sharing, `.env` files are rewritten so computed values using `${service.ur
 Rename an instance of the current project.
 
 ```bash
-outport rename <old-name> <new-name>
+outport rename [old-name] <new-name>
 ```
 
-Updates the instance name in the registry and regenerates hostnames in `.env` files.
+If `old-name` is omitted, renames the current directory's instance. Updates the instance name in the registry and regenerates hostnames in `.env` files.
 
 | Flag | Description |
 |------|-------------|

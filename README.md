@@ -122,7 +122,7 @@ outport ports [--computed] Show allocated ports
 outport open               Open services in the browser
 outport qr [--tunnel]      QR codes for mobile access
 outport share [service]    Tunnel services to public URLs
-outport rename <old> <new> Rename an instance
+outport rename [old] <new> Rename an instance
 outport promote            Promote instance to main
 outport doctor             Diagnose issues
 outport system start       Install DNS, HTTPS, start daemon

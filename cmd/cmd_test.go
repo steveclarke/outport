@@ -966,6 +966,90 @@ func TestRename_Success(t *testing.T) {
 	}
 }
 
+func TestRename_OneArg_FromMain(t *testing.T) {
+	setupProject(t, testConfigWithHostnames)
+	executeCmd(t, "up", "--json")
+
+	// Rename current instance (main) → staging using 1-arg form
+	output := executeCmd(t, "rename", "--json", "staging")
+
+	var result struct {
+		OldInstance string `json:"old_instance"`
+		NewInstance string `json:"new_instance"`
+		Status      string `json:"status"`
+	}
+	if err := json.Unmarshal([]byte(output), &result); err != nil {
+		t.Fatalf("invalid JSON: %v\nOutput: %s", err, output)
+	}
+	if result.OldInstance != "main" {
+		t.Errorf("old_instance = %q, want main", result.OldInstance)
+	}
+	if result.NewInstance != "staging" {
+		t.Errorf("new_instance = %q, want staging", result.NewInstance)
+	}
+	if result.Status != "renamed" {
+		t.Errorf("status = %q, want renamed", result.Status)
+	}
+}
+
+func TestRename_OneArg_FromNonMain(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	jsonFlag = false
+	yesFlag = false
+	forceFlag = false
+	isPortBusy = func(int) bool { return false }
+
+	// Create "main" instance in dir1
+	dir1 := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir1, "outport.yml"), []byte(testConfigWithHostnames), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(filepath.Join(dir1, ".git"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(dir1)
+	executeCmd(t, "up", "--json")
+
+	// Create second instance in dir2 (will get an auto-generated code)
+	dir2 := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir2, "outport.yml"), []byte(testConfigWithHostnames), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(filepath.Join(dir2, ".git"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(dir2)
+	out := executeCmd(t, "up", "--json")
+
+	var upResult struct {
+		Instance string `json:"instance"`
+	}
+	if err := json.Unmarshal([]byte(out), &upResult); err != nil {
+		t.Fatalf("invalid JSON: %v\nOutput: %s", err, out)
+	}
+	autoCode := upResult.Instance
+
+	// Rename current (auto-code) → "dev" using 1-arg form
+	output := executeCmd(t, "rename", "--json", "dev")
+
+	var result struct {
+		OldInstance string `json:"old_instance"`
+		NewInstance string `json:"new_instance"`
+		Status      string `json:"status"`
+	}
+	if err := json.Unmarshal([]byte(output), &result); err != nil {
+		t.Fatalf("invalid JSON: %v\nOutput: %s", err, output)
+	}
+	if result.OldInstance != autoCode {
+		t.Errorf("old_instance = %q, want %q", result.OldInstance, autoCode)
+	}
+	if result.NewInstance != "dev" {
+		t.Errorf("new_instance = %q, want dev", result.NewInstance)
+	}
+}
+
 func TestRename_CollisionFails(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)

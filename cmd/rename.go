@@ -13,11 +13,11 @@ import (
 )
 
 var renameCmd = &cobra.Command{
-	Use:     "rename <old> <new>",
+	Use:     "rename [old] <new>",
 	Short:   "Rename an instance of the current project",
-	Long:    "Renames an instance in the registry and updates hostnames in .env files.",
+	Long:    "Renames an instance in the registry and updates hostnames in .env files.\nIf only one argument is given, renames the current directory's instance.",
 	GroupID: "project",
-	Args:    ExactArgs(2, "requires two arguments: outport rename <old-name> <new-name>"),
+	Args:    RangeArgs(1, 2, "requires at least one argument: outport rename <new-name>"),
 	RunE:    runRename,
 }
 
@@ -26,8 +26,20 @@ func init() {
 }
 
 func runRename(cmd *cobra.Command, args []string) error {
-	oldName := args[0]
-	newName := args[1]
+	ctx, err := loadProjectContext()
+	if err != nil {
+		return err
+	}
+	cfg, reg := ctx.Cfg, ctx.Reg
+
+	var oldName, newName string
+	if len(args) == 2 {
+		oldName = args[0]
+		newName = args[1]
+	} else {
+		oldName = ctx.Instance
+		newName = args[0]
+	}
 
 	if oldName == newName {
 		return fmt.Errorf("old and new instance names are the same")
@@ -36,12 +48,6 @@ func runRename(cmd *cobra.Command, args []string) error {
 	if err := instance.ValidateName(newName); err != nil {
 		return fmt.Errorf("invalid new name: %w", err)
 	}
-
-	ctx, err := loadProjectContext()
-	if err != nil {
-		return err
-	}
-	cfg, reg := ctx.Cfg, ctx.Reg
 
 	// Check old instance exists
 	oldAlloc, ok := reg.Get(cfg.Name, oldName)

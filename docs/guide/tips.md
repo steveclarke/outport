@@ -22,10 +22,10 @@ cd ~/src/myapp-feature   # worktree
 outport up               # myapp [xbjf] → myapp-xbjf.test
 ```
 
-To give a worktree a readable name:
+To give a worktree a readable name (run from inside the worktree):
 
 ```bash
-outport rename xbjf feature
+outport rename feature
 # Now: myapp-feature.test
 ```
 

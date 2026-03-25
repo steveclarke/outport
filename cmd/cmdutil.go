@@ -93,6 +93,19 @@ func MaximumArgs(n int, msg string) cobra.PositionalArgs {
 	}
 }
 
+// RangeArgs returns a Cobra arg validator that accepts between min and max args (inclusive).
+func RangeArgs(min, max int, msg string) cobra.PositionalArgs {
+	return func(cmd *cobra.Command, args []string) error {
+		if len(args) > max {
+			return FlagErrorf("too many arguments")
+		}
+		if len(args) < min {
+			return FlagErrorf("%s", msg)
+		}
+		return nil
+	}
+}
+
 // MinimumArgs returns a Cobra arg validator that requires at least n args.
 func MinimumArgs(n int, msg string) cobra.PositionalArgs {
 	return func(cmd *cobra.Command, args []string) error {

@@ -57,46 +57,6 @@ func TestNoArgsCommandsRejectArguments(t *testing.T) {
 	}
 }
 
-// TestExactArgsCommands verifies commands that require specific arg counts.
-func TestExactArgsCommands(t *testing.T) {
-	tests := []struct {
-		name     string
-		tooFew   []string
-		tooMany  []string
-		justRight []string
-	}{
-		{
-			name:      "rename",
-			tooFew:    []string{"one"},
-			tooMany:   []string{"a", "b", "c"},
-			justRight: []string{"old", "new"},
-		},
-	}
-
-	for _, tt := range tests {
-		cmd, _, err := rootCmd.Find([]string{tt.name})
-		if err != nil {
-			t.Fatalf("command %q not found: %v", tt.name, err)
-		}
-
-		if err := cmd.Args(cmd, tt.tooFew); err == nil {
-			t.Errorf("%s: accepted too few args %v", tt.name, tt.tooFew)
-		} else if !IsFlagError(err) {
-			t.Errorf("%s: too-few error is not FlagError: %v", tt.name, err)
-		}
-
-		if err := cmd.Args(cmd, tt.tooMany); err == nil {
-			t.Errorf("%s: accepted too many args %v", tt.name, tt.tooMany)
-		} else if !IsFlagError(err) {
-			t.Errorf("%s: too-many error is not FlagError: %v", tt.name, err)
-		}
-
-		if err := cmd.Args(cmd, tt.justRight); err != nil {
-			t.Errorf("%s: rejected correct args %v: %v", tt.name, tt.justRight, err)
-		}
-	}
-}
-
 // TestMaximumArgsCommands verifies commands that accept optional args.
 func TestMaximumArgsCommands(t *testing.T) {
 	tests := []struct {
@@ -127,6 +87,42 @@ func TestMaximumArgsCommands(t *testing.T) {
 			t.Errorf("%s: accepted too many args %v", tt.name, tt.invalid)
 		} else if !IsFlagError(err) {
 			t.Errorf("%s: too-many error is not FlagError: %v", tt.name, err)
+		}
+	}
+}
+
+// TestRangeArgsCommands verifies commands that accept a range of args.
+func TestRangeArgsCommands(t *testing.T) {
+	tests := []struct {
+		name    string
+		valid   [][]string
+		invalid [][]string
+	}{
+		{
+			name:    "rename",
+			valid:   [][]string{{"new"}, {"old", "new"}},
+			invalid: [][]string{{}, {"a", "b", "c"}},
+		},
+	}
+
+	for _, tt := range tests {
+		cmd, _, err := rootCmd.Find([]string{tt.name})
+		if err != nil {
+			t.Fatalf("command %q not found: %v", tt.name, err)
+		}
+
+		for _, args := range tt.valid {
+			if err := cmd.Args(cmd, args); err != nil {
+				t.Errorf("%s: rejected valid args %v: %v", tt.name, args, err)
+			}
+		}
+
+		for _, args := range tt.invalid {
+			if err := cmd.Args(cmd, args); err == nil {
+				t.Errorf("%s: accepted invalid args %v", tt.name, args)
+			} else if !IsFlagError(err) {
+				t.Errorf("%s: error for args %v is not FlagError: %v", tt.name, args, err)
+			}
 		}
 	}
 }
@@ -171,6 +167,14 @@ func TestMinimumArgsHelper(t *testing.T) {
 	testArgsValidator(t, v, []string{"a"}, false, false)
 	testArgsValidator(t, v, []string{"a", "b"}, false, false)
 	testArgsValidator(t, v, []string{}, true, true)
+}
+
+func TestRangeArgsHelper(t *testing.T) {
+	v := RangeArgs(1, 2, "requires 1 or 2 args")
+	testArgsValidator(t, v, []string{"a"}, false, false)
+	testArgsValidator(t, v, []string{"a", "b"}, false, false)
+	testArgsValidator(t, v, []string{}, true, true)
+	testArgsValidator(t, v, []string{"a", "b", "c"}, true, true)
 }
 
 func TestSystemCommandHasSubcommands(t *testing.T) {
