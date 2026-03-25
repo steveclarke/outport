@@ -1,0 +1,41 @@
+FROM ubuntu:24.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV container=docker
+
+# Install systemd, resolved, and dev tools
+RUN apt-get update && apt-get install -y \
+    systemd \
+    systemd-resolved \
+    dbus \
+    curl \
+    dnsutils \
+    iproute2 \
+    git \
+    sudo \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Trim systemd units that cause issues in Docker
+RUN find /lib/systemd/system/sysinit.target.wants/ -type l \
+      -not -name systemd-tmpfiles-setup.service \
+      -delete 2>/dev/null || true \
+    && rm -f /lib/systemd/system/multi-user.target.wants/* \
+    && rm -f /etc/systemd/system/*.wants/* \
+    && rm -f /lib/systemd/system/local-fs.target.wants/* \
+    && rm -f /lib/systemd/system/sockets.target.wants/*udev* \
+    && rm -f /lib/systemd/system/sockets.target.wants/*initctl* \
+    && rm -f /lib/systemd/system/basic.target.wants/*
+
+# Install Go (copy from official image — avoids adding PPAs)
+COPY --from=golang:1.26-bookworm /usr/local/go /usr/local/go
+ENV PATH="/usr/local/go/bin:/root/go/bin:${PATH}"
+
+# Install Go dev tools
+RUN go install gotest.tools/gotestsum@latest
+
+WORKDIR /src
+
+# systemd must be PID 1
+STOPSIGNAL SIGRTMIN+3
+CMD ["/lib/systemd/systemd"]
