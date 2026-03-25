@@ -8,6 +8,7 @@ import (
 	"github.com/steveclarke/outport/internal/platform"
 	"github.com/steveclarke/outport/internal/portcheck"
 	"github.com/steveclarke/outport/internal/registry"
+	"github.com/steveclarke/outport/internal/settings"
 	"github.com/steveclarke/outport/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -36,6 +37,11 @@ func init() {
 func runSystemStart(cmd *cobra.Command, args []string) error {
 	w := cmd.OutOrStdout()
 
+	s, err := settings.Load()
+	if err != nil {
+		return fmt.Errorf("loading settings: %w", err)
+	}
+
 	// Already set up — just ensure the agent is running
 	if platform.IsSetup() {
 		if platform.IsAgentLoaded() {
@@ -46,11 +52,11 @@ func runSystemStart(cmd *cobra.Command, args []string) error {
 			return nil
 		}
 
-		if portcheck.IsListening(80) {
-			return fmt.Errorf("port 80 is already in use — stop the other server first")
+		if portcheck.IsListening(s.Proxy.HTTPPort) {
+			return fmt.Errorf("port %d is already in use — stop the other server first", s.Proxy.HTTPPort)
 		}
-		if portcheck.IsListening(443) {
-			return fmt.Errorf("port 443 is already in use — stop the other server first")
+		if portcheck.IsListening(s.Proxy.HTTPSPort) {
+			return fmt.Errorf("port %d is already in use — stop the other server first", s.Proxy.HTTPSPort)
 		}
 
 		if err := platform.LoadAgent(); err != nil {
@@ -66,11 +72,11 @@ func runSystemStart(cmd *cobra.Command, args []string) error {
 	}
 
 	// First-time setup
-	if portcheck.IsListening(80) {
-		return fmt.Errorf("port 80 is already in use — stop the other server first")
+	if portcheck.IsListening(s.Proxy.HTTPPort) {
+		return fmt.Errorf("port %d is already in use — stop the other server first", s.Proxy.HTTPPort)
 	}
-	if portcheck.IsListening(443) {
-		return fmt.Errorf("port 443 is already in use — stop the other server first")
+	if portcheck.IsListening(s.Proxy.HTTPSPort) {
+		return fmt.Errorf("port %d is already in use — stop the other server first", s.Proxy.HTTPSPort)
 	}
 
 	caGenerated := false

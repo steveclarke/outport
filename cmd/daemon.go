@@ -10,6 +10,7 @@ import (
 	"github.com/steveclarke/outport/internal/certmanager"
 	"github.com/steveclarke/outport/internal/daemon"
 	"github.com/steveclarke/outport/internal/registry"
+	"github.com/steveclarke/outport/internal/settings"
 	"github.com/spf13/cobra"
 )
 
@@ -33,10 +34,17 @@ func runDaemon(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	s, err := settings.Load()
+	if err != nil {
+		return fmt.Errorf("loading settings: %w", err)
+	}
+
 	cfg := &daemon.DaemonConfig{
-		DNSAddr:      "127.0.0.1:15353",
-		RegistryPath: regPath,
-		Version:      version,
+		DNSAddr:        "127.0.0.1:15353",
+		RegistryPath:   regPath,
+		Version:        version,
+		DNSTTL:         uint32(s.DNS.TTL),
+		HealthInterval: s.Dashboard.HealthInterval,
 	}
 
 	// Try launchd HTTP socket activation (darwin only)

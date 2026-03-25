@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/steveclarke/outport/internal/platform"
+	"github.com/steveclarke/outport/internal/settings"
 	"github.com/steveclarke/outport/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -51,7 +52,11 @@ func resolveAndWritePlist() error {
 	if err != nil {
 		return fmt.Errorf("could not resolve outport binary path: %w", err)
 	}
-	return platform.WritePlist(outportBin, 80, 443)
+	s, err := settings.Load()
+	if err != nil {
+		return fmt.Errorf("loading settings: %w", err)
+	}
+	return platform.WritePlist(outportBin, s.Proxy.HTTPPort, s.Proxy.HTTPSPort)
 }
 
 func runSystemStop(cmd *cobra.Command, args []string) error {
