@@ -3,10 +3,13 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 
 	"charm.land/huh/v2"
 	"github.com/steveclarke/outport/internal/certmanager"
 	"github.com/steveclarke/outport/internal/platform"
+	"github.com/steveclarke/outport/internal/settings"
 	"github.com/steveclarke/outport/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -38,6 +41,24 @@ func setupTheme() huh.ThemeFunc {
 	}
 }
 
+// ensureConfigFile creates ~/.config/outport/config with commented-out defaults
+// if it doesn't already exist. Never overwrites an existing file.
+func ensureConfigFile() error {
+	path, err := settings.Path()
+	if err != nil {
+		return err
+	}
+	if _, err := os.Stat(path); err == nil {
+		return nil // already exists
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("checking config file: %w", err)
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+		return fmt.Errorf("creating config directory: %w", err)
+	}
+	return os.WriteFile(path, []byte(settings.DefaultConfigContent()), 0644)
+}
+
 func printSetupNextStep(cmd *cobra.Command) {
 	w := cmd.OutOrStdout()
 	fmt.Fprintln(w)
@@ -54,6 +75,10 @@ func runSetup(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("reset: %w", err)
 		}
 		fmt.Fprintln(w)
+	}
+
+	if err := ensureConfigFile(); err != nil {
+		return fmt.Errorf("creating config file: %w", err)
 	}
 
 	// Already fully set up — skip the prompt entirely

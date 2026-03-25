@@ -10,7 +10,7 @@ import (
 
 // startTestDNS starts a DNS server on a random UDP port and returns its
 // address. The server is shut down when the test finishes.
-func startTestDNS(t *testing.T) string {
+func startTestDNS(t *testing.T, ttl uint32) string {
 	t.Helper()
 
 	pc, err := net.ListenPacket("udp", "127.0.0.1:0")
@@ -20,7 +20,7 @@ func startTestDNS(t *testing.T) string {
 
 	addr := pc.LocalAddr().String()
 
-	srv := NewDNSServer(addr)
+	srv := NewDNSServer(addr, ttl)
 	srv.PacketConn = pc
 
 	started := make(chan struct{})
@@ -39,7 +39,7 @@ func startTestDNS(t *testing.T) string {
 }
 
 func TestDNSServerResolvesTestDomain(t *testing.T) {
-	addr := startTestDNS(t)
+	addr := startTestDNS(t, 60)
 
 	m := new(dns.Msg)
 	m.SetQuestion(dns.Fqdn("foo.test"), dns.TypeA)
@@ -66,13 +66,13 @@ func TestDNSServerResolvesTestDomain(t *testing.T) {
 		t.Fatalf("expected 127.0.0.1, got %s", got)
 	}
 
-	if a.Hdr.Ttl != dnsTTL {
-		t.Fatalf("expected TTL %d, got %d", dnsTTL, a.Hdr.Ttl)
+	if a.Hdr.Ttl != 60 {
+		t.Fatalf("expected TTL 60, got %d", a.Hdr.Ttl)
 	}
 }
 
 func TestDNSServerResolvesSubdomain(t *testing.T) {
-	addr := startTestDNS(t)
+	addr := startTestDNS(t, 60)
 
 	m := new(dns.Msg)
 	m.SetQuestion(dns.Fqdn("portal.unio.test"), dns.TypeA)
@@ -106,7 +106,7 @@ func TestDNSServerResolvesSubdomain(t *testing.T) {
 }
 
 func TestDNSServerRejectsNonTestDomain(t *testing.T) {
-	addr := startTestDNS(t)
+	addr := startTestDNS(t, 60)
 
 	m := new(dns.Msg)
 	m.SetQuestion(dns.Fqdn("foo.com"), dns.TypeA)
@@ -126,7 +126,7 @@ func TestDNSServerRejectsNonTestDomain(t *testing.T) {
 }
 
 func TestDNSServerIgnoresNonAQueries(t *testing.T) {
-	addr := startTestDNS(t)
+	addr := startTestDNS(t, 60)
 
 	m := new(dns.Msg)
 	m.SetQuestion(dns.Fqdn("foo.test"), dns.TypeAAAA)
@@ -147,7 +147,7 @@ func TestDNSServerIgnoresNonAQueries(t *testing.T) {
 
 func TestNewDNSServerReturnsConfiguredServer(t *testing.T) {
 	addr := "127.0.0.1:15353"
-	srv := NewDNSServer(addr)
+	srv := NewDNSServer(addr, 120)
 
 	if srv.Addr != addr {
 		t.Fatalf("expected addr %s, got %s", addr, srv.Addr)
@@ -162,4 +162,21 @@ func TestNewDNSServerReturnsConfiguredServer(t *testing.T) {
 	}
 
 	_ = fmt.Sprintf("server: %v", srv) // ensure no panic on inspect
+}
+
+func TestDNSServerCustomTTL(t *testing.T) {
+	addr := startTestDNS(t, 30)
+
+	m := new(dns.Msg)
+	m.SetQuestion(dns.Fqdn("foo.test"), dns.TypeA)
+
+	r, _, err := new(dns.Client).Exchange(m, addr)
+	if err != nil {
+		t.Fatalf("exchange: %v", err)
+	}
+
+	a := r.Answer[0].(*dns.A)
+	if a.Hdr.Ttl != 30 {
+		t.Fatalf("expected TTL 30, got %d", a.Hdr.Ttl)
+	}
 }
