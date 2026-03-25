@@ -204,3 +204,14 @@ func IsCATrusted(certPath string) bool {
 	err := exec.Command("security", "verify-cert", "-c", certPath).Run()
 	return err == nil
 }
+
+// EnsurePrivilegedPorts is a no-op on macOS — launchd socket activation
+// handles privileged port binding.
+func EnsurePrivilegedPorts(binaryPath string) error {
+	return nil
+}
+
+// ServiceDescription returns the platform-specific name for the daemon service.
+func ServiceDescription() string {
+	return "LaunchAgent"
+}
