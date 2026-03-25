@@ -1,6 +1,16 @@
-// Package allocation builds registry allocations from config and ports.
-// It handles hostname computation, env-var extraction,
-// template variable building, and computed value resolution.
+// Package allocation builds registry allocations from a project's config and its
+// assigned ports. It is the bridge between raw port numbers (from the allocator
+// package) and the rich metadata stored in the registry.
+//
+// Responsibilities include:
+//   - Computing .test hostnames for services, with instance-aware suffixing so
+//     that worktree checkouts get unique hostnames (e.g., myapp-bxcf.test).
+//   - Extracting env_var declarations from service configs.
+//   - Building the template variable map (${service.port}, ${service.hostname},
+//     ${service.url}, etc.) used for bash-style parameter expansion in computed values.
+//   - Resolving computed value templates into their final strings per env file.
+//
+// This package contains pure domain logic with no CLI or I/O dependencies.
 package allocation
 
 import (
@@ -12,7 +22,13 @@ import (
 	"github.com/steveclarke/outport/internal/urlutil"
 )
 
-// Build constructs a registry Allocation from config, instance, directory, and ports.
+// Build constructs a complete registry.Allocation from a project's config, its
+// instance name, the project directory path, and the map of service-name-to-port
+// assignments. It assembles all the pieces that the registry needs to persist:
+// the project directory, port map, computed hostnames, and env var declarations.
+//
+// This is the primary entry point for creating allocations during `outport up`.
+// The returned Allocation is ready to be saved to the registry via registry.Set.
 func Build(cfg *config.Config, instanceName, dir string, ports map[string]int) registry.Allocation {
 	return registry.Allocation{
 		ProjectDir: dir,
@@ -22,9 +38,21 @@ func Build(cfg *config.Config, instanceName, dir string, ports map[string]int) r
 	}
 }
 
-// ComputeHostnames builds hostname map for an allocation.
-// For "main" instance, hostnames are stem + ".test".
-// For other instances, the project name in the stem is suffixed with "-instance".
+// ComputeHostnames builds a map of service name to .test hostname for every service
+// in the config that declares a hostname field.
+//
+// For the "main" instance (the first checkout of a project), hostnames are used
+// as-is from the config with a .test suffix. For example, a service with
+// hostname "myapp" becomes "myapp.test".
+//
+// For non-main instances (worktrees and additional clones), the project name
+// portion of the hostname stem is suffixed with the instance code to ensure
+// global uniqueness. For example, if the project name is "myapp" and the instance
+// code is "bxcf", hostname "myapp" becomes "myapp-bxcf.test", and a compound
+// hostname like "api-myapp" becomes "api-myapp-bxcf.test".
+//
+// Services that do not declare a hostname in their config are omitted from the
+// returned map.
 func ComputeHostnames(cfg *config.Config, instanceName string) map[string]string {
 	hostnames := make(map[string]string)
 	for name, svc := range cfg.Services {
@@ -54,11 +82,30 @@ func computeEnvVars(cfg *config.Config) map[string]string {
 	return envVars
 }
 
-// BuildTemplateVars builds the template variable map from services and allocated ports.
-// Keys are "service.field" (e.g., "rails.port", "rails.hostname", "rails.url").
-// When httpsEnabled is true, .url uses https:// for .test hostnames.
-// When tunnelURLs is non-nil, ${service.url} resolves to the tunnel URL for tunneled services.
-// ${service.url:direct} always resolves to localhost (unaffected by tunnels).
+// BuildTemplateVars builds the template variable map used for bash-style parameter
+// expansion in computed values and other template contexts. The returned map uses
+// dotted keys like "service.field" that correspond to the ${service.field} syntax
+// in outport.yml templates.
+//
+// The following variables are generated for each service:
+//   - ${service.port}      — the allocated port number (e.g., "24920").
+//   - ${service.env_var}   — the env_var name from config (e.g., "PORT").
+//   - ${service.hostname}  — the .test hostname if one is configured, otherwise
+//     the raw hostname from config or "localhost" as a fallback.
+//   - ${service.url}       — the full URL for the service. If the service has an
+//     active tunnel, this resolves to the tunnel URL (e.g., a Cloudflare URL).
+//     Otherwise, it uses the .test hostname with the appropriate scheme.
+//   - ${service.url:direct} — always resolves to http://localhost:{port}, bypassing
+//     any tunnel. Useful when one local service needs to talk to another directly.
+//
+// Two standalone variables are also included:
+//   - ${project_name} — the project name from outport.yml.
+//   - ${instance}     — empty string for the main instance, or the instance code
+//     (e.g., "bxcf") for worktree instances.
+//
+// The httpsEnabled flag controls the scheme for .test hostname URLs: when true,
+// services with .test hostnames get https:// URLs (because the daemon's TLS proxy
+// is active). Non-.test hostnames always use http://.
 func BuildTemplateVars(cfg *config.Config, instanceName string, ports map[string]int, hostnames map[string]string, httpsEnabled bool, tunnelURLs map[string]string) map[string]string {
 	vars := make(map[string]string)
 	vars["project_name"] = cfg.Name
@@ -92,8 +139,20 @@ func BuildTemplateVars(cfg *config.Config, instanceName string, ports map[string
 	return vars
 }
 
-// ResolveComputed resolves computed value templates using allocated ports.
-// Returns name → file → resolved value.
+// ResolveComputed resolves all computed value templates defined in the project's
+// outport.yml config into their final string values. Computed values are env vars
+// whose values are derived from other service attributes using ${service.field}
+// template syntax (e.g., "http://localhost:${rails.port}/api/v1").
+//
+// It first builds the full template variable map via BuildTemplateVars, then
+// delegates to config.ResolveComputed for the actual template substitution.
+//
+// The returned map is keyed as name -> file -> resolved value, where "name" is
+// the computed value name (e.g., "API_URL"), "file" is the env file path it
+// should be written to (e.g., "frontend/.env"), and the value is the fully
+// resolved string with all ${...} references expanded.
+//
+// Returns nil if the config has no computed values defined.
 func ResolveComputed(cfg *config.Config, instanceName string, ports map[string]int, hostnames map[string]string, httpsEnabled bool, tunnelURLs map[string]string) map[string]map[string]string {
 	if len(cfg.Computed) == 0 {
 		return nil

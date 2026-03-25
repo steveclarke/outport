@@ -1,3 +1,27 @@
+// Package dotenv manages the writing of environment variables into .env files
+// using a fenced block pattern. Rather than owning the entire .env file, Outport
+// writes its managed variables inside a clearly delimited section marked by
+// begin/end comment lines. This allows developers to keep their own variables,
+// comments, and blank lines in the same file without Outport touching them.
+//
+// The fenced block looks like this in a .env file:
+//
+//	MY_CUSTOM_VAR=something
+//
+//	# --- begin outport.dev ---
+//	API_PORT=28901
+//	WEB_PORT=13542
+//	# --- end outport.dev ---
+//
+// If a developer manually adds a variable that Outport also manages (e.g., they
+// write WEB_PORT=3000 above the block), the Merge function detects the conflict,
+// removes the manual definition, and writes the Outport-managed value inside the
+// block. This ensures Outport's deterministic port assignments always win while
+// keeping the file clean.
+//
+// The package uses atomic writes (write to temp file, then rename) to prevent
+// partial writes on crash, matching the pattern used by the registry and tunnel
+// packages.
 package dotenv
 
 import (
@@ -8,14 +32,32 @@ import (
 )
 
 const (
+	// BeginMarker is the comment line that marks the start of the Outport-managed
+	// section in a .env file. Everything between this line and EndMarker is owned
+	// by Outport and will be overwritten on each "outport up" run.
 	BeginMarker = "# --- begin outport.dev ---"
-	EndMarker   = "# --- end outport.dev ---"
+
+	// EndMarker is the comment line that marks the end of the Outport-managed
+	// section. Content after this line belongs to the developer and is preserved.
+	EndMarker = "# --- end outport.dev ---"
 )
 
-// Merge writes managed variables into a fenced block at the end of the .env file.
-// Variables in the ports map are always written inside the managed block.
-// Any matching variables in the user section (above/below the block) are removed.
-// All other lines (comments, unrelated variables, blank lines) are preserved.
+// Merge writes the given variables into the fenced Outport block of the .env file
+// at the specified path. It is the primary function called during "outport up" to
+// write computed environment variables (ports, URLs, etc.) into a project's .env files.
+//
+// The ports parameter maps variable names to their values (e.g., {"WEB_PORT": "13542"}).
+// Despite the parameter name, these can be any env vars, not just ports.
+//
+// Merge handles several scenarios:
+//   - If the file does not exist, it creates it with just the managed block.
+//   - If the file exists but has no block, it appends the block at the end.
+//   - If the file already has a block, it replaces the block contents.
+//   - If the user section contains variables that Outport also manages, those
+//     duplicates are removed from the user section (relocated into the block).
+//   - If ports is empty, any existing block is removed and the file is cleaned up.
+//
+// Variables inside the block are sorted alphabetically for deterministic output.
 func Merge(path string, ports map[string]string) error {
 	lines, err := readLines(path)
 	if err != nil && !os.IsNotExist(err) {
@@ -110,7 +152,11 @@ func removeVars(lines []string, ports map[string]string) []string {
 	return result
 }
 
-// RemoveBlock removes the managed block from the file, leaving only user content.
+// RemoveBlock removes the entire Outport-managed fenced section from the .env
+// file at the given path, leaving only the developer's own content. This is
+// called during "outport down" to clean up managed variables when a project is
+// unregistered. If the file does not exist, RemoveBlock returns nil (no error).
+// Trailing blank lines are trimmed after block removal to keep the file tidy.
 func RemoveBlock(path string) error {
 	lines, err := readLines(path)
 	if err != nil {

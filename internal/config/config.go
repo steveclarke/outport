@@ -1,3 +1,19 @@
+// Package config loads and validates the outport.yml project configuration file.
+//
+// Each project that uses Outport has an outport.yml in its root directory. This file
+// declares the project's services (with their port preferences, environment variables,
+// and optional hostnames) and any computed values (derived environment variables built
+// from templates that reference service fields).
+//
+// The package handles YAML deserialization, default values, template reference validation,
+// and normalization of flexible YAML syntax (e.g., env_file can be a string or a list).
+// It does not perform port allocation or registry operations -- those are handled by
+// the allocator and registry packages respectively.
+//
+// Typical usage from a CLI command:
+//
+//	dir, err := config.FindDir(startDir)  // walk up to find outport.yml
+//	cfg, err := config.Load(dir)          // parse, normalize, and validate
 package config
 
 import (
@@ -83,9 +99,17 @@ func validateTemplateRefs(computedName, template string, services map[string]Ser
 	return nil
 }
 
-// ResolveComputed substitutes ${service.field} references in computed values
-// with the corresponding values from templateVars.
-// Returns name → file → resolved value.
+// ResolveComputed substitutes template variable references in all computed values,
+// producing the final environment variable values ready to be written to env files.
+//
+// Each computed value may have a default template (Value) and optional per-file
+// overrides (PerFile). For each env file a computed value targets, this function
+// selects the appropriate template and expands it using ExpandVars with the
+// provided templateVars map (which contains entries like "rails.port" = "10042",
+// "rails.hostname" = "myapp.test", "instance" = "xbjf", etc.).
+//
+// The return value is a nested map: computed variable name -> env file path -> resolved value.
+// For example: {"DATABASE_URL": {".env": "postgres://localhost:10042/myapp"}}.
 func ResolveComputed(computed map[string]ComputedValue, templateVars map[string]string) map[string]map[string]string {
 	resolved := make(map[string]map[string]string)
 	for name, dv := range computed {
@@ -103,6 +127,9 @@ func ResolveComputed(computed map[string]ComputedValue, templateVars map[string]
 	return resolved
 }
 
+// FileName is the name of the Outport configuration file that must exist in a
+// project's root directory. CLI commands use FindDir to locate this file by
+// walking up from the current working directory.
 const FileName = "outport.yml"
 
 // envFileField handles YAML that can be a string or []string.
@@ -124,12 +151,37 @@ func (e *envFileField) UnmarshalYAML(value *yaml.Node) error {
 	return fmt.Errorf("env_file must be a string or list of strings")
 }
 
+// Service represents a single service declared in the project's outport.yml file.
+// Each service gets a deterministic port allocation and has its port written to one
+// or more .env files as the specified environment variable.
+//
+// For example, a "rails" service might get port 10042 written as PORT=10042 to .env,
+// and optionally be accessible at myapp.test via the local proxy.
 type Service struct {
-	PreferredPort int          `yaml:"preferred_port"`
-	EnvVar        string       `yaml:"env_var"`
-	Hostname      string       `yaml:"hostname"`
-	rawEnvFile    envFileField // populated during YAML unmarshal, resolved to EnvFiles in normalize
-	EnvFiles      []string     `yaml:"-"`
+	// PreferredPort is an optional hint for the port allocator. When set, the allocator
+	// will try to assign this exact port. If it collides with another service, the
+	// allocator falls back to its hash-based algorithm. Zero means no preference.
+	PreferredPort int `yaml:"preferred_port"`
+
+	// EnvVar is the environment variable name that will hold this service's allocated port
+	// (e.g., "PORT", "VITE_PORT"). This is written to the service's env files inside a
+	// fenced block. Required -- validation rejects services without it.
+	EnvVar string `yaml:"env_var"`
+
+	// Hostname is the optional .test domain hostname for this service (e.g., "myapp.test").
+	// When set, the daemon's DNS server and HTTP/TLS proxy will route requests for this
+	// hostname to the service's allocated port. Must contain the project name and use only
+	// lowercase alphanumeric characters, hyphens, and dots. "outport.test" is reserved.
+	Hostname string `yaml:"hostname"`
+
+	// rawEnvFile holds the YAML-deserialized env_file value before normalization.
+	// It is cleared during normalize and should not be accessed after Load returns.
+	rawEnvFile envFileField
+
+	// EnvFiles is the resolved list of env file paths where this service's port variable
+	// will be written. Defaults to [".env"] if not specified in the YAML. Paths are
+	// relative to the project root directory.
+	EnvFiles []string `yaml:"-"`
 }
 
 // rawService is used for YAML unmarshaling to capture env_file before normalization.
@@ -140,10 +192,29 @@ type rawService struct {
 	EnvFile       envFileField `yaml:"env_file"`
 }
 
+// ComputedValue represents a derived environment variable whose value is built from a
+// template that references other services' fields. Computed values let projects define
+// compound variables like DATABASE_URL that combine a service's port and hostname.
+//
+// Templates use bash-style parameter expansion syntax. Service fields are referenced as
+// ${service.field} (e.g., "${rails.port}", "${web.url}") and standalone variables as
+// ${var} (e.g., "${instance}", "${project_name}"). Conditional syntax like ${var:-default}
+// and ${var:+replacement} is also supported. See ExpandVars for full details.
 type ComputedValue struct {
-	Value    string            `yaml:"value"`
-	EnvFiles []string          `yaml:"-"`
-	PerFile  map[string]string `yaml:"-"` // file → value template (overrides Value)
+	// Value is the default template string used for all env files unless overridden
+	// by a per-file entry. For example: "postgres://localhost:${db.port}/${project_name}".
+	// May be empty if every env file has a per-file override in PerFile.
+	Value string `yaml:"value"`
+
+	// EnvFiles is the list of env file paths where this computed variable will be written.
+	// Unlike Service.EnvFiles, there is no default -- at least one file must be specified.
+	EnvFiles []string `yaml:"-"`
+
+	// PerFile maps env file paths to file-specific template overrides. When a file appears
+	// in this map, its template is used instead of Value. This allows the same computed
+	// variable to have different formats in different env files (e.g., a URL with a proxy
+	// hostname for one file and a direct localhost URL for another).
+	PerFile map[string]string `yaml:"-"`
 }
 
 // computedEnvFileEntry is a single entry in a computed value's env_file list.
@@ -194,14 +265,39 @@ type rawConfig struct {
 	RawComputed map[string]rawComputedValue `yaml:"computed"`
 }
 
+// Config is the fully parsed, normalized, and validated representation of a project's
+// outport.yml file. It is the primary data structure that CLI commands and the allocation
+// package use to understand what a project needs from Outport.
+//
+// Config is always created via Load, which handles YAML deserialization, default values,
+// and validation. It should be treated as read-only after construction.
 type Config struct {
-	Name     string
+	// Name is the project identifier from the "name" field in outport.yml. It is used
+	// as part of the hash key for deterministic port allocation ("{project}/{instance}/{service}")
+	// and must be present in any service hostnames. Required -- Load rejects configs without it.
+	Name string
+
+	// Services maps service names (e.g., "rails", "vite", "sidekiq") to their configuration.
+	// At least one service must be defined. Service names are the keys from the "services"
+	// map in outport.yml and are used in the port allocation hash and in template references.
 	Services map[string]Service
+
+	// Computed maps environment variable names (e.g., "DATABASE_URL") to their computed value
+	// definitions. Computed values are optional. Their names must not collide with any
+	// service's EnvVar.
 	Computed map[string]ComputedValue
 }
 
-// FindDir walks up from startDir looking for outport.yml.
-// Returns the directory containing the config file.
+// FindDir walks up the directory tree from startDir looking for an outport.yml file.
+// It returns the absolute path of the directory containing the config file.
+//
+// This is the standard way CLI commands locate the project root. For example, if the
+// user runs "outport status" from /home/user/myapp/app/models, FindDir will check
+// each parent directory until it finds /home/user/myapp/outport.yml and return
+// "/home/user/myapp".
+//
+// Returns an error with setup instructions if no config file is found in any
+// ancestor directory.
 func FindDir(startDir string) (string, error) {
 	dir := startDir
 	for {
@@ -217,6 +313,22 @@ func FindDir(startDir string) (string, error) {
 	}
 }
 
+// Load reads, parses, normalizes, and validates the outport.yml file in the given directory.
+// It returns a fully populated Config ready for use by the allocation package and CLI commands.
+//
+// The loading process has four stages:
+//  1. Read and parse the YAML file into raw deserialization types.
+//  2. Normalize the raw data: resolve flexible YAML syntax (e.g., string-or-list env_file
+//     fields), apply defaults (services without env_file get [".env"]), and build the
+//     final Service and ComputedValue maps.
+//  3. Validate the config: ensure required fields are present (name, env_var), check that
+//     hostnames follow naming rules and contain the project name, verify that computed
+//     value template references point to real services and valid fields, and detect
+//     env_var name collisions within the same env file.
+//  4. Return the validated Config.
+//
+// Returns a descriptive error if any stage fails, with messages designed to guide the
+// user toward a fix.
 func Load(dir string) (*Config, error) {
 	path := filepath.Join(dir, FileName)
 	data, err := os.ReadFile(path)

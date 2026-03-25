@@ -2,15 +2,29 @@ package config
 
 import "strings"
 
-// ExpandVars performs bash-style parameter expansion on a template string.
+// ExpandVars performs bash-style parameter expansion on a template string, replacing
+// variable references with values from the vars map.
+//
+// This is the core template engine used by ResolveComputed to produce final environment
+// variable values. It is also used directly for hostname and URL template expansion
+// during allocation.
 //
 // Supported syntax:
-//   - ${var}            — substitute the value of var
-//   - ${var:-default}   — use default if var is empty or unset
-//   - ${var:+replacement} — use replacement if var is non-empty; empty otherwise
 //
-// Variable references (${var}) inside default/replacement text are also expanded.
-// Variable names may contain word characters and dots (e.g., "rails.port").
+//   - ${var}              — substitute the value of var from the map (empty string if missing)
+//   - ${var:-default}     — use default if var is empty or missing from the map
+//   - ${var:+replacement} — use replacement if var is non-empty; empty string otherwise
+//
+// Variable names may contain word characters (a-z, A-Z, 0-9, underscore) and dots.
+// Dotted names like "rails.port" are used for service field references. Colon-suffixed
+// names like "rails.url:direct" are used for field modifiers -- the full string including
+// the colon is looked up as a single key in the vars map.
+//
+// Nested variable references inside default/replacement text are expanded recursively.
+// For example, "${db:-${fallback}}" will expand ${fallback} if "db" is empty.
+//
+// Malformed or unterminated expressions (e.g., "${" at end of string) are returned
+// as literal text rather than causing an error.
 func ExpandVars(template string, vars map[string]string) string {
 	var b strings.Builder
 	i := 0
@@ -30,8 +44,19 @@ func ExpandVars(template string, vars map[string]string) string {
 	return b.String()
 }
 
-// expandExpr parses a ${...} expression starting just after the opening "${".
-// Returns the index after the closing "}" and the expanded result.
+// expandExpr parses a single ${...} expression starting just after the opening "${".
+// It handles three forms:
+//   - Simple substitution: ${var} looks up "var" in the vars map.
+//   - Default value: ${var:-default} returns the var's value if non-empty, otherwise
+//     expands and returns the default text.
+//   - Conditional replacement: ${var:+replacement} returns the expanded replacement
+//     text if var is non-empty, otherwise returns an empty string.
+//   - Field modifier: ${service.field:modifier} treats the entire "service.field:modifier"
+//     string as a single key lookup (used for things like ${rails.url:direct}).
+//
+// Returns two values: the index in template immediately after this expression's closing
+// "}", and the expanded string result. If the expression is malformed or unterminated,
+// the raw text is returned as a literal.
 func expandExpr(template string, start int, vars map[string]string) (int, string) {
 	// Extract the variable name (word chars and dots)
 	nameEnd := start
@@ -129,6 +154,9 @@ func extractBody(template string, start int, vars map[string]string) (string, in
 	return b.String(), i
 }
 
+// isVarChar reports whether c is a valid character in a template variable name.
+// Valid characters are letters (a-z, A-Z), digits (0-9), underscores, and dots.
+// Dots allow dotted names like "rails.port" for service field references.
 func isVarChar(c byte) bool {
 	return (c >= 'a' && c <= 'z') ||
 		(c >= 'A' && c <= 'Z') ||

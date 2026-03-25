@@ -1,4 +1,9 @@
-// internal/certmanager/ca.go
+// Package certmanager handles the local certificate authority (CA) and per-hostname
+// TLS certificate lifecycle for Outport's HTTPS proxy. It generates a self-signed
+// root CA that gets trusted in the macOS keychain (via the platform package), then
+// issues short-lived server certificates on demand for each .test hostname. Certificates
+// are cached to disk under ~/.cache/outport/certs/ so they survive daemon restarts,
+// and are regenerated automatically when they approach expiration or when the CA changes.
 package certmanager
 
 import (
@@ -15,9 +20,17 @@ import (
 	"time"
 )
 
-// GenerateCA creates a new CA certificate and private key at the given paths.
-// If both files already exist, this is a no-op (idempotent).
-// The CA uses EC P-256 with 10-year validity.
+// GenerateCA creates a new root Certificate Authority certificate and private key,
+// writing them as PEM files to certPath and keyPath respectively. If both files
+// already exist on disk, GenerateCA returns immediately without overwriting them,
+// making it safe to call on every daemon startup (idempotent).
+//
+// The CA uses an ECDSA P-256 key and a 10-year validity period. It is configured
+// as a root CA (self-signed, IsCA=true) with MaxPathLen=0, meaning it can sign
+// server certificates but those certificates cannot themselves act as CAs.
+//
+// The generated CA is what gets added to the macOS login keychain via platform.TrustCA,
+// allowing browsers and other TLS clients to accept the server certificates it signs.
 func GenerateCA(certPath, keyPath string) error {
 	if fileExists(certPath) && fileExists(keyPath) {
 		return nil
@@ -68,7 +81,10 @@ func GenerateCA(certPath, keyPath string) error {
 	return nil
 }
 
-// LoadCA loads the CA certificate and private key from disk.
+// LoadCA reads the CA certificate and private key from their PEM files on disk
+// and returns the parsed objects. It is used by CertStore and GetOrCreateCert to
+// obtain the CA credentials needed to sign new server certificates. Returns an
+// error if either file is missing, malformed, or not valid PEM.
 func LoadCA(certPath, keyPath string) (*x509.Certificate, *ecdsa.PrivateKey, error) {
 	certPEM, err := os.ReadFile(certPath)
 	if err != nil {
@@ -99,7 +115,11 @@ func LoadCA(certPath, keyPath string) (*x509.Certificate, *ecdsa.PrivateKey, err
 	return cert, key, nil
 }
 
-// DeleteCA removes the CA cert and key files.
+// DeleteCA removes the CA certificate and private key files from disk. This is
+// used during teardown (e.g., "outport system teardown") to clean up the local CA.
+// After calling DeleteCA, any cached server certificates signed by this CA will
+// fail verification and be regenerated on next use. Errors are silently ignored
+// because the files may not exist.
 func DeleteCA(certPath, keyPath string) {
 	os.Remove(certPath)
 	os.Remove(keyPath)

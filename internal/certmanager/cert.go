@@ -1,4 +1,3 @@
-// internal/certmanager/cert.go
 package certmanager
 
 import (
@@ -15,10 +14,23 @@ import (
 	"time"
 )
 
+// renewalWindow is how close to expiration a cached certificate can be before
+// it is considered stale and regenerated. A 7-day window ensures certificates
+// are renewed well before they actually expire, avoiding TLS errors for users
+// who may not restart the daemon frequently.
 const renewalWindow = 7 * 24 * time.Hour
 
-// GetOrCreateCert returns a TLS certificate for the given hostname.
-// It checks the disk cache first, generates a new cert if missing or expiring.
+// GetOrCreateCert returns a TLS certificate for the given hostname, suitable for
+// serving HTTPS traffic. It implements a two-tier caching strategy:
+//
+//  1. Disk cache: Looks for existing PEM files in cacheDir named "{hostname}.pem"
+//     and "{hostname}-key.pem". If found and still valid (not expiring within the
+//     renewal window, and signed by the current CA), the cached certificate is returned.
+//  2. Generation: If no valid cached certificate exists, a new server certificate is
+//     generated, signed by the provided CA, saved to cacheDir, and returned.
+//
+// This function is called by CertStore (which adds an in-memory cache layer on top)
+// and can also be called directly when memory caching is not needed.
 func GetOrCreateCert(hostname string, caCert *x509.Certificate, caKey *ecdsa.PrivateKey, cacheDir string) (*tls.Certificate, error) {
 	certPath := filepath.Join(cacheDir, hostname+".pem")
 	keyPath := filepath.Join(cacheDir, hostname+"-key.pem")
@@ -128,7 +140,11 @@ func saveCertToDisk(cacheDir, hostname string, cert *tls.Certificate) error {
 	return nil
 }
 
-// DeleteCertCache removes all cached server certificates.
+// DeleteCertCache removes the entire certificate cache directory
+// (~/.cache/outport/certs/) and all server certificates within it. This is used
+// during cleanup operations like "outport system prune". The certificates will be
+// regenerated on demand by GetOrCreateCert when they are next needed, so this
+// operation is safe to perform at any time.
 func DeleteCertCache() error {
 	dir, err := CertCacheDir()
 	if err != nil {

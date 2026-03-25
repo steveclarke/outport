@@ -1,3 +1,11 @@
+// Package lanip detects the machine's LAN IPv4 address. This is used by the
+// "outport share" command to display the local network URL and QR code so that
+// mobile devices on the same Wi-Fi network can access locally running services.
+//
+// Auto-detection follows a two-phase strategy: first it checks well-known macOS
+// interface names (en0, en1), then falls back to scanning all interfaces while
+// filtering out virtual, loopback, and point-to-point interfaces. A specific
+// interface name can also be provided to skip auto-detection entirely.
 package lanip
 
 import (
@@ -12,8 +20,11 @@ var virtualPrefixes = []string{
 
 var preferredNames = []string{"en0", "en1"}
 
-// Detect returns the LAN IPv4 address for the given interface name.
-// If interfaceName is empty, it auto-detects a suitable LAN interface.
+// Detect returns the LAN IPv4 address for the given interface name. If
+// interfaceName is empty, it auto-detects a suitable LAN interface by first
+// trying well-known names (en0, en1) and then scanning all non-virtual, non-
+// loopback interfaces for one with an IPv4 address. Returns an error if no
+// suitable interface is found, with a hint to use the --interface flag.
 func Detect(interfaceName string) (net.IP, error) {
 	if interfaceName != "" {
 		return fromInterface(interfaceName)

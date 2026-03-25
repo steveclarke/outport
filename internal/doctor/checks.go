@@ -1,3 +1,9 @@
+// checks.go contains the individual diagnostic check functions used by the
+// "outport doctor" command. Each function tests one specific aspect of the
+// system (file existence, port liveness, certificate validity, etc.) and
+// returns a Result with a pass/warn/fail status. When a check fails, the
+// Result includes a Fix string with the command the user should run.
+
 package doctor
 
 import (
@@ -305,7 +311,21 @@ func checkCloudflared() *Result {
 	}
 }
 
-// SystemChecks returns all system-level health checks in order.
+// SystemChecks returns all system-level health checks in execution order.
+// These checks verify the overall Outport infrastructure: DNS resolver
+// configuration, daemon process health, TLS certificate state, registry
+// integrity, and optional tool availability.
+//
+// The checks are organized into categories:
+//   - DNS: Resolver file exists, has correct content, and resolves *.test domains.
+//   - Daemon: LaunchAgent plist exists, references a valid binary, agent is loaded,
+//     and HTTP/HTTPS proxy ports (80/443) are listening.
+//   - TLS: CA certificate and private key exist, certificate is not expired or
+//     expiring soon, and the CA is trusted by the macOS system keychain.
+//   - Registry: The registry.json file is parseable (missing is OK for fresh installs).
+//   - Tools: Optional dependencies like cloudflared are available.
+//
+// The returned checks are meant to be passed to a Runner for sequential execution.
 func SystemChecks() []Check {
 	plistPath := platform.PlistPath()
 

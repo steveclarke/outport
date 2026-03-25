@@ -1,3 +1,12 @@
+// Package cloudflare implements the tunnel.Provider interface using Cloudflare's
+// free "quick tunnel" feature. Quick tunnels require no account or configuration
+// — the cloudflared CLI is invoked with a local port and it assigns a random
+// public *.trycloudflare.com URL. This is used by the "outport share" command
+// to let developers share local services with external collaborators.
+//
+// The implementation shells out to the cloudflared binary, parses the assigned
+// URL from its stderr output, and manages the process lifecycle with graceful
+// SIGTERM shutdown.
 package cloudflare
 
 import (
@@ -13,18 +22,27 @@ import (
 	"github.com/steveclarke/outport/internal/tunnel"
 )
 
-// Provider implements tunnel.Provider using Cloudflare quick tunnels.
+// Provider implements the tunnel.Provider interface using Cloudflare quick
+// tunnels. It has no configuration or state — each call to Start spawns a new
+// cloudflared process. The cloudflared CLI must be installed on the system
+// (typically via "brew install cloudflare/cloudflare/cloudflared").
 type Provider struct{}
 
-// New creates a new Cloudflare tunnel provider.
+// New creates a new Cloudflare tunnel provider. The provider is stateless, so
+// a single instance can be reused for multiple tunnel creations.
 func New() *Provider {
 	return &Provider{}
 }
 
+// Name returns "cloudflare", used in error messages and logging to identify
+// which tunnel provider is in use.
 func (p *Provider) Name() string {
 	return "cloudflare"
 }
 
+// CheckAvailable verifies that the cloudflared binary is installed and
+// available on the system PATH. Returns a user-friendly error with install
+// instructions if the binary is not found.
 func (p *Provider) CheckAvailable() error {
 	_, err := exec.LookPath("cloudflared")
 	if err != nil {
@@ -33,6 +51,19 @@ func (p *Provider) CheckAvailable() error {
 	return nil
 }
 
+// Start creates a new Cloudflare quick tunnel pointing to the given local port.
+// It spawns a cloudflared process, scans its stderr for the assigned public URL
+// (a *.trycloudflare.com address), and returns a Tunnel with that URL and a
+// stop function for cleanup.
+//
+// The context controls the timeout for URL discovery. If the context is
+// cancelled before a URL appears in the output, the cloudflared process is
+// killed and a context error is returned.
+//
+// Note: exec.Command is used instead of exec.CommandContext intentionally. The
+// context is only used for the startup timeout — the cloudflared process
+// lifecycle is managed by the returned Tunnel's Stop function, not by context
+// cancellation.
 func (p *Provider) Start(ctx context.Context, port int) (*tunnel.Tunnel, error) {
 	// Use exec.Command (not CommandContext) so the process isn't killed when
 	// the manager's timeout context expires. Lifecycle is managed by stopFunc.

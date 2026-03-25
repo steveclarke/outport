@@ -1,3 +1,16 @@
+// Package settings manages Outport's global user configuration, stored as an INI
+// file at ~/.config/outport/config. These settings control daemon-level behavior
+// that applies across all projects, such as the health check polling interval and
+// DNS TTL values.
+//
+// The settings file is optional. When it does not exist, Load returns sensible
+// defaults. When it does exist, only the keys that are explicitly set override
+// their defaults — unset keys keep the built-in default values.
+//
+// Important design rule: internal packages never import this package directly.
+// Instead, the CLI layer (cmd/) calls Load at startup and passes individual
+// setting values down as function parameters. This keeps internal packages
+// decoupled from the configuration mechanism and easier to test.
 package settings
 
 import (
@@ -9,23 +22,42 @@ import (
 	"gopkg.in/ini.v1"
 )
 
-// Settings holds all global Outport configuration.
+// Settings holds all global Outport configuration values. It is the top-level
+// struct returned by Load and LoadFrom. Each field is a section-specific struct
+// corresponding to a [section] in the INI file.
 type Settings struct {
+	// Dashboard contains settings that control the web dashboard served at outport.test.
 	Dashboard DashboardSettings
-	DNS       DNSSettings
+	// DNS contains settings that control Outport's built-in DNS server.
+	DNS DNSSettings
 }
 
-// DashboardSettings controls dashboard behaviour.
+// DashboardSettings controls the behavior of the web dashboard served at outport.test.
 type DashboardSettings struct {
+	// HealthInterval is how often the dashboard's health checker polls each service
+	// to determine if it is running. Health checks only run when at least one browser
+	// client is connected via SSE, so this interval has no effect when the dashboard
+	// is not open. Set via the "health_interval" key in the [dashboard] section.
+	// Default: 3 seconds. Minimum: 1 second.
 	HealthInterval time.Duration
 }
 
-// DNSSettings controls DNS behaviour.
+// DNSSettings controls the behavior of Outport's built-in DNS server, which
+// listens on port 15353 and responds to queries for .test hostnames.
 type DNSSettings struct {
+	// TTL is the time-to-live in seconds included in DNS responses. This tells
+	// clients (browsers, curl, etc.) how long they can cache the DNS answer before
+	// querying again. Higher values reduce DNS traffic but delay route changes;
+	// lower values make changes visible faster. Set via the "ttl" key in the [dns]
+	// section. Default: 60 seconds. Must be greater than 0.
 	TTL int
 }
 
-// Defaults returns a Settings with the built-in default values.
+// Defaults returns a Settings struct populated with the built-in default values
+// for all settings. These defaults are used when the config file does not exist
+// or when specific keys are omitted from the file. The defaults are:
+//   - dashboard.health_interval: 3 seconds
+//   - dns.ttl: 60 seconds
 func Defaults() Settings {
 	return Settings{
 		Dashboard: DashboardSettings{
@@ -37,8 +69,10 @@ func Defaults() Settings {
 	}
 }
 
-// Path returns the default path for the global settings file:
-// ~/.config/outport/config
+// Path returns the absolute path to the global settings file, which follows the
+// XDG convention: ~/.config/outport/config. This path is used by Load to find
+// the settings file and by "outport setup" to create the initial file with
+// commented-out defaults.
 func Path() (string, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -47,7 +81,10 @@ func Path() (string, error) {
 	return filepath.Join(home, ".config", "outport", "config"), nil
 }
 
-// Load loads settings from the default path.
+// Load reads and parses the global settings file from the default path
+// (~/.config/outport/config). If the file does not exist, default settings are
+// returned without error. This is the primary entry point used by the daemon at
+// startup to obtain configuration values.
 func Load() (*Settings, error) {
 	p, err := Path()
 	if err != nil {
@@ -56,8 +93,14 @@ func Load() (*Settings, error) {
 	return LoadFrom(p)
 }
 
-// LoadFrom loads settings from the given path. If the file does not exist,
-// default settings are returned without error.
+// LoadFrom reads and parses a settings file from an arbitrary path. This is the
+// underlying implementation used by Load, and is also used directly in tests
+// where the settings file lives in a temporary directory.
+//
+// If the file does not exist, default settings are returned without error,
+// making the config file entirely optional. If the file exists but contains
+// invalid syntax or out-of-range values, an error is returned. Only keys that
+// are explicitly present in the file override their defaults.
 func LoadFrom(path string) (*Settings, error) {
 	s := Defaults()
 
@@ -106,7 +149,10 @@ func (s *Settings) validate() error {
 	return nil
 }
 
-// DefaultConfigContent returns the commented-out default config file contents.
+// DefaultConfigContent returns the initial contents for a new settings file, with
+// all settings present but commented out. This is written by "outport setup" to
+// create ~/.config/outport/config, giving users a discoverable reference of
+// available settings and their default values without changing any behavior.
 func DefaultConfigContent() string {
 	return `# Outport global settings
 # Uncomment and change values to override defaults.

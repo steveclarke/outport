@@ -1,3 +1,15 @@
+// Package envpath classifies env file paths as internal or external relative to
+// a project directory, and handles user approval for writing to external files.
+//
+// When an outport.yml config references env files outside the project directory
+// (e.g., "../sibling/.env"), those writes could modify files the developer didn't
+// intend to change. This package resolves all paths through symlinks to prevent
+// symlink-based escapes, classifies each path as internal or external, and gates
+// external writes behind an interactive approval prompt (or the -y flag).
+//
+// The approval workflow is: classify paths, check which external paths haven't
+// been approved yet, prompt the user (or auto-approve), and persist the newly
+// approved paths in the registry for future runs.
 package envpath
 
 import (
@@ -11,22 +23,40 @@ import (
 	"github.com/charmbracelet/x/term"
 )
 
-// ErrUserDenied is returned when the user explicitly denies the external file approval prompt.
+// ErrUserDenied is returned when the user explicitly answers "no" at the interactive
+// approval prompt for external env file writes. Commands should treat this as a
+// non-retryable error and exit without writing any env files.
 var ErrUserDenied = errors.New("external env file write denied by user")
 
-// ErrNonInteractive is returned when external files need approval but stdin is not a terminal.
+// ErrNonInteractive is returned when external env files need approval but stdin is
+// not a terminal (e.g., running in CI or piped input). The error message suggests
+// using the -y flag to auto-approve or moving the env files inside the project directory.
 var ErrNonInteractive = errors.New("external env files require interactive approval; use -y to allow or move files inside the project directory")
 
-// EnvFilePath holds a classified env file path.
+// EnvFilePath holds a classified env file path. Each entry represents one env_file
+// entry from the project's outport.yml, enriched with its resolved absolute path
+// and a flag indicating whether it falls outside the project directory boundary.
 type EnvFilePath struct {
-	ConfigPath   string // as written in outport.yml, e.g. "../sibling/.env"
-	ResolvedPath string // absolute real path after symlink resolution
-	External     bool   // true if outside the project directory tree
+	// ConfigPath is the path exactly as written in outport.yml (e.g., "../sibling/.env"
+	// or ".env"). Used for display in prompts and error messages.
+	ConfigPath string
+
+	// ResolvedPath is the absolute filesystem path after resolving any symlinks.
+	// This is the path used for all boundary checks and file operations, preventing
+	// symlink-based escapes from the project directory.
+	ResolvedPath string
+
+	// External is true when ResolvedPath falls outside the project directory tree.
+	// External paths require explicit user approval before Outport will write to them.
+	External bool
 }
 
 // ClassifyEnvFiles resolves env file paths relative to projectDir and classifies
-// each as internal (within projectDir tree) or external (outside it).
-// Both projectDir and env file paths are resolved through symlinks for accurate comparison.
+// each as internal (within the projectDir tree) or external (outside it). Both
+// the projectDir and each env file path are resolved through symlinks before
+// comparison, ensuring that a symlink pointing outside the project is correctly
+// classified as external. Relative paths in envFiles are joined to projectDir
+// before resolution; absolute paths are resolved directly.
 func ClassifyEnvFiles(projectDir string, envFiles []string) ([]EnvFilePath, error) {
 	realProjectDir, err := resolveDir(projectDir)
 	if err != nil {
@@ -59,7 +89,9 @@ func ClassifyEnvFiles(projectDir string, envFiles []string) ([]EnvFilePath, erro
 	return paths, nil
 }
 
-// ExternalPaths filters classified paths to only those marked as external.
+// ExternalPaths filters a slice of classified paths to only those marked as external.
+// Returns nil if no paths are external. This is a convenience function used by commands
+// to quickly check whether any env files require approval before writing.
 func ExternalPaths(paths []EnvFilePath) []EnvFilePath {
 	var ext []EnvFilePath
 	for _, p := range paths {
@@ -70,9 +102,16 @@ func ExternalPaths(paths []EnvFilePath) []EnvFilePath {
 	return ext
 }
 
-// ConfirmExternalFiles checks for unapproved external env file paths and either
-// prompts for approval (interactive), auto-approves (-y flag), or returns an error
-// (non-interactive without -y). Returns the list of newly approved resolved paths.
+// ConfirmExternalFiles checks for unapproved external env file paths and handles
+// the approval flow. It compares external paths against the list of previously
+// approved paths (stored in the registry). For any unapproved paths, it either:
+//   - auto-approves them when autoApprove is true (the -y flag)
+//   - prompts the user interactively when stdin is a terminal
+//   - returns ErrNonInteractive when stdin is not a terminal
+//
+// Returns the list of newly approved resolved paths, which the caller should persist
+// to the registry so they are not prompted again on future runs. Returns nil when
+// all external paths are already approved.
 func ConfirmExternalFiles(
 	paths []EnvFilePath,
 	approvedPaths []string,

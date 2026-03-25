@@ -1,3 +1,9 @@
+// Package dashboard implements the embedded web dashboard served at outport.test.
+// It provides a JSON API for querying project and service status, server-sent events
+// (SSE) for real-time updates, and serves the embedded static frontend files. The
+// dashboard is the primary visual interface for monitoring all registered projects,
+// their port allocations, health status, and tunnel URLs. The daemon's proxy handler
+// intercepts requests to outport.test and delegates them to this package's Handler.
 package dashboard
 
 import (
@@ -17,37 +23,86 @@ import (
 	"github.com/steveclarke/outport/internal/urlutil"
 )
 
-// AllocProvider gives access to the current registry state.
+// AllocProvider is the interface through which the dashboard accesses the current
+// registry state. The daemon's route table implements this interface, allowing the
+// dashboard to read all project allocations and the complete list of allocated ports
+// without importing the registry package directly.
 type AllocProvider interface {
+	// Allocations returns every registered project/instance allocation, keyed by
+	// "{project}/{instance}" (e.g., "myapp/main"). Each allocation contains the
+	// port mappings, hostnames, and env var names for that instance's services.
 	Allocations() map[string]registry.Allocation
+
+	// AllPorts returns a flat list of every allocated port number across all
+	// projects and instances. The health checker uses this list to know which
+	// ports to probe for liveness.
 	AllPorts() []int
 }
 
-// StatusResponse is the JSON structure returned by GET /api/status.
+// StatusResponse is the top-level JSON structure returned by GET /api/status.
+// It contains the daemon version, the local network IP address (for LAN access),
+// and a map of all registered projects with their instances and services.
 type StatusResponse struct {
-	Version  string                  `json:"version"`
+	// Version is the running daemon's version string (e.g., "0.8.0").
+	Version string `json:"version"`
+
+	// Projects maps project names to their ProjectJSON data. Each project
+	// may contain multiple instances (main checkout plus worktrees/clones).
 	Projects map[string]ProjectJSON `json:"projects"`
-	LANIP    string                  `json:"lan_ip,omitempty"`
+
+	// LANIP is the machine's local network IP address, used by the dashboard
+	// to display LAN-accessible URLs for mobile device testing. Empty when
+	// the LAN IP cannot be detected.
+	LANIP string `json:"lan_ip,omitempty"`
 }
 
-// ProjectJSON groups instances under a project name.
+// ProjectJSON groups all instances of a single project. A project typically has
+// a "main" instance and zero or more worktree/clone instances identified by
+// short codes (e.g., "bxcf").
 type ProjectJSON struct {
+	// Instances maps instance names to their InstanceJSON data.
 	Instances map[string]InstanceJSON `json:"instances"`
 }
 
-// InstanceJSON represents one project instance (e.g., "main" or "bxcf").
+// InstanceJSON represents one project instance (e.g., "main" or "bxcf"). Each
+// instance corresponds to a separate checkout of the project on disk, such as
+// the primary checkout ("main") or a git worktree.
 type InstanceJSON struct {
-	ProjectDir string                 `json:"project_dir"`
-	Services   map[string]ServiceJSON `json:"services"`
+	// ProjectDir is the absolute filesystem path to this instance's checkout directory.
+	ProjectDir string `json:"project_dir"`
+
+	// Services maps service names (as defined in outport.yml) to their ServiceJSON data.
+	Services map[string]ServiceJSON `json:"services"`
 }
 
-// ServiceJSON describes a single allocated service.
+// ServiceJSON describes a single allocated service within a project instance.
+// It carries everything the dashboard needs to display: the port number, the
+// browsable URL, whether the service process is currently running, and any
+// active tunnel URL for external access.
 type ServiceJSON struct {
-	Port      int    `json:"port"`
-	EnvVar    string `json:"env_var,omitempty"`
-	Hostname  string `json:"hostname,omitempty"`
-	URL       string `json:"url,omitempty"`
-	Up        *bool  `json:"up,omitempty"`
+	// Port is the deterministically allocated TCP port for this service.
+	Port int `json:"port"`
+
+	// EnvVar is the environment variable name that holds this service's port
+	// (e.g., "PORT" or "VITE_PORT"). Empty for services that don't export a variable.
+	EnvVar string `json:"env_var,omitempty"`
+
+	// Hostname is the .test domain assigned to this service (e.g., "myapp.test").
+	// Empty for infrastructure services that don't have a browsable hostname.
+	Hostname string `json:"hostname,omitempty"`
+
+	// URL is the fully qualified browsable URL (e.g., "https://myapp.test").
+	// Constructed from the hostname and the current HTTPS setting. Empty when
+	// the service has no hostname.
+	URL string `json:"url,omitempty"`
+
+	// Up indicates whether the service is currently accepting TCP connections on
+	// its port. nil means health status is not yet known (no health check has
+	// run); a pointer is used so the JSON field is omitted until a check occurs.
+	Up *bool `json:"up,omitempty"`
+
+	// TunnelURL is the public URL provided by a tunnel provider (e.g., Cloudflare)
+	// for this service. Empty when no tunnel is active.
 	TunnelURL string `json:"tunnel_url,omitempty"`
 }
 
@@ -58,7 +113,11 @@ type portEntry struct {
 	Service  string
 }
 
-// Handler serves the dashboard HTTP API and embedded static files.
+// Handler serves the dashboard HTTP API and embedded static files at outport.test.
+// It implements http.Handler and is mounted by the daemon's proxy. The handler manages
+// the health checker (which periodically probes ports for liveness), the SSE broadcaster
+// (which pushes real-time updates to connected dashboard clients), and caches for LAN IP
+// and tunnel state to avoid repeated lookups on every API request.
 type Handler struct {
 	mux          *http.ServeMux
 	provider     AllocProvider
@@ -72,7 +131,16 @@ type Handler struct {
 	cachedTunnel map[string]map[string]string   // cached tunnel state
 }
 
-// NewHandler creates a dashboard handler with all routes registered.
+// NewHandler creates a dashboard handler with all HTTP routes registered. It sets up
+// the health checker (which probes allocated ports at the given interval), the SSE
+// broadcaster, and pre-caches the index.html file, LAN IP, and tunnel state. The
+// registered routes are:
+//   - GET /api/status  — full JSON status of all projects, instances, and services
+//   - GET /api/version — lightweight version-only endpoint for CLI version checks
+//   - GET /api/events  — SSE stream for real-time registry and health updates
+//   - GET /api/qr      — SVG QR code generator for a given URL parameter
+//   - GET /static/...  — embedded CSS, JS, and image assets
+//   - GET /            — the dashboard HTML page
 func NewHandler(provider AllocProvider, httpsEnabled bool, version string, healthInterval time.Duration) *Handler {
 	h := &Handler{
 		mux:      http.NewServeMux(),
@@ -102,10 +170,14 @@ func NewHandler(provider AllocProvider, httpsEnabled bool, version string, healt
 	return h
 }
 
+// ServeHTTP dispatches incoming HTTP requests to the appropriate handler via the
+// internal multiplexer. This makes Handler a valid http.Handler that the daemon's
+// proxy can delegate to when it receives a request for outport.test.
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.mux.ServeHTTP(w, r)
 }
 
+// handleIndex serves the dashboard's main HTML page from the embedded static files.
 func (h *Handler) handleIndex(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	_, _ = w.Write(h.indexHTML)

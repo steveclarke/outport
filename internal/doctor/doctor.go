@@ -1,3 +1,13 @@
+// Package doctor implements the diagnostic system behind the "outport doctor"
+// command. It defines a set of health checks that verify every layer of the
+// Outport stack: DNS resolver configuration, daemon process status, TLS
+// certificate validity, registry integrity, and project-level configuration.
+//
+// Checks are organized as Check values with a Name, Category, and Run function.
+// A Runner executes checks sequentially and collects Results, each with a
+// pass/warn/fail status and an optional fix suggestion. The system-level checks
+// (SystemChecks) verify the shared infrastructure, while project-level checks
+// (ProjectChecks) validate a specific project's config and port allocations.
 package doctor
 
 // Status represents the outcome of a health check.
