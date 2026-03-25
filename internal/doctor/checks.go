@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
 	"time"
 
 	"github.com/steveclarke/outport/internal/certmanager"
@@ -110,23 +111,28 @@ func parsePlistBinaryPath(data []byte) string {
 	}
 }
 
-// checkPlistBinary reads the plist, extracts the binary path from ProgramArguments,
-// and verifies the binary exists on disk.
+// checkPlistBinary reads the service file, extracts the binary path, and verifies it exists on disk.
+// Handles both plist XML (macOS) and systemd unit (Linux) formats.
 func checkPlistBinary(plistPath string) *Result {
 	data, err := os.ReadFile(plistPath)
 	if err != nil {
 		return &Result{
-			Name:    "Plist binary",
+			Name:    "Service binary",
 			Status:  Fail,
-			Message: "could not read plist file",
+			Message: "could not read service file",
 			Fix:     "Run: outport system start",
 		}
+	}
+
+	// On Linux, the service file is a systemd unit (INI format), not a plist (XML).
+	if !bytes.Contains(data, []byte("<?xml")) {
+		return checkServiceBinary(data)
 	}
 
 	binPath := parsePlistBinaryPath(data)
 	if binPath == "" {
 		return &Result{
-			Name:    "Plist binary",
+			Name:    "Service binary",
 			Status:  Fail,
 			Message: "could not parse binary path from plist",
 			Fix:     "Run: outport system start",
@@ -135,7 +141,7 @@ func checkPlistBinary(plistPath string) *Result {
 
 	if _, err := os.Stat(binPath); err != nil {
 		return &Result{
-			Name:    "Plist binary",
+			Name:    "Service binary",
 			Status:  Fail,
 			Message: fmt.Sprintf("daemon plist references missing binary: %s", binPath),
 			Fix:     "Run: outport system restart",
@@ -143,9 +149,43 @@ func checkPlistBinary(plistPath string) *Result {
 	}
 
 	return &Result{
-		Name:    "Plist binary",
+		Name:    "Service binary",
 		Status:  Pass,
 		Message: fmt.Sprintf("binary exists: %s", binPath),
+	}
+}
+
+// checkServiceBinary extracts the binary path from a systemd unit's ExecStart line.
+func checkServiceBinary(data []byte) *Result {
+	for line := range strings.SplitSeq(string(data), "\n") {
+		line = strings.TrimSpace(line)
+		if !strings.HasPrefix(line, "ExecStart=") {
+			continue
+		}
+		parts := strings.Fields(strings.TrimPrefix(line, "ExecStart="))
+		if len(parts) == 0 {
+			break
+		}
+		binPath := parts[0]
+		if _, err := os.Stat(binPath); err != nil {
+			return &Result{
+				Name:    "Service binary",
+				Status:  Fail,
+				Message: fmt.Sprintf("service references missing binary: %s", binPath),
+				Fix:     "Run: outport system restart",
+			}
+		}
+		return &Result{
+			Name:    "Service binary",
+			Status:  Pass,
+			Message: fmt.Sprintf("binary exists: %s", binPath),
+		}
+	}
+	return &Result{
+		Name:    "Service binary",
+		Status:  Fail,
+		Message: "could not parse binary path from service file",
+		Fix:     "Run: outport system start",
 	}
 }
 
@@ -336,14 +376,14 @@ func SystemChecks() []Check {
 			},
 		},
 		{
-			Name:     "LaunchAgent plist",
+			Name:     platform.ServiceDescription() + " file",
 			Category: "Daemon",
 			Run: func() *Result {
-				return checkFileExists(plistPath, "LaunchAgent plist", "Run: outport system start")
+				return checkFileExists(plistPath, platform.ServiceDescription()+" file", "Run: outport system start")
 			},
 		},
 		{
-			Name:     "Plist binary",
+			Name:     "Service binary",
 			Category: "Daemon",
 			Run: func() *Result {
 				return checkPlistBinary(plistPath)
