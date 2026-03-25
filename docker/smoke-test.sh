@@ -22,7 +22,8 @@ check() {
 
 echo "=== Building outport ==="
 cd /src
-go build -o /usr/local/bin/outport .
+just build
+cp dist/outport /usr/local/bin/outport
 echo ""
 
 echo "=== Smoke tests ==="
