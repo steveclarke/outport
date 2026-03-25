@@ -65,7 +65,8 @@ bin/dev restart <service>
 
 ## Worktrees
 
-Each worktree gets its own ports and databases via outport.
+Each worktree gets its own ports, databases, and process-compose socket via outport.
+Add `.pc_env` to `.gitignore`.
 
 ## Notes
 
@@ -85,7 +86,7 @@ Why it's the right fit for agents:
 - **Dependency ordering** — declare that Rails depends on Postgres. process-compose won't start Rails until Postgres passes its health check.
 - **JSON status output** — `process-compose process list --output json` returns structured data an agent can parse. No screen-scraping.
 - **TUI dashboard** — when a human runs it interactively, they get a full terminal UI with logs, restarts, and process status.
-- **Unix socket communication** — CLI commands (status, logs, restart) talk to the daemon over unix sockets, not HTTP. Multiple instances can run simultaneously.
+- **Unix socket communication** — CLI commands (status, logs, restart) talk to the daemon over unix sockets, not HTTP. Combined with `.pc_env`, multiple instances can run simultaneously with automatic socket isolation.
 
 Install:
 
@@ -103,13 +104,21 @@ Here's the complete wrapper script:
 #!/usr/bin/env bash
 set -euo pipefail
 
+# process-compose reads .pc_env at startup and picks up PC_SOCKET_PATH,
+# which outport writes with a per-instance value. This auto-enables UDS
+# mode with a unique socket per worktree — no manual flags needed.
+
 case "${1:-}" in
-  -D)        shift; exec process-compose up -D --no-server "$@" ;;
-  stop)      exec process-compose down ;;
-  status)    exec process-compose process list --output json ;;
-  logs)      exec process-compose process logs "${2:?specify a service}" ;;
-  restart)   exec process-compose process restart "${2:?specify a service}" ;;
-  *)         exec process-compose up --no-server "$@" ;;
+  -D)        shift; process-compose up -D "$@" ;;
+  stop)      process-compose down ;;
+  status)
+    fmt="--output wide"; [[ "${2:-}" == "--json" ]] && fmt="--output json"
+    process-compose process list $fmt 2>/dev/null \
+      || { echo "Dev environment is not running. Start it with: bin/dev"; exit 1; }
+    ;;
+  logs)      process-compose process logs "${2:?specify a service}" ;;
+  restart)   process-compose process restart "${2:?specify a service}" ;;
+  *)         process-compose up "$@" ;;
 esac
 ```
 
@@ -117,7 +126,7 @@ Each subcommand:
 
 - **`bin/dev`** — launches the TUI for humans. Interactive dashboard with logs, process status, and restart controls.
 - **`bin/dev -D`** — headless mode for agents. Starts all services in the background and returns immediately.
-- **`bin/dev status`** — returns JSON status of every process. Agents use this to verify services are running and healthy.
+- **`bin/dev status`** — shows wide-format status of every process. Pass `--json` for machine-readable output. Agents use this to verify services are running and healthy.
 - **`bin/dev logs <service>`** — tails logs for a single service. When something fails, an agent can read the logs to diagnose the issue.
 - **`bin/dev restart <service>`** — restarts one service without touching the others. Useful after code changes that require a server restart.
 - **`bin/dev stop`** — shuts everything down cleanly.
@@ -179,8 +188,8 @@ Key points:
 
 The full flow:
 
-1. **`outport up`** — allocates deterministic ports and writes them to `.env`
-2. **`bin/dev -D`** — process-compose reads `.env` automatically and starts all services on the correct ports
+1. **`outport up`** — allocates deterministic ports, writes them to `.env`, and writes `PC_SOCKET_PATH` to `.pc_env` for worktree-safe socket isolation
+2. **`bin/dev -D`** — process-compose reads `.pc_env` (socket path) and `.env` (ports) automatically, starting all services on the correct ports with an isolated socket
 3. **`bin/dev status`** — agent verifies everything is healthy
 
 Outport handles port allocation and `.env` generation. process-compose handles orchestration. Together they give agents a fully autonomous dev environment — no hardcoded ports, no port conflicts between worktrees, no guessing.
@@ -188,6 +197,32 @@ Outport handles port allocation and `.env` generation. process-compose handles o
 An agent working in a worktree runs the same three commands and gets an isolated environment with its own ports and databases. No configuration changes needed.
 
 See [Getting Started](/guide/getting-started) for outport setup and [Work with AI](/guide/work-with-ai) for the outport AI skill.
+
+## Worktree isolation with `.pc_env`
+
+When running multiple worktrees simultaneously, each needs its own process-compose socket. Otherwise, `bin/dev status` in one worktree talks to the wrong instance, and `bin/dev stop` could shut down the wrong stack.
+
+process-compose loads a file called `.pc_env` from the current directory at startup — before CLI flags, before `.env`, before anything else. It's designed for process-compose's own settings. By setting `PC_SOCKET_PATH` in `.pc_env`, process-compose automatically enables Unix Domain Socket (UDS) mode with a unique socket path. No flags needed.
+
+Outport can write this file for you as a [computed value](/guide/getting-started#create-your-config):
+
+```yaml
+# outport.yml
+computed:
+  PC_SOCKET_PATH:
+    value: "/tmp/process-compose-${project_name}${instance:+-${instance}}.sock"
+    env_file: .pc_env
+```
+
+After `outport up`:
+
+- **Main instance** gets `.pc_env` with `PC_SOCKET_PATH=/tmp/process-compose-myapp.sock`
+- **Worktree** gets `.pc_env` with `PC_SOCKET_PATH=/tmp/process-compose-myapp-wiki.sock`
+- `process-compose up` (no flags) auto-enables UDS with the correct socket
+- `process-compose process list` (no flags) finds the right socket
+- `bin/dev` becomes pure convenience aliases — zero plumbing
+
+Add `.pc_env` to your `.gitignore` — it's instance-specific, like `.env`.
 
 ## Gotchas we learned the hard way
 
@@ -221,11 +256,11 @@ readiness_probe:
 
 **Fix:** Name your Docker file `docker-compose.yml` (the legacy name) so process-compose skips it.
 
-### The --no-server flag
+### Socket path out of sync
 
-**What goes wrong:** process-compose starts an HTTP server on port 8080 by default. If you're running multiple worktrees simultaneously, they fight over that port and crash on startup.
+**What goes wrong:** You renamed an instance or ran `outport down` and `outport up` in a different directory. The `.pc_env` file still has the old socket path, so `process-compose` commands can't find the running daemon.
 
-**Fix:** Always pass `--no-server` when starting process-compose. CLI commands (status, logs, restart) use unix sockets, not HTTP, so nothing breaks. The `bin/dev` wrapper shown above already includes this.
+**Fix:** Run `outport up` to regenerate `.pc_env` with the current socket path. If you need to stop a running stack with a stale socket, pass the path directly: `process-compose down -u /tmp/process-compose-<old-name>.sock`.
 
 ## Adopting `DEVSTACK.md`
 
