@@ -1,6 +1,7 @@
 package lanip
 
 import (
+	"slices"
 	"testing"
 )
 
@@ -21,6 +22,16 @@ func TestDetect_InvalidInterface(t *testing.T) {
 	_, err := Detect("nonexistent99")
 	if err == nil {
 		t.Error("expected error for nonexistent interface")
+	}
+}
+
+func TestPreferredNamesIncludesLinux(t *testing.T) {
+	// Linux common interface names should be in the preferred list
+	// so auto-detection works on Linux without falling back to scan-all.
+	for _, name := range []string{"eth0", "wlan0"} {
+		if !slices.Contains(preferredNames, name) {
+			t.Errorf("preferredNames missing Linux interface %q", name)
+		}
 	}
 }
 

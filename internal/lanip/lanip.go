@@ -10,7 +10,7 @@ var virtualPrefixes = []string{
 	"utun", "bridge", "veth", "docker", "vmnet", "lo",
 }
 
-var preferredNames = []string{"en0", "en1"}
+var preferredNames = []string{"en0", "en1", "eth0", "wlan0"}
 
 // Detect returns the LAN IPv4 address for the given interface name.
 // If interfaceName is empty, it auto-detects a suitable LAN interface.
