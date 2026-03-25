@@ -50,9 +50,17 @@ echo "  Assigned port: $PORT_VAL"
 # Start example app in background
 PORT="$PORT_VAL" go run main.go &
 APP_PID=$!
-sleep 1
 
-check "app responds on allocated port" curl -sf "http://127.0.0.1:${PORT_VAL}/"
+# Wait for app to be ready (retry instead of fixed sleep)
+app_ready=false
+for i in {1..10}; do
+    if curl -sf "http://127.0.0.1:${PORT_VAL}/" > /dev/null 2>&1; then
+        app_ready=true
+        break
+    fi
+    sleep 0.2
+done
+check "app responds on allocated port" $app_ready
 
 # Clean up app
 kill "$APP_PID" 2>/dev/null || true
