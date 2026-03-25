@@ -1,5 +1,5 @@
 ---
-description: Real-world outport.yml configurations for Rails apps, monorepos, Docker Compose multi-instance setups, and cross-project dependencies.
+description: Real-world outport.yml configurations for Rails apps, monorepos, Docker Compose and process-compose multi-instance setups, and cross-project dependencies.
 ---
 
 # Examples
@@ -101,6 +101,31 @@ computed:
 - **Worktree** — `${instance}` is `xbjf`, so the result is `myapp-xbjf`
 
 Each checkout gets its own Docker Compose stack with separate containers and volumes.
+
+## process-compose Multi-Instance
+
+Similar problem to Docker Compose — [process-compose](https://f1bonacc1.github.io/process-compose/) runs an API server for CLI commands like `process-compose process list` and `process-compose down`. Multiple worktrees collide on the same socket.
+
+process-compose loads a file called `.pc_env` from the current directory at startup — before anything else. Setting `PC_SOCKET_PATH` there automatically enables Unix Domain Socket mode with a unique path per instance:
+
+```yaml
+name: myapp
+services:
+  web:
+    env_var: PORT
+    hostname: myapp.test
+  postgres:
+    env_var: DB_PORT
+
+computed:
+  PC_SOCKET_PATH:
+    value: "/tmp/process-compose-${project_name}${instance:+-${instance}}.sock"
+    env_file: .pc_env
+```
+
+This also shows that `env_file` isn't limited to `.env` — Outport can write computed values to any file. After `outport up`, bare `process-compose` commands (no flags, no wrapper) automatically find the correct socket. Add `.pc_env` to `.gitignore`.
+
+See [Running Your Dev Stack](/guide/devstack#worktree-isolation-with-pc-env) for the full setup including `bin/dev`.
 
 ## Cross-Project Dependencies
 
