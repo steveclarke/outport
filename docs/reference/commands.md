@@ -155,7 +155,7 @@ Interactive first-run system setup.
 outport setup
 ```
 
-Guides you through enabling `.test` domains with HTTPS. The `.test` domain setup is optional — without it, `outport up` still works for deterministic ports and `.env` files.
+Guides you through enabling `.test` domains with HTTPS. The `.test` domain setup is optional — without it, `outport up` still works for deterministic ports and `.env` files. Also creates the [global settings](/reference/configuration#global-settings) file at `~/.config/outport/config` if it doesn't exist.
 
 | Flag | Description |
 |------|-------------|
