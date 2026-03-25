@@ -16,14 +16,14 @@ import (
 // DaemonConfig holds configuration for the daemon process.
 type DaemonConfig struct {
 	DNSAddr        string        // UDP address for DNS (e.g., "127.0.0.1:15353")
-	DNSTTL         uint32        // TTL for DNS responses in seconds (0 defaults to 60)
+	DNSTTL         uint32        // TTL for DNS responses in seconds
 	ProxyAddr      string        // TCP address for HTTP proxy (e.g., ":80")
 	HTTPListener   net.Listener  // Pre-bound HTTP listener (launchd socket activation)
 	HTTPSListener  net.Listener  // Pre-bound HTTPS listener (launchd socket activation)
 	TLSConfig      *tls.Config   // TLS config with GetCertificate callback (nil = no HTTPS)
 	RegistryPath   string        // Path to registry.json
 	Version        string        // Outport version string (e.g., "0.23.0")
-	HealthInterval time.Duration // Health check interval (0 defaults to 3s)
+	HealthInterval time.Duration // Dashboard health check polling interval
 }
 
 // Daemon coordinates the DNS server, HTTP proxy, and route watcher.

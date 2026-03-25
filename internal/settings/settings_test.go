@@ -278,6 +278,31 @@ func TestDefaultsReturnsExpectedValues(t *testing.T) {
 	}
 }
 
+func TestDefaultConfigContentRoundTrips(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config")
+	if err := os.WriteFile(path, []byte(DefaultConfigContent()), 0644); err != nil {
+		t.Fatal(err)
+	}
+	s, err := LoadFrom(path)
+	if err != nil {
+		t.Fatalf("DefaultConfigContent produced invalid config: %v", err)
+	}
+	d := Defaults()
+	if s.Proxy.HTTPPort != d.Proxy.HTTPPort {
+		t.Errorf("HTTPPort = %d, want %d", s.Proxy.HTTPPort, d.Proxy.HTTPPort)
+	}
+	if s.Proxy.HTTPSPort != d.Proxy.HTTPSPort {
+		t.Errorf("HTTPSPort = %d, want %d", s.Proxy.HTTPSPort, d.Proxy.HTTPSPort)
+	}
+	if s.Dashboard.HealthInterval != d.Dashboard.HealthInterval {
+		t.Errorf("HealthInterval = %v, want %v", s.Dashboard.HealthInterval, d.Dashboard.HealthInterval)
+	}
+	if s.DNS.TTL != d.DNS.TTL {
+		t.Errorf("TTL = %d, want %d", s.DNS.TTL, d.DNS.TTL)
+	}
+}
+
 func TestPathReturnsConfigOutportConfig(t *testing.T) {
 	p, err := Path()
 	if err != nil {
