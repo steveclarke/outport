@@ -98,5 +98,5 @@ Run before committing or merging:
 - [ ] `--json` output works for any changed commands
 - [ ] CLAUDE.md reflects any architectural changes (new packages, commands, design decisions)
 - [ ] Docs site (`docs/`) updated if commands, config fields, or user-facing behavior changed
-- [ ] If docs changed: `npm run docs:build` succeeds and deploy via `npx wrangler pages deploy docs/.vitepress/dist --project-name outport-dev`
+- [ ] If docs changed: `bin/deploy-docs`
 - [ ] VS Code extension — if config fields, commands, or user-facing behavior changed, check that the extension's JSON schema and `docs/guide/vscode.md` still match. Extension repo: `steveclarke/outport-vscode`

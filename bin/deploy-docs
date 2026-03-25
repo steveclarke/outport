@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cd "$(git rev-parse --show-toplevel)"
+
+npm run docs:build
+npx wrangler pages deploy docs/.vitepress/dist --project-name outport-dev --commit-dirty=true
