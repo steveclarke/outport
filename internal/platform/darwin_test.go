@@ -9,7 +9,7 @@ import (
 
 func TestGeneratePlist(t *testing.T) {
 	binary := "/usr/local/bin/outport"
-	plist := GeneratePlist(binary, 80, 443)
+	plist := GeneratePlist(binary)
 
 	checks := []struct {
 		name     string
@@ -38,7 +38,7 @@ func TestGeneratePlist(t *testing.T) {
 
 func TestGeneratePlistDifferentBinary(t *testing.T) {
 	binary := "/opt/homebrew/bin/outport"
-	plist := GeneratePlist(binary, 80, 443)
+	plist := GeneratePlist(binary)
 
 	if !strings.Contains(plist, "<string>/opt/homebrew/bin/outport</string>") {
 		t.Error("plist does not contain the specified binary path")
@@ -54,7 +54,7 @@ func TestIsSetup(t *testing.T) {
 }
 
 func TestGeneratePlistDualSockets(t *testing.T) {
-	plist := GeneratePlist("/usr/local/bin/outport", 80, 443)
+	plist := GeneratePlist("/usr/local/bin/outport")
 	if !strings.Contains(plist, "<key>HTTPSocket</key>") {
 		t.Error("plist missing HTTPSocket key")
 	}
@@ -66,20 +66,6 @@ func TestGeneratePlistDualSockets(t *testing.T) {
 	}
 	if strings.Contains(plist, `<key>Socket</key>`) {
 		t.Error("plist still has old Socket key")
-	}
-}
-
-func TestGeneratePlistCustomPorts(t *testing.T) {
-	plist := GeneratePlist("/usr/local/bin/outport", 8080, 8443)
-
-	if !strings.Contains(plist, "<string>8080</string>") {
-		t.Error("plist missing custom HTTP port 8080")
-	}
-	if !strings.Contains(plist, "<string>8443</string>") {
-		t.Error("plist missing custom HTTPS port 8443")
-	}
-	if strings.Contains(plist, "<string>80</string>") {
-		t.Error("plist still has default port 80")
 	}
 }
 

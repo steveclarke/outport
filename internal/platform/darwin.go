@@ -79,8 +79,8 @@ func RemoveResolverFile() error {
 
 // WritePlist writes the LaunchAgent plist for the outport daemon.
 // outportBinary should be the absolute path to the outport binary.
-func WritePlist(outportBinary string, httpPort, httpsPort int) error {
-	content := GeneratePlist(outportBinary, httpPort, httpsPort)
+func WritePlist(outportBinary string) error {
+	content := GeneratePlist(outportBinary)
 
 	path := PlistPath()
 	dir := filepath.Dir(path)
@@ -95,7 +95,7 @@ func WritePlist(outportBinary string, httpPort, httpsPort int) error {
 }
 
 // GeneratePlist returns the plist XML for the outport daemon LaunchAgent.
-func GeneratePlist(outportBinary string, httpPort, httpsPort int) string {
+func GeneratePlist(outportBinary string) string {
 	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -118,14 +118,14 @@ func GeneratePlist(outportBinary string, httpPort, httpsPort int) string {
             <key>SockNodeName</key>
             <string>127.0.0.1</string>
             <key>SockServiceName</key>
-            <string>%d</string>
+            <string>80</string>
         </dict>
         <key>HTTPSSocket</key>
         <dict>
             <key>SockNodeName</key>
             <string>127.0.0.1</string>
             <key>SockServiceName</key>
-            <string>%d</string>
+            <string>443</string>
         </dict>
     </dict>
     <key>StandardOutPath</key>
@@ -134,7 +134,7 @@ func GeneratePlist(outportBinary string, httpPort, httpsPort int) string {
     <string>/tmp/outport-daemon.log</string>
 </dict>
 </plist>
-`, plistLabel, outportBinary, httpPort, httpsPort)
+`, plistLabel, outportBinary)
 }
 
 // RemovePlist removes the LaunchAgent plist file.
