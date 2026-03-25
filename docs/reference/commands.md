@@ -217,12 +217,12 @@ Lists every project/instance in the registry with their allocated ports. Prompts
 | `--check` | Check if ports are accepting connections |
 | `--json` | Output results as JSON |
 
-### `outport system gc`
+### `outport system prune`
 
 Remove stale entries from the registry.
 
 ```bash
-outport system gc
+outport system prune
 ```
 
 Scans the registry and removes entries whose project directories or config files no longer exist.

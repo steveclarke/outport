@@ -206,7 +206,7 @@ func printStatusStyled(cmd *cobra.Command, reg *registry.Registry, projects map[
 
 		// Show stale hint
 		if stale {
-			fmt.Fprintf(w, "  %s\n", ui.DimStyle.Render("(stale — run 'outport system gc' to remove)"))
+			fmt.Fprintf(w, "  %s\n", ui.DimStyle.Render("(stale — run 'outport system prune' to remove)"))
 		}
 
 		if i < len(keys)-1 {

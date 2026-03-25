@@ -504,12 +504,12 @@ func TestSystemStatus_StaleProjectInJSON(t *testing.T) {
 	if entries[0].Key != "staleapp/main" {
 		t.Errorf("key = %q, want staleapp/main", entries[0].Key)
 	}
-	// Stale removal is tested via gc command, which doesn't use interactive prompts
+	// Stale removal is tested via prune command, which doesn't use interactive prompts
 }
 
-// --- system gc ---
+// --- system prune ---
 
-func TestSystemGC_RemovesStaleEntries(t *testing.T) {
+func TestSystemPrune_RemovesStaleEntries(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	t.Chdir(t.TempDir())
@@ -530,7 +530,7 @@ func TestSystemGC_RemovesStaleEntries(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	output := executeCmd(t, "system", "gc")
+	output := executeCmd(t, "system", "prune")
 
 	if !bytes.Contains([]byte(output), []byte("Removed 1 stale")) {
 		t.Errorf("expected removal message, got:\n%s", output)
@@ -545,16 +545,16 @@ func TestSystemGC_RemovesStaleEntries(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(reg2.Projects) != 0 {
-		t.Errorf("registry still has %d entries after gc", len(reg2.Projects))
+		t.Errorf("registry still has %d entries after prune", len(reg2.Projects))
 	}
 }
 
-func TestSystemGC_NoStaleEntries(t *testing.T) {
+func TestSystemPrune_NoStaleEntries(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 
 	projectDir := t.TempDir()
-	// Add a config file so gc doesn't consider it stale
+	// Add a config file so prune doesn't consider it stale
 	_ = os.WriteFile(filepath.Join(projectDir, "outport.yml"), []byte("name: validapp\nservices:\n  web:\n    env_var: PORT\n"), 0644)
 	t.Chdir(projectDir)
 	jsonFlag = false
@@ -573,14 +573,14 @@ func TestSystemGC_NoStaleEntries(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	output := executeCmd(t, "system", "gc")
+	output := executeCmd(t, "system", "prune")
 
 	if !bytes.Contains([]byte(output), []byte("No stale entries")) {
 		t.Errorf("expected 'No stale entries', got:\n%s", output)
 	}
 }
 
-func TestSystemGC_RemovesMissingConfig(t *testing.T) {
+func TestSystemPrune_RemovesMissingConfig(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 
@@ -602,7 +602,7 @@ func TestSystemGC_RemovesMissingConfig(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	output := executeCmd(t, "system", "gc")
+	output := executeCmd(t, "system", "prune")
 
 	if !bytes.Contains([]byte(output), []byte("Removed 1 stale")) {
 		t.Errorf("expected removal of config-missing entry, got:\n%s", output)

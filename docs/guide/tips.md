@@ -109,7 +109,7 @@ Run `outport ports` to see your current allocations and `outport system status` 
 If `outport system status` shows stale entries (projects whose directories no longer exist):
 
 ```bash
-outport system gc
+outport system prune
 ```
 
 This removes entries where the project directory or `outport.yml` is missing.

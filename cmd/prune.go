@@ -6,19 +6,19 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var systemGCCmd = &cobra.Command{
-	Use:   "gc",
+var systemPruneCmd = &cobra.Command{
+	Use:   "prune",
 	Short: "Remove stale entries from the registry",
 	Long:  "Scans the registry and removes entries whose project directories or config files no longer exist.",
 	Args:  NoArgs,
-	RunE:  runGC,
+	RunE:  runPrune,
 }
 
 func init() {
-	systemCmd.AddCommand(systemGCCmd)
+	systemCmd.AddCommand(systemPruneCmd)
 }
 
-func runGC(cmd *cobra.Command, args []string) error {
+func runPrune(cmd *cobra.Command, args []string) error {
 	reg, err := loadRegistry()
 	if err != nil {
 		return err

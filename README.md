@@ -126,7 +126,7 @@ outport rename [old] <new> Rename an instance
 outport promote            Promote instance to main
 outport doctor             Diagnose issues
 outport system start       Install DNS, HTTPS, start daemon
-outport system stop|restart|status|gc|uninstall
+outport system stop|restart|status|prune|uninstall
 ```
 
 See the [Commands reference](https://outport.dev/reference/commands) for full details.
