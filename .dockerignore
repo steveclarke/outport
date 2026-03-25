@@ -1,0 +1,10 @@
+dist/
+node_modules/
+.git/
+.claude/
+.superpowers/
+.worktrees/
+docs/.vitepress/dist/
+docs/.vitepress/cache/
+test/qa/workdir/
+*.log
