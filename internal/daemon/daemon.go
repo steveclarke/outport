@@ -15,6 +15,7 @@ import (
 // DaemonConfig holds configuration for the daemon process.
 type DaemonConfig struct {
 	DNSAddr       string       // UDP address for DNS (e.g., "127.0.0.1:15353")
+	DNSTTL        uint32       // TTL for DNS responses in seconds (0 defaults to 60)
 	ProxyAddr     string       // TCP address for HTTP proxy (e.g., ":80")
 	HTTPListener  net.Listener // Pre-bound HTTP listener (launchd socket activation)
 	HTTPSListener net.Listener // Pre-bound HTTPS listener (launchd socket activation)
@@ -47,7 +48,11 @@ func New(cfg *DaemonConfig) (*Daemon, error) {
 		dashHandler.OnRegistryUpdate()
 	}
 
-	dnsSrv := NewDNSServer(cfg.DNSAddr)
+	dnsttl := cfg.DNSTTL
+	if dnsttl == 0 {
+		dnsttl = 60
+	}
+	dnsSrv := NewDNSServer(cfg.DNSAddr, dnsttl)
 
 	var httpHandler http.Handler
 	if cfg.TLSConfig != nil {
