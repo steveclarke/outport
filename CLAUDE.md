@@ -10,6 +10,10 @@ just lint             # Run golangci-lint
 just install          # Install to $GOPATH/bin
 just run <args>       # Build and run (e.g., just run up)
 just release-dry-run  # Test GoReleaser locally
+just test-linux       # Run all tests on Linux via Docker
+just dev-linux        # Start Linux dev container (systemd)
+just dev-linux-shell  # Open shell in Linux dev container
+just dev-linux-down   # Stop Linux dev container
 ```
 
 To run a single test: `go test ./internal/allocator/ -run TestHashPort -v`

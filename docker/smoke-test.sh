@@ -16,7 +16,7 @@ check() {
         echo -e "  $PASS  $name"
     else
         echo -e "  $FAIL  $name"
-        ((failures++))
+        failures=$((failures + 1))
     fi
 }
 
@@ -60,7 +60,7 @@ for i in {1..10}; do
     fi
     sleep 0.2
 done
-check "app responds on allocated port" $app_ready
+check "app responds on allocated port" test "$app_ready" = "true"
 
 # Clean up app
 kill "$APP_PID" 2>/dev/null || true
@@ -78,7 +78,7 @@ check "env file removed after down" test ! -f .env
 
 echo ""
 echo "=== systemd status ==="
-check "systemd is running" systemctl is-system-running --quiet || systemctl is-system-running 2>/dev/null
+check "systemd is running" bash -c "systemctl is-system-running --quiet || systemctl is-system-running"
 
 # systemd-resolved may not start in Docker's stripped-down environment.
 # Report its status but don't fail the smoke test — Phase 2 will address this.
