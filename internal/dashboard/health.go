@@ -7,24 +7,24 @@ import (
 	"github.com/steveclarke/outport/internal/portcheck"
 )
 
-const healthInterval = 3 * time.Second
-
 type PortProvider func() []int
 
 type HealthChecker struct {
 	mu       sync.Mutex
 	previous map[int]bool
 	provider PortProvider
+	interval time.Duration
 	ticker   *time.Ticker
 	stopCh   chan struct{}
 	onChange func(changes map[int]bool)
 	running  bool
 }
 
-func NewHealthChecker(provider PortProvider, onChange func(map[int]bool)) *HealthChecker {
+func NewHealthChecker(provider PortProvider, interval time.Duration, onChange func(map[int]bool)) *HealthChecker {
 	return &HealthChecker{
 		previous: make(map[int]bool),
 		provider: provider,
+		interval: interval,
 		onChange: onChange,
 	}
 }
@@ -37,7 +37,7 @@ func (h *HealthChecker) Start() {
 	}
 	h.running = true
 	h.stopCh = make(chan struct{})
-	h.ticker = time.NewTicker(healthInterval)
+	h.ticker = time.NewTicker(h.interval)
 	go h.run()
 }
 

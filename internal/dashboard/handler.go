@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"slices"
 	"sort"
+	"time"
 
 	"github.com/steveclarke/outport/internal/lanip"
 	"github.com/steveclarke/outport/internal/qrcode"
@@ -72,7 +73,7 @@ type Handler struct {
 }
 
 // NewHandler creates a dashboard handler with all routes registered.
-func NewHandler(provider AllocProvider, httpsEnabled bool, version string) *Handler {
+func NewHandler(provider AllocProvider, httpsEnabled bool, version string, healthInterval time.Duration) *Handler {
 	h := &Handler{
 		mux:      http.NewServeMux(),
 		provider: provider,
@@ -81,7 +82,7 @@ func NewHandler(provider AllocProvider, httpsEnabled bool, version string) *Hand
 		version:  version,
 	}
 
-	h.health = NewHealthChecker(provider.AllPorts, h.onHealthChange)
+	h.health = NewHealthChecker(provider.AllPorts, healthInterval, h.onHealthChange)
 	h.indexHTML, _ = staticFiles.ReadFile("static/index.html")
 	h.rebuildPortIndex()
 	h.refreshCaches()
