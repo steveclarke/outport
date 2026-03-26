@@ -158,20 +158,34 @@ func BuildTunnelRoutes(tunnelState *tunnel.TunnelState, allocs map[string]regist
 	routes := make(map[string]route)
 	for tunnelHostname, testHostname := range tunnelState.HostnameMap {
 		// Find which port this .test hostname maps to
+		found := false
 		for _, alloc := range allocs {
 			// Check primary hostnames
 			for svcName, h := range alloc.Hostnames {
 				if h == testHostname {
 					routes[tunnelHostname] = route{Port: alloc.Ports[svcName], HostOverride: testHostname}
+					found = true
+					break
 				}
+			}
+			if found {
+				break
 			}
 			// Check aliases
 			for svcName, svcAliases := range alloc.Aliases {
 				for _, h := range svcAliases {
 					if h == testHostname {
 						routes[tunnelHostname] = route{Port: alloc.Ports[svcName], HostOverride: testHostname}
+						found = true
+						break
 					}
 				}
+				if found {
+					break
+				}
+			}
+			if found {
+				break
 			}
 		}
 	}
@@ -182,6 +196,9 @@ func BuildTunnelRoutes(tunnelState *tunnel.TunnelState, allocs map[string]regist
 // These routes are merged into the existing route map without replacing it.
 func (rt *RouteTable) MergeTunnelRoutes(tunnelRoutes map[string]route) {
 	rt.mu.Lock()
+	if rt.routes == nil {
+		rt.routes = make(map[string]route)
+	}
 	for hostname, r := range tunnelRoutes {
 		rt.routes[hostname] = r
 	}

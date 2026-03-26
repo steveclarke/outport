@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"sort"
+	"strings"
 	"syscall"
 	"time"
 
@@ -104,7 +105,9 @@ func runShare(cmd *cobra.Command, args []string) error {
 	}
 
 	// Apply max_tunnels cap
+	var skippedTargets []tunnelTarget
 	if len(targets) > maxTunnels {
+		skippedTargets = targets[maxTunnels:]
 		targets = targets[:maxTunnels]
 	}
 
@@ -211,6 +214,14 @@ func runShare(cmd *cobra.Command, args []string) error {
 		}
 	} else {
 		printShareStyled(cmd, rows)
+		if len(skippedTargets) > 0 {
+			var skippedHostnames []string
+			for _, t := range skippedTargets {
+				skippedHostnames = append(skippedHostnames, t.TestHostname)
+			}
+			fmt.Fprintf(cmd.OutOrStdout(), "Warning: tunnel limit reached (%d). Skipped: %s\n",
+				maxTunnels, strings.Join(skippedHostnames, ", "))
+		}
 		printExternalFilesWarning(cmd.OutOrStdout(), result.ExternalFiles)
 	}
 

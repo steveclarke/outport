@@ -130,18 +130,20 @@ func printStatusJSON(cmd *cobra.Command, reg *registry.Registry, projects map[st
 		cfg := loadProjectConfig(alloc.ProjectDir)
 		_, instanceName := registry.ParseKey(key)
 
-		services := make(map[string]svcJSON)
-		for svcName, port := range alloc.Ports {
-			s := svcJSON{Port: port}
-			if cfg != nil {
-				if svc, ok := cfg.Services[svcName]; ok {
-					s.URL = urlutil.ServiceURL(resolvedHostname(svc, alloc.Hostnames, svcName), port, httpsEnabled)
-				}
+		var services map[string]svcJSON
+		if cfg != nil {
+			services = buildServiceMap(cfg, alloc.Ports, alloc.Hostnames, alloc.Aliases, httpsEnabled)
+		} else {
+			services = make(map[string]svcJSON)
+			for svcName, port := range alloc.Ports {
+				services[svcName] = svcJSON{Port: port}
 			}
-			if portStatus != nil {
-				s.Up = boolPtr(portStatus[port])
+		}
+		if portStatus != nil {
+			for svcName, s := range services {
+				s.Up = boolPtr(portStatus[s.Port])
+				services[svcName] = s
 			}
-			services[svcName] = s
 		}
 
 		var computed map[string]computedJSON
@@ -196,6 +198,15 @@ func printStatusStyled(cmd *cobra.Command, reg *registry.Registry, projects map[
 		}
 		for _, svcName := range svcNames {
 			printServiceLineCompact(w, renderCfg, svcName, alloc.Ports[svcName], alloc.Hostnames, portStatus, httpsEnabled)
+			if svcAliases, ok := alloc.Aliases[svcName]; ok {
+				aliasKeys := slices.Sorted(maps.Keys(svcAliases))
+				for _, key := range aliasKeys {
+					aliasHostname := svcAliases[key]
+					if u := urlutil.ServiceURL(aliasHostname, alloc.Ports[svcName], httpsEnabled); u != "" {
+						lipgloss.Fprintln(w, "                      "+ui.UrlStyle.Render(u))
+					}
+				}
+			}
 		}
 
 		if cfg != nil && statusComputedFlag {
