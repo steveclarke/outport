@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/steveclarke/outport/internal/registry"
+	"github.com/steveclarke/outport/internal/tunnel"
 )
 
 func TestBuildRoutes(t *testing.T) {
@@ -101,6 +102,81 @@ func TestBuildRoutesIncludesAliases(t *testing.T) {
 	}
 	if routes["approvethis.test"].HostOverride != "" {
 		t.Errorf("primary should have empty HostOverride")
+	}
+}
+
+func TestBuildTunnelRoutes(t *testing.T) {
+	state := &tunnel.TunnelState{
+		HostnameMap: map[string]string{
+			"abc123.trycloudflare.com": "approvethis.test",
+			"def456.trycloudflare.com": "app.approvethis.test",
+		},
+	}
+	allocs := map[string]registry.Allocation{
+		"approvethis/main": {
+			Ports:     map[string]int{"web": 14139},
+			Hostnames: map[string]string{"web": "approvethis.test"},
+			Aliases:   map[string]map[string]string{"web": {"app": "app.approvethis.test"}},
+		},
+	}
+
+	routes := BuildTunnelRoutes(state, allocs)
+
+	if len(routes) != 2 {
+		t.Fatalf("expected 2 tunnel routes, got %d", len(routes))
+	}
+	r := routes["abc123.trycloudflare.com"]
+	if r.Port != 14139 || r.HostOverride != "approvethis.test" {
+		t.Errorf("primary tunnel route: got port=%d override=%q", r.Port, r.HostOverride)
+	}
+	r = routes["def456.trycloudflare.com"]
+	if r.Port != 14139 || r.HostOverride != "app.approvethis.test" {
+		t.Errorf("alias tunnel route: got port=%d override=%q", r.Port, r.HostOverride)
+	}
+}
+
+func TestBuildTunnelRoutes_NilState(t *testing.T) {
+	routes := BuildTunnelRoutes(nil, map[string]registry.Allocation{})
+	if routes != nil {
+		t.Errorf("expected nil routes for nil state, got %d", len(routes))
+	}
+}
+
+func TestBuildTunnelRoutes_EmptyHostnameMap(t *testing.T) {
+	state := &tunnel.TunnelState{
+		HostnameMap: map[string]string{},
+	}
+	routes := BuildTunnelRoutes(state, map[string]registry.Allocation{})
+	if routes != nil {
+		t.Errorf("expected nil routes for empty hostname map, got %d", len(routes))
+	}
+}
+
+func TestMergeTunnelRoutes(t *testing.T) {
+	rt := &RouteTable{}
+	// Set up base routes
+	rt.update(map[string]route{
+		"myapp.test": {Port: 14139},
+	})
+
+	// Merge tunnel routes on top
+	rt.MergeTunnelRoutes(map[string]route{
+		"abc123.trycloudflare.com": {Port: 14139, HostOverride: "myapp.test"},
+	})
+
+	// Original route should still exist
+	r, ok := rt.Lookup("myapp.test")
+	if !ok || r.Port != 14139 {
+		t.Errorf("base route lost after merge: ok=%v port=%d", ok, r.Port)
+	}
+
+	// Tunnel route should exist
+	r, ok = rt.Lookup("abc123.trycloudflare.com")
+	if !ok {
+		t.Fatal("expected tunnel route to exist")
+	}
+	if r.Port != 14139 || r.HostOverride != "myapp.test" {
+		t.Errorf("tunnel route: got port=%d override=%q", r.Port, r.HostOverride)
 	}
 }
 

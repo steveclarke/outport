@@ -147,15 +147,60 @@ func BuildRoutes(reg *registry.Registry) map[string]route {
 	return routes
 }
 
+// BuildTunnelRoutes reads the tunnel state and returns HostOverride routes.
+// Each tunnel URL hostname maps to the service's port with the original .test
+// hostname as HostOverride, enabling the proxy to rewrite the Host header
+// before forwarding to the local service.
+func BuildTunnelRoutes(tunnelState *tunnel.TunnelState, allocs map[string]registry.Allocation) map[string]route {
+	if tunnelState == nil || len(tunnelState.HostnameMap) == 0 {
+		return nil
+	}
+	routes := make(map[string]route)
+	for tunnelHostname, testHostname := range tunnelState.HostnameMap {
+		// Find which port this .test hostname maps to
+		for _, alloc := range allocs {
+			// Check primary hostnames
+			for svcName, h := range alloc.Hostnames {
+				if h == testHostname {
+					routes[tunnelHostname] = route{Port: alloc.Ports[svcName], HostOverride: testHostname}
+				}
+			}
+			// Check aliases
+			for svcName, svcAliases := range alloc.Aliases {
+				for _, h := range svcAliases {
+					if h == testHostname {
+						routes[tunnelHostname] = route{Port: alloc.Ports[svcName], HostOverride: testHostname}
+					}
+				}
+			}
+		}
+	}
+	return routes
+}
+
+// MergeTunnelRoutes adds temporary HostOverride routes for active tunnels.
+// These routes are merged into the existing route map without replacing it.
+func (rt *RouteTable) MergeTunnelRoutes(tunnelRoutes map[string]route) {
+	rt.mu.Lock()
+	for hostname, r := range tunnelRoutes {
+		rt.routes[hostname] = r
+	}
+	rt.mu.Unlock()
+	if rt.OnUpdate != nil {
+		rt.OnUpdate()
+	}
+}
+
 // WatchAndRebuild performs an initial route build from the registry file, then
 // watches the registry's parent directory for file changes. When registry.json
-// is created or written, the routing table is rebuilt from the new file
-// contents. When the tunnel state file changes, the OnUpdate callback is fired
-// without rebuilding routes (so the dashboard can refresh tunnel status). The
-// function blocks until the context is cancelled or a watcher error occurs.
-// Errors during the initial load are returned immediately; errors during
-// subsequent reloads are silently ignored (best-effort) to keep the daemon
-// running with the last known good routes.
+// is created or written, the routing table is rebuilt from the new file contents
+// and any active tunnel routes are re-applied on top. When the tunnel state file
+// changes, HostOverride routes are built from the tunnel state and merged into
+// the route table (so the proxy can forward tunnel traffic to local services
+// with the correct Host header). The function blocks until the context is
+// cancelled or a watcher error occurs. Errors during the initial load are
+// returned immediately; errors during subsequent reloads are silently ignored
+// (best-effort) to keep the daemon running with the last known good routes.
 func WatchAndRebuild(ctx context.Context, regPath string, rt *RouteTable) error {
 	// Initial load
 	if err := rebuildFromFile(regPath, rt); err != nil {
@@ -188,11 +233,9 @@ func WatchAndRebuild(ctx context.Context, regPath string, rt *RouteTable) error 
 			}
 			if eventBase == base {
 				_ = rebuildFromFile(regPath, rt) // best-effort
+				addTunnelRoutes(regPath, rt)     // re-apply tunnel routes after registry rebuild
 			} else if eventBase == tunnel.StateFilename {
-				// Tunnel state changed — notify dashboard without rebuilding routes
-				if rt.OnUpdate != nil {
-					rt.OnUpdate()
-				}
+				addTunnelRoutes(regPath, rt)
 			}
 		case err, ok := <-watcher.Errors:
 			if !ok {
@@ -200,6 +243,26 @@ func WatchAndRebuild(ctx context.Context, regPath string, rt *RouteTable) error 
 			}
 			return fmt.Errorf("watcher error: %w", err)
 		}
+	}
+}
+
+// addTunnelRoutes reads the tunnel state file and merges HostOverride routes
+// into the route table. If the tunnel state file is missing or stale, this is
+// a no-op. Called both when the tunnel state file changes and after registry
+// rebuilds (to re-apply tunnel routes that would otherwise be lost).
+//
+// Known limitation: fsnotify does not fire events for file removals, so when
+// tunnels stop and the state file is deleted, these routes linger until the
+// next registry rebuild (e.g., any "outport up" or "outport down").
+func addTunnelRoutes(regPath string, rt *RouteTable) {
+	statePath := filepath.Join(filepath.Dir(regPath), tunnel.StateFilename)
+	state, err := tunnel.ReadState(statePath)
+	if err != nil || state == nil {
+		return
+	}
+	tunnelRoutes := BuildTunnelRoutes(state, rt.Allocations())
+	if len(tunnelRoutes) > 0 {
+		rt.MergeTunnelRoutes(tunnelRoutes)
 	}
 }
 

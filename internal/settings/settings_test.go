@@ -223,10 +223,12 @@ func TestDefaultConfigContentRoundTrips(t *testing.T) {
 func TestLoadMaxTunnels(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config")
-	os.WriteFile(path, []byte(`
+	if err := os.WriteFile(path, []byte(`
 [tunnels]
 max = 12
-`), 0644)
+`), 0644); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
 
 	s, err := LoadFrom(path)
 	if err != nil {
@@ -247,10 +249,12 @@ func TestDefaultMaxTunnels(t *testing.T) {
 func TestMaxTunnelsValidation(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config")
-	os.WriteFile(path, []byte(`
+	if err := os.WriteFile(path, []byte(`
 [tunnels]
 max = 0
-`), 0644)
+`), 0644); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
 
 	_, err := LoadFrom(path)
 	if err == nil {
