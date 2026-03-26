@@ -4,6 +4,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/steveclarke/outport/internal/platform"
 )
 
 func TestCheckResolverContent(t *testing.T) {
@@ -49,61 +51,32 @@ func TestCheckFileExists(t *testing.T) {
 
 func TestCheckPlistBinary(t *testing.T) {
 	dir := t.TempDir()
-	plistPath := filepath.Join(dir, "test.plist")
+	servicePath := filepath.Join(dir, "test.service")
 	binaryPath := filepath.Join(dir, "outport")
 
-	// Realistic plist matching platform.GeneratePlist() structure
-	plist := `<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>Label</key>
-    <string>dev.outport.daemon</string>
-    <key>ProgramArguments</key>
-    <array>
-        <string>` + binaryPath + `</string>
-        <string>daemon</string>
-    </array>
-    <key>RunAtLoad</key>
-    <true/>
-    <key>KeepAlive</key>
-    <true/>
-    <key>Sockets</key>
-    <dict>
-        <key>HTTPSocket</key>
-        <dict>
-            <key>SockNodeName</key>
-            <string>127.0.0.1</string>
-            <key>SockServiceName</key>
-            <string>80</string>
-        </dict>
-    </dict>
-    <key>StandardOutPath</key>
-    <string>/tmp/outport-daemon.log</string>
-    <key>StandardErrorPath</key>
-    <string>/tmp/outport-daemon.log</string>
-</dict>
-</plist>`
-	_ = os.WriteFile(plistPath, []byte(plist), 0644)
+	// Use platform.GeneratePlist so the fixture matches the current OS format
+	// (plist XML on macOS, systemd unit on Linux)
+	serviceContent := platform.GeneratePlist(binaryPath)
+	_ = os.WriteFile(servicePath, []byte(serviceContent), 0644)
 	_ = os.WriteFile(binaryPath, []byte("binary"), 0755)
 
-	res := checkPlistBinary(plistPath)
+	res := checkPlistBinary(servicePath)
 	if res.Status != Pass {
 		t.Errorf("expected Pass, got %v: %s", res.Status, res.Message)
 	}
 
 	// Binary doesn't exist
 	os.Remove(binaryPath)
-	res = checkPlistBinary(plistPath)
+	res = checkPlistBinary(servicePath)
 	if res.Status != Fail {
 		t.Errorf("expected Fail for missing binary, got %v", res.Status)
 	}
 
-	// Malformed plist
-	_ = os.WriteFile(plistPath, []byte("not xml"), 0644)
-	res = checkPlistBinary(plistPath)
+	// Malformed content
+	_ = os.WriteFile(servicePath, []byte("garbage content"), 0644)
+	res = checkPlistBinary(servicePath)
 	if res.Status != Fail {
-		t.Errorf("expected Fail for malformed plist, got %v", res.Status)
+		t.Errorf("expected Fail for malformed service file, got %v", res.Status)
 	}
 }
 
