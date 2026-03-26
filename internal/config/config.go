@@ -17,6 +17,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -157,6 +158,10 @@ func ResolveComputed(computed map[string]ComputedValue, templateVars map[string]
 // project's root directory. CLI commands use FindDir to locate this file by
 // walking up from the current working directory.
 const FileName = "outport.yml"
+
+// LocalFileName is the name of the optional per-machine override file.
+// It is not committed to version control and merges on top of FileName at load time.
+const LocalFileName = "outport.local.yml"
 
 // envFileField handles YAML that can be a string or []string.
 type envFileField []string
@@ -349,16 +354,19 @@ func FindDir(startDir string) (string, error) {
 // Load reads, parses, normalizes, and validates the outport.yml file in the given directory.
 // It returns a fully populated Config ready for use by the allocation package and CLI commands.
 //
-// The loading process has four stages:
+// The loading process has five stages:
 //  1. Read and parse the YAML file into raw deserialization types.
-//  2. Normalize the raw data: resolve flexible YAML syntax (e.g., string-or-list env_file
+//  2. Validate that the project name is present.
+//  3. Merge local overrides: if outport.local.yml exists in the same directory, merge its
+//     service fields into the raw config. Only services already defined in the base config
+//     can be overridden; the local file cannot change the project name or add new services.
+//  4. Normalize the raw data: resolve flexible YAML syntax (e.g., string-or-list env_file
 //     fields), apply defaults (services without env_file get [".env"]), and build the
 //     final Service and ComputedValue maps.
-//  3. Validate the config: ensure required fields are present (name, env_var), check that
+//  5. Validate the config: ensure required fields are present (name, env_var), check that
 //     hostnames follow naming rules and contain the project name, verify that computed
 //     value template references point to real services and valid fields, and detect
 //     env_var name collisions within the same env file.
-//  4. Return the validated Config.
 //
 // Returns a descriptive error if any stage fails, with messages designed to guide the
 // user toward a fix.
@@ -381,6 +389,10 @@ func Load(dir string) (*Config, error) {
 		return nil, fmt.Errorf("The 'name' field is missing in %s.", FileName)
 	}
 
+	if err := mergeLocal(dir, &raw); err != nil {
+		return nil, err
+	}
+
 	cfg := &Config{
 		Name:     raw.Name,
 		Services: make(map[string]Service),
@@ -400,6 +412,51 @@ func Load(dir string) (*Config, error) {
 	}
 
 	return cfg, nil
+}
+
+// mergeLocal reads outport.local.yml (if it exists) and merges its service fields
+// into the base rawConfig. Only services already defined in the base config can be
+// overridden. The local file cannot change the project name, add new services,
+// or define computed values — only the services section is merged.
+func mergeLocal(dir string, base *rawConfig) error {
+	path := filepath.Join(dir, LocalFileName)
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil // no local overrides — that's fine
+		}
+		return fmt.Errorf("Could not read %s: %w.", path, err)
+	}
+
+	var local rawConfig
+	if err := yaml.Unmarshal(data, &local); err != nil {
+		return fmt.Errorf("Invalid YAML in %s: %w.", LocalFileName, err)
+	}
+
+	for name, localSvc := range local.RawServices {
+		baseSvc, exists := base.RawServices[name]
+		if !exists {
+			return fmt.Errorf("Service %q in %s does not exist in %s.", name, LocalFileName, FileName)
+		}
+		if localSvc.PreferredPort != 0 {
+			baseSvc.PreferredPort = localSvc.PreferredPort
+		}
+		if localSvc.EnvVar != "" {
+			baseSvc.EnvVar = localSvc.EnvVar
+		}
+		if localSvc.Hostname != "" {
+			baseSvc.Hostname = localSvc.Hostname
+		}
+		if localSvc.Aliases != nil {
+			baseSvc.Aliases = localSvc.Aliases
+		}
+		if len(localSvc.EnvFile) > 0 {
+			baseSvc.EnvFile = localSvc.EnvFile
+		}
+		base.RawServices[name] = baseSvc
+	}
+
+	return nil
 }
 
 func toService(rs rawService) Service {
