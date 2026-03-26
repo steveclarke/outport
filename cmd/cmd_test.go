@@ -644,6 +644,25 @@ func TestUp_ForceReallocatesWithPreferredPorts(t *testing.T) {
 	}
 }
 
+func TestUp_PreferredPortUnavailableWarning(t *testing.T) {
+	setupProject(t, testConfig)
+
+	// First allocation succeeds with preferred ports
+	executeCmd(t, "up")
+
+	// Now make port 3000 appear busy and force re-allocation
+	isPortBusy = func(port int) bool { return port == 3000 }
+	forceFlag = true
+
+	out := executeCmd(t, "up")
+	if !strings.Contains(out, "preferred port 3000 is unavailable") {
+		t.Errorf("expected preferred port warning in output, got:\n%s", out)
+	}
+	if !strings.Contains(out, "web") {
+		t.Errorf("expected service name 'web' in warning, got:\n%s", out)
+	}
+}
+
 func TestSystemStatus_MissingConfigMarkedStale(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
