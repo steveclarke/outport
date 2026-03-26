@@ -17,7 +17,7 @@ import (
 var openCmd = &cobra.Command{
 	Use:     "open [service]",
 	Short:   "Open web services in the browser",
-	Long:    "Opens all web services (those with a hostname) for the current project in your default browser. Specify a service name to open just one.",
+	Long:    "Opens web services for the current project in your default browser. By default, opens all services with a hostname. If the 'open' field is set in outport.yml, only the listed services are opened. Specify a service name to open just that one.",
 	GroupID: "project",
 	Args:    MaximumArgs(1, "accepts at most one service name"),
 	RunE:    runOpen,
@@ -44,12 +44,23 @@ func runOpen(cmd *cobra.Command, args []string) error {
 		return openService(cmd, ctx.Cfg, alloc, args[0], httpsEnabled)
 	}
 
-	opened := 0
-	for _, svcName := range slices.Sorted(maps.Keys(ctx.Cfg.Services)) {
-		svc := ctx.Cfg.Services[svcName]
-		if svc.Hostname == "" {
-			continue
+	// Determine which services to open
+	var serviceNames []string
+	if len(ctx.Cfg.Open) > 0 {
+		// Config specifies which services to open — use that order
+		serviceNames = ctx.Cfg.Open
+	} else {
+		// No open list — open all services with hostnames (alphabetical)
+		for _, name := range slices.Sorted(maps.Keys(ctx.Cfg.Services)) {
+			if ctx.Cfg.Services[name].Hostname != "" {
+				serviceNames = append(serviceNames, name)
+			}
 		}
+	}
+
+	opened := 0
+	for _, svcName := range serviceNames {
+		svc := ctx.Cfg.Services[svcName]
 		h := svc.Hostname
 		if allocated, ok := alloc.Hostnames[svcName]; ok {
 			h = allocated

@@ -77,11 +77,13 @@ outport status --computed  # include computed values
 Open HTTP services in the browser.
 
 ```bash
-outport open         # open all HTTP services
+outport open         # open default services (or all HTTP services)
 outport open web     # open a specific service
 ```
 
-Opens HTTP services (those with a `hostname`) in your default browser. Works best with `.test` domains set up (`outport system start`).
+Opens HTTP services in your default browser. By default, opens all services with a `hostname`. If the `open` field is set in `outport.yml`, only the listed services are opened. Specify a service name to open just that one, regardless of the `open` list.
+
+Works best with `.test` domains set up (`outport system start`).
 
 ### `outport qr`
 

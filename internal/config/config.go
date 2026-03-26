@@ -299,6 +299,7 @@ type rawComputedValue struct {
 // rawConfig is the YAML deserialization target.
 type rawConfig struct {
 	Name        string                      `yaml:"name"`
+	Open        []string                    `yaml:"open"`
 	RawServices map[string]rawService       `yaml:"services"`
 	RawComputed map[string]rawComputedValue `yaml:"computed"`
 }
@@ -314,6 +315,11 @@ type Config struct {
 	// as part of the hash key for deterministic port allocation ("{project}/{instance}/{service}")
 	// and must be present in any service hostnames. Required -- Load rejects configs without it.
 	Name string
+
+	// Open is an optional list of service names that `outport open` should open
+	// by default. When nil, all services with hostnames are opened. When non-nil,
+	// only the listed services are opened. Order determines browser tab order.
+	Open []string
 
 	// Services maps service names (e.g., "rails", "vite", "sidekiq") to their configuration.
 	// At least one service must be defined. Service names are the keys from the "services"
@@ -414,10 +420,11 @@ func Load(dir string) (*Config, error) {
 	return cfg, nil
 }
 
-// mergeLocal reads outport.local.yml (if it exists) and merges its service fields
+// mergeLocal reads outport.local.yml (if it exists) and merges its fields
 // into the base rawConfig. Only services already defined in the base config can be
 // overridden. The local file cannot change the project name, add new services,
-// or define computed values — only the services section is merged.
+// or define computed values — only the services and open sections are merged.
+// When the local file declares an open list, it replaces the base open list entirely.
 func mergeLocal(dir string, base *rawConfig) error {
 	path := filepath.Join(dir, LocalFileName)
 	data, err := os.ReadFile(path)
@@ -454,6 +461,10 @@ func mergeLocal(dir string, base *rawConfig) error {
 			baseSvc.EnvFile = localSvc.EnvFile
 		}
 		base.RawServices[name] = baseSvc
+	}
+
+	if local.Open != nil {
+		base.Open = local.Open
 	}
 
 	return nil
@@ -494,6 +505,8 @@ func (c *Config) normalize(raw *rawConfig) error {
 		}
 		c.Computed[name] = dv
 	}
+
+	c.Open = raw.Open
 
 	return nil
 }
@@ -610,6 +623,24 @@ func (c *Config) validate() error {
 			if err := validateTemplateRefs(name, pfValue, c.Services); err != nil {
 				return err
 			}
+		}
+	}
+
+	// Validate open list
+	if len(c.Open) > 0 {
+		seen := make(map[string]bool)
+		for _, name := range c.Open {
+			svc, ok := c.Services[name]
+			if !ok {
+				return fmt.Errorf("open: service %q does not exist in services", name)
+			}
+			if svc.Hostname == "" {
+				return fmt.Errorf("open: service %q has no hostname", name)
+			}
+			if seen[name] {
+				return fmt.Errorf("open: duplicate entry %q", name)
+			}
+			seen[name] = true
 		}
 	}
 

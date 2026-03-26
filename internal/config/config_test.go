@@ -1465,3 +1465,196 @@ services:
 	}
 }
 
+// --- Open field ---
+
+func TestLoad_OpenField(t *testing.T) {
+	dir := writeConfig(t, `name: myapp
+services:
+  web:
+    env_var: PORT
+    hostname: myapp
+  admin:
+    env_var: ADMIN_PORT
+    hostname: admin.myapp
+  postgres:
+    env_var: DB_PORT
+open:
+  - web
+`)
+	cfg, err := Load(dir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(cfg.Open) != 1 || cfg.Open[0] != "web" {
+		t.Errorf("Open = %v, want [web]", cfg.Open)
+	}
+}
+
+func TestLoad_OpenFieldAbsent(t *testing.T) {
+	dir := writeConfig(t, `name: myapp
+services:
+  web:
+    env_var: PORT
+    hostname: myapp
+`)
+	cfg, err := Load(dir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.Open != nil {
+		t.Errorf("Open = %v, want nil", cfg.Open)
+	}
+}
+
+func TestLoad_OpenFieldEmptyIsNil(t *testing.T) {
+	dir := writeConfig(t, `name: myapp
+services:
+  web:
+    env_var: PORT
+    hostname: myapp
+open: []
+`)
+	cfg, err := Load(dir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	// Empty open list treated the same as absent — falls back to opening all services with hostnames
+	if len(cfg.Open) != 0 {
+		t.Errorf("Open = %v, want empty", cfg.Open)
+	}
+}
+
+func TestLoad_OpenUnknownServiceErrors(t *testing.T) {
+	dir := writeConfig(t, `name: myapp
+services:
+  web:
+    env_var: PORT
+    hostname: myapp
+open:
+  - web
+  - missing
+`)
+	_, err := Load(dir)
+	if err == nil {
+		t.Fatal("expected error for unknown service in open, got nil")
+	}
+	if !strings.Contains(err.Error(), `"missing"`) {
+		t.Errorf("error = %q, want to contain '\"missing\"'", err.Error())
+	}
+}
+
+func TestLoad_OpenServiceWithoutHostnameErrors(t *testing.T) {
+	dir := writeConfig(t, `name: myapp
+services:
+  web:
+    env_var: PORT
+    hostname: myapp
+  postgres:
+    env_var: DB_PORT
+open:
+  - web
+  - postgres
+`)
+	_, err := Load(dir)
+	if err == nil {
+		t.Fatal("expected error for service without hostname in open, got nil")
+	}
+	if !strings.Contains(err.Error(), `"postgres"`) {
+		t.Errorf("error = %q, want to contain '\"postgres\"'", err.Error())
+	}
+	if !strings.Contains(err.Error(), "hostname") {
+		t.Errorf("error = %q, want to contain 'hostname'", err.Error())
+	}
+}
+
+func TestLoad_OpenDuplicateErrors(t *testing.T) {
+	dir := writeConfig(t, `name: myapp
+services:
+  web:
+    env_var: PORT
+    hostname: myapp
+open:
+  - web
+  - web
+`)
+	_, err := Load(dir)
+	if err == nil {
+		t.Fatal("expected error for duplicate in open, got nil")
+	}
+	if !strings.Contains(err.Error(), "duplicate") {
+		t.Errorf("error = %q, want to contain 'duplicate'", err.Error())
+	}
+}
+
+func TestLoad_LocalOverridesOpen(t *testing.T) {
+	dir := writeConfig(t, `name: myapp
+services:
+  web:
+    env_var: PORT
+    hostname: myapp
+  admin:
+    env_var: ADMIN_PORT
+    hostname: admin.myapp
+open:
+  - web
+  - admin
+`)
+	writeLocalConfig(t, dir, `open:
+  - admin
+`)
+	cfg, err := Load(dir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(cfg.Open) != 1 || cfg.Open[0] != "admin" {
+		t.Errorf("Open = %v, want [admin]", cfg.Open)
+	}
+}
+
+func TestLoad_LocalAddsOpenWhenBaseHasNone(t *testing.T) {
+	dir := writeConfig(t, `name: myapp
+services:
+  web:
+    env_var: PORT
+    hostname: myapp
+  admin:
+    env_var: ADMIN_PORT
+    hostname: admin.myapp
+`)
+	writeLocalConfig(t, dir, `open:
+  - web
+`)
+	cfg, err := Load(dir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(cfg.Open) != 1 || cfg.Open[0] != "web" {
+		t.Errorf("Open = %v, want [web]", cfg.Open)
+	}
+}
+
+func TestLoad_LocalWithoutOpenKeepsBase(t *testing.T) {
+	dir := writeConfig(t, `name: myapp
+services:
+  web:
+    env_var: PORT
+    hostname: myapp
+  admin:
+    env_var: ADMIN_PORT
+    hostname: admin.myapp
+open:
+  - web
+  - admin
+`)
+	writeLocalConfig(t, dir, `services:
+  web:
+    preferred_port: 3000
+`)
+	cfg, err := Load(dir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(cfg.Open) != 2 {
+		t.Errorf("Open = %v, want [web admin]", cfg.Open)
+	}
+}
