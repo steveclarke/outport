@@ -1568,3 +1568,75 @@ open:
 	}
 }
 
+func TestLoad_LocalOverridesOpen(t *testing.T) {
+	dir := writeConfig(t, `name: myapp
+services:
+  web:
+    env_var: PORT
+    hostname: myapp
+  admin:
+    env_var: ADMIN_PORT
+    hostname: admin.myapp
+open:
+  - web
+  - admin
+`)
+	writeLocalConfig(t, dir, `open:
+  - admin
+`)
+	cfg, err := Load(dir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(cfg.Open) != 1 || cfg.Open[0] != "admin" {
+		t.Errorf("Open = %v, want [admin]", cfg.Open)
+	}
+}
+
+func TestLoad_LocalAddsOpenWhenBaseHasNone(t *testing.T) {
+	dir := writeConfig(t, `name: myapp
+services:
+  web:
+    env_var: PORT
+    hostname: myapp
+  admin:
+    env_var: ADMIN_PORT
+    hostname: admin.myapp
+`)
+	writeLocalConfig(t, dir, `open:
+  - web
+`)
+	cfg, err := Load(dir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(cfg.Open) != 1 || cfg.Open[0] != "web" {
+		t.Errorf("Open = %v, want [web]", cfg.Open)
+	}
+}
+
+func TestLoad_LocalWithoutOpenKeepsBase(t *testing.T) {
+	dir := writeConfig(t, `name: myapp
+services:
+  web:
+    env_var: PORT
+    hostname: myapp
+  admin:
+    env_var: ADMIN_PORT
+    hostname: admin.myapp
+open:
+  - web
+  - admin
+`)
+	writeLocalConfig(t, dir, `services:
+  web:
+    preferred_port: 3000
+`)
+	cfg, err := Load(dir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(cfg.Open) != 2 {
+		t.Errorf("Open = %v, want [web admin]", cfg.Open)
+	}
+}

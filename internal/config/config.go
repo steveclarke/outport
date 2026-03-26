@@ -420,10 +420,11 @@ func Load(dir string) (*Config, error) {
 	return cfg, nil
 }
 
-// mergeLocal reads outport.local.yml (if it exists) and merges its service fields
+// mergeLocal reads outport.local.yml (if it exists) and merges its fields
 // into the base rawConfig. Only services already defined in the base config can be
 // overridden. The local file cannot change the project name, add new services,
-// or define computed values — only the services section is merged.
+// or define computed values — only the services and open sections are merged.
+// When the local file declares an open list, it replaces the base open list entirely.
 func mergeLocal(dir string, base *rawConfig) error {
 	path := filepath.Join(dir, LocalFileName)
 	data, err := os.ReadFile(path)
@@ -460,6 +461,10 @@ func mergeLocal(dir string, base *rawConfig) error {
 			baseSvc.EnvFile = localSvc.EnvFile
 		}
 		base.RawServices[name] = baseSvc
+	}
+
+	if local.Open != nil {
+		base.Open = local.Open
 	}
 
 	return nil
