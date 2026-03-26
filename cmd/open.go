@@ -44,12 +44,23 @@ func runOpen(cmd *cobra.Command, args []string) error {
 		return openService(cmd, ctx.Cfg, alloc, args[0], httpsEnabled)
 	}
 
-	opened := 0
-	for _, svcName := range slices.Sorted(maps.Keys(ctx.Cfg.Services)) {
-		svc := ctx.Cfg.Services[svcName]
-		if svc.Hostname == "" {
-			continue
+	// Determine which services to open
+	var serviceNames []string
+	if len(ctx.Cfg.Open) > 0 {
+		// Config specifies which services to open — use that order
+		serviceNames = ctx.Cfg.Open
+	} else {
+		// No open list — open all services with hostnames (alphabetical)
+		for _, name := range slices.Sorted(maps.Keys(ctx.Cfg.Services)) {
+			if ctx.Cfg.Services[name].Hostname != "" {
+				serviceNames = append(serviceNames, name)
+			}
 		}
+	}
+
+	opened := 0
+	for _, svcName := range serviceNames {
+		svc := ctx.Cfg.Services[svcName]
 		h := svc.Hostname
 		if allocated, ok := alloc.Hostnames[svcName]; ok {
 			h = allocated
