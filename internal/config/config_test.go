@@ -1465,3 +1465,44 @@ services:
 	}
 }
 
+// --- Open field ---
+
+func TestLoad_OpenField(t *testing.T) {
+	dir := writeConfig(t, `name: myapp
+services:
+  web:
+    env_var: PORT
+    hostname: myapp
+  admin:
+    env_var: ADMIN_PORT
+    hostname: admin.myapp
+  postgres:
+    env_var: DB_PORT
+open:
+  - web
+`)
+	cfg, err := Load(dir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(cfg.Open) != 1 || cfg.Open[0] != "web" {
+		t.Errorf("Open = %v, want [web]", cfg.Open)
+	}
+}
+
+func TestLoad_OpenFieldAbsent(t *testing.T) {
+	dir := writeConfig(t, `name: myapp
+services:
+  web:
+    env_var: PORT
+    hostname: myapp
+`)
+	cfg, err := Load(dir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.Open != nil {
+		t.Errorf("Open = %v, want nil", cfg.Open)
+	}
+}
+

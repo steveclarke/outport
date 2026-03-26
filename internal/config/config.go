@@ -299,6 +299,7 @@ type rawComputedValue struct {
 // rawConfig is the YAML deserialization target.
 type rawConfig struct {
 	Name        string                      `yaml:"name"`
+	Open        []string                    `yaml:"open"`
 	RawServices map[string]rawService       `yaml:"services"`
 	RawComputed map[string]rawComputedValue `yaml:"computed"`
 }
@@ -314,6 +315,11 @@ type Config struct {
 	// as part of the hash key for deterministic port allocation ("{project}/{instance}/{service}")
 	// and must be present in any service hostnames. Required -- Load rejects configs without it.
 	Name string
+
+	// Open is an optional list of service names that `outport open` should open
+	// by default. When nil, all services with hostnames are opened. When non-nil,
+	// only the listed services are opened. Order determines browser tab order.
+	Open []string
 
 	// Services maps service names (e.g., "rails", "vite", "sidekiq") to their configuration.
 	// At least one service must be defined. Service names are the keys from the "services"
@@ -494,6 +500,8 @@ func (c *Config) normalize(raw *rawConfig) error {
 		}
 		c.Computed[name] = dv
 	}
+
+	c.Open = raw.Open
 
 	return nil
 }
