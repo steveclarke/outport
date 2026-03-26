@@ -42,6 +42,19 @@ The ROI flipped from "not worth building" to "can't work without it."
 
 Agents also need to know how to run your stack — that's what [Running Your Dev Stack](/guide/devstack) solves.
 
+## How it compares
+
+Outport occupies a specific niche — it's not a container runtime or a process manager. It's the layer underneath that decides which ports your services get and wires the config together.
+
+| Approach | What it does | What it doesn't do |
+|----------|-------------|-------------------|
+| **Manual ports** (`PORT=3001`) | Quick, no tooling | Conflicts between projects, nothing stays in sync |
+| **Docker Compose** | Runs containers, manages networking | Port mapping is per-compose file, no cross-project coordination, worktrees collide |
+| **direnv** | Loads `.env` per directory | You still pick ports manually, no DNS or HTTPS |
+| **Outport** | Deterministic ports, `.env` writing, `.test` domains, HTTPS | Doesn't start/stop services — pairs with your existing tools |
+
+Outport works *alongside* Docker Compose, process-compose, Procfiles, or whatever you use to run services. It handles the port allocation and env wiring; your process manager handles the rest.
+
 ## The name
 
 An outport is a small, isolated community on the coast of Newfoundland. That's where this was built, and that's who it's for — developers working outside the big-company bubble where these problems get solved by dedicated teams.

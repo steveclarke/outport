@@ -2,9 +2,9 @@
   <div class="home-layout">
     <!-- HERO -->
     <section class="hero">
-      <h1>Deterministic port orchestration for <span class="accent">the agentic era</span></h1>
+      <h1>Deterministic ports across <span class="accent">projects and worktrees</span></h1>
       <p class="subtitle">
-        Deterministic ports, <code>.test</code> hostnames, and wired
+        Stable ports, <code>.test</code> hostnames, and wired
         <code>.env</code> files for every project, worktree, and agent instance.
         Declare your services once — every checkout is isolated automatically.
       </p>
@@ -201,7 +201,7 @@ CORS_ORIGINS=<span class="success">https://myapp-frontend.test</span>
         <div><span class="dollar">$</span> brew install steveclarke/tap/outport</div>
         <div><span class="dollar">$</span> outport setup</div>
       </div>
-      <p class="install-note">macOS only. Linux support is planned.</p>
+      <p class="install-note">macOS and Linux. See <a href="/guide/installation">all install options</a>.</p>
     </section>
 
     <!-- FOOTER -->
@@ -476,9 +476,9 @@ CORS_ORIGINS=<span class="success">https://myapp-frontend.test</span>
   border: 1px solid var(--vp-c-divider);
 }
 .dashboard-frame img {
-  display: block;
   width: 100%;
   height: auto;
+  vertical-align: bottom;
 }
 .dashboard-note {
   color: var(--vp-c-text-3);

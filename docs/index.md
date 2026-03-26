@@ -1,4 +1,4 @@
 ---
 layout: home
-description: Deterministic port orchestration for multi-project, multi-instance development. Stable ports, .test hostnames, automatic HTTPS, and .env management.
+description: Deterministic ports across projects and worktrees. Stable .test domains, automatic HTTPS, and .env management.
 ---

@@ -2,7 +2,7 @@ import { defineConfig } from 'vitepress'
 
 export default defineConfig({
   title: 'Outport',
-  description: 'Deterministic port orchestration for the agentic era',
+  description: 'Deterministic ports across projects and worktrees. Stable .test domains, automatic HTTPS, and .env management.',
   appearance: true,
   cleanUrls: true,
   sitemap: {
@@ -19,7 +19,7 @@ export default defineConfig({
     ['meta', { property: 'og:url', content: 'https://outport.dev' }],
     ['meta', { property: 'og:image', content: 'https://outport.dev/og-image-1280x640.png' }],
     ['meta', { property: 'og:title', content: 'Outport' }],
-    ['meta', { property: 'og:description', content: 'Deterministic port orchestration for the agentic era' }],
+    ['meta', { property: 'og:description', content: 'Deterministic ports across projects and worktrees. Stable .test domains, automatic HTTPS, and .env management.' }],
     ['meta', { property: 'og:locale', content: 'en_US' }],
     ['meta', { name: 'twitter:card', content: 'summary_large_image' }],
     ['meta', { name: 'twitter:image', content: 'https://outport.dev/og-image-1280x640.png' }],
@@ -43,11 +43,11 @@ export default defineConfig({
       {
         text: 'Guide',
         items: [
-          { text: 'Why Outport?', link: '/guide/why-outport' },
-          { text: 'Installation', link: '/guide/installation' },
           { text: 'Getting Started', link: '/guide/getting-started' },
           { text: 'How It Works', link: '/guide/how-it-works' },
           { text: 'Examples', link: '/guide/examples' },
+          { text: 'Installation', link: '/guide/installation' },
+          { text: 'Why Outport?', link: '/guide/why-outport' },
           { text: 'Dashboard', link: '/guide/dashboard' },
           { text: 'Sharing & Mobile', link: '/guide/sharing' },
           { text: 'VS Code Extension', link: '/guide/vscode' },

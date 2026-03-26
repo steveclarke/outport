@@ -12,15 +12,22 @@ Pin [https://outport.test](https://outport.test) in your browser for a live view
 
 ### Multiple worktrees of the same project
 
-Each worktree gets its own instance with unique ports and suffixed hostnames:
+Here's a full walkthrough. Say you have a project checked out at `~/src/myapp` and want a second checkout for a feature branch:
 
 ```bash
-cd ~/src/myapp           # main checkout
+# Your main checkout already has Outport configured
+cd ~/src/myapp
 outport up               # myapp [main] → myapp.test
 
-cd ~/src/myapp-feature   # worktree
+# Create a worktree for a feature branch
+git worktree add ../myapp-feature feature-branch
+
+# Move into the worktree and run outport up
+cd ../myapp-feature
 outport up               # myapp [xbjf] → myapp-xbjf.test
 ```
+
+Outport detects that the project name `myapp` is already registered and assigns a short 4-character code to the new checkout. Each worktree gets its own ports, hostnames, and `.env` — you can run both simultaneously without conflicts.
 
 To give a worktree a readable name (run from inside the worktree):
 
@@ -73,6 +80,13 @@ outport doctor
 
 This checks DNS, the daemon, TLS certificates, the registry, and (if you're in a project directory) your `outport.yml` and port status. Each check shows pass/fail with a fix suggestion.
 
+Common results and what they mean:
+
+- **DNS resolver: FAIL** — the resolver file is missing or misconfigured. Run `outport system start` to reinstall it.
+- **Daemon: FAIL** — the background service isn't running. Run `outport system start`.
+- **CA trust: FAIL** — the local certificate authority isn't trusted by your OS. Run `outport system start` to re-trust it.
+- **Port check: not listening** — this is informational, not a failure. It means the service isn't running on that port yet. Start your services and it will pass.
+
 ### Daemon not running
 
 If `outport up` shows this hint:
@@ -114,6 +128,12 @@ outport system prune
 
 This removes entries where the project directory or `outport.yml` is missing.
 
+### About sudo and system changes
+
+`outport setup` and `outport system start` ask for your password to do three things: install a DNS resolver file so `.test` domains work, install a background service (daemon), and trust a locally-generated certificate authority so HTTPS works without browser warnings. These are standard operations — the same things tools like mkcert and dnsmasq do.
+
+Everything is reversible: `outport system uninstall` removes all of it cleanly. Outport never modifies `/etc/hosts`, never touches your existing certificates, and the local CA is only trusted on your machine.
+
 ### Port 80 or 443 already in use
 
 If `outport system start` fails with "port 80 is already in use", another server (nginx, Apache, another dev tool) is using that port. Stop it first, then retry.
@@ -128,6 +148,10 @@ sudo lsof -iTCP:80 -sTCP:LISTEN
 sudo ss -tlnp 'sport = 80'
 ```
 
+### What if I delete the registry?
+
+If `~/.local/share/outport/registry.json` gets deleted or corrupted, Outport will recreate it the next time you run `outport up`. Because port allocation is deterministic (based on project name + instance + service name), you'll get the same ports back. Just run `outport up` in each project directory to re-register.
+
 ### Clean reinstall
 
 To start completely fresh:
@@ -137,4 +161,4 @@ outport system uninstall    # removes daemon, DNS, certs, and registry
 outport system start        # reinstall from scratch
 ```
 
-Then re-register each project with `outport up`.
+Then re-register each project with `outport up`. Your `outport.yml` files are untouched — they live in your project directories, not in the system config.
