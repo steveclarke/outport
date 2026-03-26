@@ -12,6 +12,7 @@ import (
 	"github.com/steveclarke/outport/internal/lanip"
 	"github.com/steveclarke/outport/internal/qrcode"
 	"github.com/steveclarke/outport/internal/registry"
+	"github.com/steveclarke/outport/internal/settings"
 	"github.com/steveclarke/outport/internal/tunnel"
 	"github.com/steveclarke/outport/internal/ui"
 	"github.com/spf13/cobra"
@@ -72,11 +73,20 @@ func runQR(cmd *cobra.Command, args []string) error {
 	if qrTunnelFlag {
 		return printTunnelQR(cmd, ctx, services)
 	}
-	return printLANQR(cmd, services)
+
+	iface := qrInterfaceFlag
+	if iface == "" {
+		s, err := settings.Load()
+		if err != nil {
+			return fmt.Errorf("loading settings: %w", err)
+		}
+		iface = s.Network.Interface
+	}
+	return printLANQR(cmd, services, iface)
 }
 
-func printLANQR(cmd *cobra.Command, services map[string]int) error {
-	ip, err := lanip.Detect(qrInterfaceFlag)
+func printLANQR(cmd *cobra.Command, services map[string]int, networkInterface string) error {
+	ip, err := lanip.Detect(networkInterface)
 	if err != nil {
 		return fmt.Errorf("detecting LAN IP: %w", err)
 	}

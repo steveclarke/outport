@@ -75,6 +75,11 @@ type DaemonConfig struct {
 	// least one SSE client is connected. Defaults to 3 seconds if zero.
 	// Configurable via the global settings file.
 	HealthInterval time.Duration
+
+	// NetworkInterface is the network interface name for LAN IP detection
+	// (e.g., "en0"). When empty, the dashboard auto-detects the LAN interface.
+	// Configurable via the global settings file.
+	NetworkInterface string
 }
 
 // Daemon coordinates the three core servers (DNS, HTTP proxy, HTTPS proxy)
@@ -107,7 +112,7 @@ func New(cfg *DaemonConfig) (*Daemon, error) {
 	if healthInterval == 0 {
 		healthInterval = 3 * time.Second
 	}
-	dashHandler := dashboard.NewHandler(dashProvider, httpsEnabled, cfg.Version, healthInterval)
+	dashHandler := dashboard.NewHandler(dashProvider, httpsEnabled, cfg.Version, healthInterval, cfg.NetworkInterface)
 	proxyHandler.DashboardHandler = dashHandler
 
 	routes.OnUpdate = func() {

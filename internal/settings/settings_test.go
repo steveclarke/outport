@@ -262,6 +262,32 @@ max = 0
 	}
 }
 
+func TestLoadNetworkInterface(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config")
+	if err := os.WriteFile(path, []byte(`
+[network]
+interface = en0
+`), 0644); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+
+	s, err := LoadFrom(path)
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if s.Network.Interface != "en0" {
+		t.Errorf("interface = %q, want %q", s.Network.Interface, "en0")
+	}
+}
+
+func TestDefaultNetworkInterfaceIsEmpty(t *testing.T) {
+	s := Defaults()
+	if s.Network.Interface != "" {
+		t.Errorf("default interface = %q, want empty", s.Network.Interface)
+	}
+}
+
 func TestPathReturnsConfigOutportConfig(t *testing.T) {
 	p, err := Path()
 	if err != nil {
