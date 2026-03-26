@@ -46,6 +46,26 @@ func setupProject(t *testing.T, configYAML string) string {
 	return dir
 }
 
+// unwrapJSON parses a JSON envelope and unmarshals the "data" field into dst.
+// It verifies that the envelope has "ok": true.
+func unwrapJSON(t *testing.T, output string, dst any) {
+	t.Helper()
+	var env struct {
+		OK      bool            `json:"ok"`
+		Data    json.RawMessage `json:"data"`
+		Summary string          `json:"summary"`
+	}
+	if err := json.Unmarshal([]byte(output), &env); err != nil {
+		t.Fatalf("invalid JSON envelope: %v\nOutput: %s", err, output)
+	}
+	if !env.OK {
+		t.Fatalf("expected ok=true in envelope, got false\nOutput: %s", output)
+	}
+	if err := json.Unmarshal(env.Data, dst); err != nil {
+		t.Fatalf("invalid JSON in data field: %v\nData: %s", err, string(env.Data))
+	}
+}
+
 const testConfig = `name: testapp
 services:
   web:
@@ -95,9 +115,7 @@ func TestUp_AllocatesPortsAndWritesEnv(t *testing.T) {
 	output := executeCmd(t, "up", "--json")
 
 	var result upJSON
-	if err := json.Unmarshal([]byte(output), &result); err != nil {
-		t.Fatalf("invalid JSON output: %v\nOutput: %s", err, output)
-	}
+	unwrapJSON(t, output, &result)
 
 	if result.Project != "testapp" {
 		t.Errorf("project = %q, want %q", result.Project, "testapp")
@@ -149,12 +167,8 @@ func TestUp_IsIdempotent(t *testing.T) {
 	out2 := executeCmd(t, "up", "--json")
 
 	var r1, r2 upJSON
-	if err := json.Unmarshal([]byte(out1), &r1); err != nil {
-		t.Fatalf("unmarshal out1: %v", err)
-	}
-	if err := json.Unmarshal([]byte(out2), &r2); err != nil {
-		t.Fatalf("unmarshal out2: %v", err)
-	}
+	unwrapJSON(t, out1, &r1)
+	unwrapJSON(t, out2, &r2)
 
 	if r1.Services["web"].Port != r2.Services["web"].Port {
 		t.Errorf("web port changed: %d -> %d", r1.Services["web"].Port, r2.Services["web"].Port)
@@ -229,9 +243,7 @@ func TestUp_WithComputedValues(t *testing.T) {
 	output := executeCmd(t, "up", "--json")
 
 	var result upJSON
-	if err := json.Unmarshal([]byte(output), &result); err != nil {
-		t.Fatalf("invalid JSON: %v\nOutput: %s", err, output)
-	}
+	unwrapJSON(t, output, &result)
 
 	if len(result.Computed) != 2 {
 		t.Fatalf("computed count = %d, want 2", len(result.Computed))
@@ -310,9 +322,7 @@ computed:
 	output := executeCmd(t, "up", "--json")
 
 	var result upJSON
-	if err := json.Unmarshal([]byte(output), &result); err != nil {
-		t.Fatalf("invalid JSON: %v\nOutput: %s", err, output)
-	}
+	unwrapJSON(t, output, &result)
 
 	apiURL := result.Computed["API_URL"]
 	// Per-file values should use the "values" field
@@ -365,9 +375,7 @@ func TestStatus_ShowsAllocatedPorts(t *testing.T) {
 			Port int `json:"port"`
 		} `json:"services"`
 	}
-	if err := json.Unmarshal([]byte(output), &result); err != nil {
-		t.Fatalf("invalid JSON: %v\nOutput: %s", err, output)
-	}
+	unwrapJSON(t, output, &result)
 
 	if result.Project != "testapp" {
 		t.Errorf("project = %q, want %q", result.Project, "testapp")
@@ -416,9 +424,7 @@ func TestSystemStatus_ShowsProjects(t *testing.T) {
 	output := executeCmd(t, "system", "status", "--json")
 
 	var entries []statusEntryJSON
-	if err := json.Unmarshal([]byte(output), &entries); err != nil {
-		t.Fatalf("invalid JSON: %v\nOutput: %s", err, output)
-	}
+	unwrapJSON(t, output, &entries)
 
 	if len(entries) != 1 {
 		t.Fatalf("entries count = %d, want 1", len(entries))
@@ -455,9 +461,7 @@ func TestSystemStatus_StaleProjectMarkedNotFound(t *testing.T) {
 	output := executeCmd(t, "system", "status", "--json")
 
 	var entries []statusEntryJSON
-	if err := json.Unmarshal([]byte(output), &entries); err != nil {
-		t.Fatalf("invalid JSON: %v\nOutput: %s", err, output)
-	}
+	unwrapJSON(t, output, &entries)
 
 	if len(entries) != 1 {
 		t.Fatalf("entries count = %d, want 1", len(entries))
@@ -495,9 +499,7 @@ func TestSystemStatus_StaleProjectInJSON(t *testing.T) {
 	output := executeCmd(t, "system", "status", "--json")
 
 	var entries []statusEntryJSON
-	if err := json.Unmarshal([]byte(output), &entries); err != nil {
-		t.Fatalf("invalid JSON: %v\nOutput: %s", err, output)
-	}
+	unwrapJSON(t, output, &entries)
 	if len(entries) != 1 {
 		t.Fatalf("entries = %d, want 1", len(entries))
 	}
@@ -622,9 +624,7 @@ func TestUp_ForceReallocatesWithPreferredPorts(t *testing.T) {
 	// First allocation
 	out1 := executeCmd(t, "up", "--json")
 	var r1 upJSON
-	if err := json.Unmarshal([]byte(out1), &r1); err != nil {
-		t.Fatalf("unmarshal: %v", err)
-	}
+	unwrapJSON(t, out1, &r1)
 
 	// Ports should be preferred (3000, 5432) since nothing else is registered
 	if r1.Services["web"].Port != 3000 {
@@ -634,7 +634,7 @@ func TestUp_ForceReallocatesWithPreferredPorts(t *testing.T) {
 	// Force re-allocation should produce the same preferred ports
 	out2 := executeCmd(t, "up", "--force", "--json")
 	var r2 upJSON
-	_ = json.Unmarshal([]byte(out2), &r2)
+	unwrapJSON(t, out2, &r2)
 
 	if r2.Services["web"].Port != 3000 {
 		t.Errorf("apply --force: web port = %d, want 3000", r2.Services["web"].Port)
@@ -671,9 +671,7 @@ func TestSystemStatus_MissingConfigMarkedStale(t *testing.T) {
 	output := executeCmd(t, "system", "status", "--json")
 
 	var entries []statusEntryJSON
-	if err := json.Unmarshal([]byte(output), &entries); err != nil {
-		t.Fatalf("invalid JSON: %v\nOutput: %s", err, output)
-	}
+	unwrapJSON(t, output, &entries)
 	if len(entries) != 1 {
 		t.Fatalf("entries = %d, want 1", len(entries))
 	}
@@ -782,9 +780,7 @@ func TestDown_JSONShowsCleanedFiles(t *testing.T) {
 		Status       string   `json:"status"`
 		CleanedFiles []string `json:"cleaned_files"`
 	}
-	if err := json.Unmarshal([]byte(output), &result); err != nil {
-		t.Fatalf("invalid JSON: %v\nOutput: %s", err, output)
-	}
+	unwrapJSON(t, output, &result)
 	if result.Status != "removed" {
 		t.Errorf("status = %q, want unregistered", result.Status)
 	}
@@ -817,9 +813,7 @@ func TestDown_JSON(t *testing.T) {
 		Instance string `json:"instance"`
 		Status   string `json:"status"`
 	}
-	if err := json.Unmarshal([]byte(output), &result); err != nil {
-		t.Fatalf("invalid JSON: %v\nOutput: %s", err, output)
-	}
+	unwrapJSON(t, output, &result)
 	if result.Project != "testapp" {
 		t.Errorf("project = %q, want %q", result.Project, "testapp")
 	}
@@ -918,9 +912,7 @@ func TestRename_Success(t *testing.T) {
 		NewInstance string `json:"new_instance"`
 		Status      string `json:"status"`
 	}
-	if err := json.Unmarshal([]byte(output), &result); err != nil {
-		t.Fatalf("invalid JSON: %v\nOutput: %s", err, output)
-	}
+	unwrapJSON(t, output, &result)
 	if result.Project != "testapp" {
 		t.Errorf("project = %q, want testapp", result.Project)
 	}
@@ -978,9 +970,7 @@ func TestRename_OneArg_FromMain(t *testing.T) {
 		NewInstance string `json:"new_instance"`
 		Status      string `json:"status"`
 	}
-	if err := json.Unmarshal([]byte(output), &result); err != nil {
-		t.Fatalf("invalid JSON: %v\nOutput: %s", err, output)
-	}
+	unwrapJSON(t, output, &result)
 	if result.OldInstance != "main" {
 		t.Errorf("old_instance = %q, want main", result.OldInstance)
 	}
@@ -1026,9 +1016,7 @@ func TestRename_OneArg_FromNonMain(t *testing.T) {
 	var upResult struct {
 		Instance string `json:"instance"`
 	}
-	if err := json.Unmarshal([]byte(out), &upResult); err != nil {
-		t.Fatalf("invalid JSON: %v\nOutput: %s", err, out)
-	}
+	unwrapJSON(t, out, &upResult)
 	autoCode := upResult.Instance
 
 	// Rename current (auto-code) → "dev" using 1-arg form
@@ -1039,9 +1027,7 @@ func TestRename_OneArg_FromNonMain(t *testing.T) {
 		NewInstance string `json:"new_instance"`
 		Status      string `json:"status"`
 	}
-	if err := json.Unmarshal([]byte(output), &result); err != nil {
-		t.Fatalf("invalid JSON: %v\nOutput: %s", err, output)
-	}
+	unwrapJSON(t, output, &result)
 	if result.OldInstance != autoCode {
 		t.Errorf("old_instance = %q, want %q", result.OldInstance, autoCode)
 	}
@@ -1077,7 +1063,7 @@ func TestRename_CollisionFails(t *testing.T) {
 	t.Chdir(dir2)
 	out2 := executeCmd(t, "up", "--json")
 	var r2 upJSON
-	_ = json.Unmarshal([]byte(out2), &r2)
+	unwrapJSON(t, out2, &r2)
 	codeName := r2.Instance
 
 	// Try to rename code instance to "main" — should collide
@@ -1130,7 +1116,7 @@ func TestPromote_Success(t *testing.T) {
 	t.Chdir(dir2)
 	out2 := executeCmd(t, "up", "--json")
 	var r2 upJSON
-	_ = json.Unmarshal([]byte(out2), &r2)
+	unwrapJSON(t, out2, &r2)
 	codeName := r2.Instance
 
 	// Promote the code instance to main
@@ -1142,9 +1128,7 @@ func TestPromote_Success(t *testing.T) {
 		DemotedTo string `json:"demoted_to"`
 		Status    string `json:"status"`
 	}
-	if err := json.Unmarshal([]byte(output), &result); err != nil {
-		t.Fatalf("invalid JSON: %v\nOutput: %s", err, output)
-	}
+	unwrapJSON(t, output, &result)
 	if result.Project != "testapp" {
 		t.Errorf("project = %q, want testapp", result.Project)
 	}
@@ -1233,9 +1217,7 @@ func TestUp_WithHostnames(t *testing.T) {
 	output := executeCmd(t, "up", "--json")
 
 	var result upJSON
-	if err := json.Unmarshal([]byte(output), &result); err != nil {
-		t.Fatalf("invalid JSON output: %v\nOutput: %s", err, output)
-	}
+	unwrapJSON(t, output, &result)
 
 	if result.Project != "myapp" {
 		t.Errorf("project = %q, want %q", result.Project, "myapp")
@@ -1445,9 +1427,7 @@ computed:
 	output := executeCmd(t, "up", "--json")
 
 	var result upJSON
-	if err := json.Unmarshal([]byte(output), &result); err != nil {
-		t.Fatalf("invalid JSON: %v\nOutput: %s", err, output)
-	}
+	unwrapJSON(t, output, &result)
 
 	// Verify computed values in JSON output
 	webURL := result.Computed["WEB_URL"]
@@ -1909,9 +1889,7 @@ func TestPrintShareJSON_IncludesComputedValues(t *testing.T) {
 	}
 
 	var result shareJSON
-	if err := json.Unmarshal(buf.Bytes(), &result); err != nil {
-		t.Fatalf("invalid JSON: %v", err)
-	}
+	unwrapJSON(t, buf.String(), &result)
 
 	if len(result.Tunnels) != 1 {
 		t.Fatalf("expected 1 tunnel, got %d", len(result.Tunnels))
@@ -1959,9 +1937,7 @@ func TestDoctor_JSON(t *testing.T) {
 		} `json:"results"`
 		Passed bool `json:"passed"`
 	}
-	if jsonErr := json.Unmarshal([]byte(output), &result); jsonErr != nil {
-		t.Fatalf("invalid JSON output: %v\nOutput: %s", jsonErr, output)
-	}
+	unwrapJSON(t, output, &result)
 
 	// Should have system checks (at least resolver, plist, agent, CA, registry, cloudflared)
 	if len(result.Results) < 10 {
@@ -2037,9 +2013,7 @@ func TestDoctor_WithProject(t *testing.T) {
 			Status   string `json:"status"`
 		} `json:"results"`
 	}
-	if err := json.Unmarshal([]byte(output), &result); err != nil {
-		t.Fatalf("invalid JSON output: %v\nOutput: %s", err, output)
-	}
+	unwrapJSON(t, output, &result)
 
 	// Should include project checks (category starts with "Project")
 	hasProjectCheck := false
@@ -2127,9 +2101,7 @@ func TestUp_ExternalEnvFile_WithYesFlag(t *testing.T) {
 	output := executeCmd(t, "up", "--json")
 
 	var result upJSON
-	if err := json.Unmarshal([]byte(output), &result); err != nil {
-		t.Fatalf("invalid JSON: %v\nOutput: %s", err, output)
-	}
+	unwrapJSON(t, output, &result)
 
 	if result.Services["web"].Port == 0 {
 		t.Error("web port should be allocated")
@@ -2167,9 +2139,7 @@ func TestUp_ExternalEnvFile_ApprovalPersists(t *testing.T) {
 	output := executeCmd(t, "up", "--json")
 
 	var result upJSON
-	if err := json.Unmarshal([]byte(output), &result); err != nil {
-		t.Fatalf("invalid JSON: %v\nOutput: %s", err, output)
-	}
+	unwrapJSON(t, output, &result)
 	if result.Services["web"].Port == 0 {
 		t.Error("web port should be allocated on second run")
 	}

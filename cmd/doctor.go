@@ -78,19 +78,31 @@ type doctorJSON struct {
 }
 
 func printDoctorJSON(cmd *cobra.Command, results []doctor.Result) error {
-	out := doctorJSON{
-		Passed: !doctor.HasFailures(results),
-	}
+	pass, warn, fail := 0, 0, 0
+	items := make([]resultJSON, 0, len(results))
 	for _, r := range results {
-		out.Results = append(out.Results, resultJSON{
+		items = append(items, resultJSON{
 			Name:     r.Name,
 			Category: r.Category,
 			Status:   r.Status.String(),
 			Message:  r.Message,
 			Fix:      r.Fix,
 		})
+		switch r.Status {
+		case doctor.Pass:
+			pass++
+		case doctor.Warn:
+			warn++
+		case doctor.Fail:
+			fail++
+		}
 	}
-	return writeJSON(cmd, out)
+	out := doctorJSON{
+		Results: items,
+		Passed:  fail == 0,
+	}
+	summary := fmt.Sprintf("%d passed, %d warnings, %d failures", pass, warn, fail)
+	return writeJSON(cmd, out, summary)
 }
 
 // Styled output

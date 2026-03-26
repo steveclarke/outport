@@ -201,7 +201,7 @@ func printSystemStartJSON(cmd *cobra.Command, caGenerated, caTrusted bool) error
 	return writeJSON(cmd, systemStartJSON{
 		CAGenerated: caGenerated,
 		CATrusted:   caTrusted,
-	})
+	}, "system started")
 }
 
 type systemUninstallJSON struct {
@@ -213,5 +213,5 @@ func printSystemUninstallJSON(cmd *cobra.Command, caRemoved, certsCleaned bool) 
 	return writeJSON(cmd, systemUninstallJSON{
 		CARemoved:    caRemoved,
 		CertsCleaned: certsCleaned,
-	})
+	}, "system uninstalled")
 }

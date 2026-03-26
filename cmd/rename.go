@@ -115,7 +115,7 @@ func printRenameJSON(cmd *cobra.Command, project, oldName, newName string, exter
 		Status:        "renamed",
 		ExternalFiles: toExternalFileJSON(externalFiles),
 	}
-	return writeJSON(cmd, out)
+	return writeJSON(cmd, out, fmt.Sprintf("instance renamed to %s", newName))
 }
 
 func printRenameStyled(cmd *cobra.Command, project, oldName, newName string) error {

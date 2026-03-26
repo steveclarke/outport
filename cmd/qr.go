@@ -187,7 +187,9 @@ func printQRJSON(cmd *cobra.Command, ip net.IP, services map[string]int, tunnelU
 		}
 		out = append(out, svc)
 	}
-	return writeJSON(cmd, out)
+	n := len(out)
+	summary := fmt.Sprintf("%d %s", n, pluralize(n, "service", "services"))
+	return writeJSON(cmd, out, summary)
 }
 
 func formatLANURL(ip net.IP, port int) string {

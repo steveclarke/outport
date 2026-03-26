@@ -8,7 +8,7 @@ setup:
 # Build the binary to dist/
 build:
     @mkdir -p dist
-    go build -o dist/outport .
+    go build -ldflags "-X github.com/steveclarke/outport/cmd.version=dev-$(git rev-parse --short HEAD) -X github.com/steveclarke/outport/cmd.commit=$(git rev-parse --short HEAD) -X github.com/steveclarke/outport/cmd.date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" -o dist/outport .
 
 # Run all tests (colored output)
 test:
@@ -17,6 +17,11 @@ test:
 # Run tests (short output)
 test-short:
     gotestsum --format dots ./...
+
+# Run E2E tests with BATS (builds binary first)
+test-e2e:
+    just build
+    bats e2e/
 
 # Run all tests on Linux via Docker
 test-linux:
@@ -35,7 +40,7 @@ dev-linux-down:
 # Install dev build to ~/.local/bin (overrides Homebrew)
 install:
     @mkdir -p ~/.local/bin
-    go build -ldflags "-X github.com/outport-app/outport/cmd.version=dev-$(git rev-parse --short HEAD)" -o ~/.local/bin/outport .
+    go build -ldflags "-X github.com/steveclarke/outport/cmd.version=dev-$(git rev-parse --short HEAD) -X github.com/steveclarke/outport/cmd.commit=$(git rev-parse --short HEAD) -X github.com/steveclarke/outport/cmd.date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" -o ~/.local/bin/outport .
     @echo "Installed dev build to ~/.local/bin/outport"
     @echo "Run 'just uninstall' to switch back to Homebrew"
 

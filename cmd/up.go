@@ -194,7 +194,9 @@ func printUpJSON(cmd *cobra.Command, cfg *config.Config, instanceName string, po
 		EnvFiles:      envFiles,
 		ExternalFiles: toExternalFileJSON(externalFiles),
 	}
-	return writeJSON(cmd, out)
+	n := len(out.Services)
+	summary := fmt.Sprintf("%d %s allocated", n, pluralize(n, "service", "services"))
+	return writeJSON(cmd, out, summary)
 }
 
 func printUpStyled(cmd *cobra.Command, cfg *config.Config, instanceName string, serviceNames []string, ports map[string]int, hostnames map[string]string, aliases map[string]map[string]string, resolvedComputed map[string]map[string]string, envFiles []string, httpsEnabled bool) error {
