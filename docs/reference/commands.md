@@ -54,19 +54,17 @@ Removes the managed block from all env files and removes the project/instance fr
 | `--yes`, `-y` | Auto-approve removing env files outside the project directory |
 | `--json` | Output results as JSON |
 
-### `outport ports`
+### `outport status`
 
-Show ports for the current project.
+Show status for the current project — ports, hostnames, health, and URLs. Health checks run by default.
 
 ```bash
-outport ports
-outport ports --check    # check if ports are accepting connections
-outport ports --computed  # include computed values
+outport status
+outport status --computed  # include computed values
 ```
 
 | Flag | Description |
 |------|-------------|
-| `--check` | Check if ports are accepting connections |
 | `--computed` | Show computed values |
 | `--json` | Output results as JSON |
 
