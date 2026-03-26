@@ -59,6 +59,33 @@ name: my-app
 
 A map of service names to their configuration. At least one service is required.
 
+#### `open`
+
+Declares which services `outport open` opens by default. When omitted, `outport open` opens all services with a `hostname`. When present, only the listed services are opened — in the order listed.
+
+```yaml
+name: myapp
+
+open:
+  - web
+  - frontend
+
+services:
+  web:
+    env_var: PORT
+    hostname: myapp
+  frontend:
+    env_var: VITE_PORT
+    hostname: app.myapp
+  admin:
+    env_var: ADMIN_PORT
+    hostname: admin.myapp    # not opened by default
+```
+
+Each entry must reference a service that exists and has a `hostname`. You can always open any service explicitly: `outport open admin`.
+
+Can be overridden in `outport.local.yml` — the local list replaces the base list entirely.
+
 #### `env_var` (required)
 
 The environment variable name written to `.env`.
@@ -247,6 +274,7 @@ services:
 - **Override only** — you can only override services that exist in `outport.yml`. Adding new services in the local file produces an error.
 - **Field-level merge** — each field you specify replaces the base value. Omitted fields are untouched.
 - **Aliases replace entirely** — if you override `aliases`, the entire alias map is replaced, not merged key-by-key.
+- **`open` replaces entirely** — if you override `open`, the entire list is replaced.
 - **Validation runs on the merged result** — hostname rules, env_var uniqueness, and all other validations apply after merging.
 - **No `name` override** — the project name always comes from `outport.yml`.
 
@@ -257,6 +285,7 @@ services:
 | Use system Postgres on port 5432 | `preferred_port: 5432` on the postgres service |
 | Write env to a different file on this machine | `env_file: custom/.env` on the service |
 | Use a different hostname for local testing | `hostname: dev.myapp` on the service |
+| Only open specific services on this machine | `open: [web]` at the top level |
 
 ### `.gitignore`
 
