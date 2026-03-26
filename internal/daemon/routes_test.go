@@ -20,8 +20,8 @@ func TestBuildRoutes(t *testing.T) {
 	})
 
 	routes := BuildRoutes(reg)
-	if routes["myapp.test"] != 24920 {
-		t.Errorf("myapp.test: got %d, want 24920", routes["myapp.test"])
+	if routes["myapp.test"].Port != 24920 {
+		t.Errorf("myapp.test: got %d, want 24920", routes["myapp.test"].Port)
 	}
 	if _, ok := routes["postgres"]; ok {
 		t.Error("postgres should not have a route")
@@ -50,8 +50,8 @@ func TestBuildRoutesIncludesAllHostnames(t *testing.T) {
 	})
 
 	routes := BuildRoutes(reg)
-	if routes["myapp.test"] != 24920 {
-		t.Errorf("myapp.test: got %d, want 24920", routes["myapp.test"])
+	if routes["myapp.test"].Port != 24920 {
+		t.Errorf("myapp.test: got %d, want 24920", routes["myapp.test"].Port)
 	}
 }
 
@@ -69,24 +69,51 @@ func TestBuildRoutesMultipleProjects(t *testing.T) {
 	})
 
 	routes := BuildRoutes(reg)
-	if routes["app1.test"] != 10001 {
-		t.Errorf("app1.test: got %d, want 10001", routes["app1.test"])
+	if routes["app1.test"].Port != 10001 {
+		t.Errorf("app1.test: got %d, want 10001", routes["app1.test"].Port)
 	}
-	if routes["app2.test"] != 10002 {
-		t.Errorf("app2.test: got %d, want 10002", routes["app2.test"])
+	if routes["app2.test"].Port != 10002 {
+		t.Errorf("app2.test: got %d, want 10002", routes["app2.test"].Port)
+	}
+}
+
+func TestBuildRoutesIncludesAliases(t *testing.T) {
+	reg := &registry.Registry{Projects: make(map[string]registry.Allocation)}
+	reg.Set("approvethis", "main", registry.Allocation{
+		ProjectDir: "/src/approvethis",
+		Ports:      map[string]int{"web": 14139},
+		Hostnames:  map[string]string{"web": "approvethis.test"},
+		Aliases: map[string]map[string]string{
+			"web": {"app": "app.approvethis.test", "admin": "admin.approvethis.test"},
+		},
+	})
+
+	routes := BuildRoutes(reg)
+
+	if routes["approvethis.test"].Port != 14139 {
+		t.Errorf("primary: got %d, want 14139", routes["approvethis.test"].Port)
+	}
+	if routes["app.approvethis.test"].Port != 14139 {
+		t.Errorf("alias app: got %d, want 14139", routes["app.approvethis.test"].Port)
+	}
+	if routes["admin.approvethis.test"].Port != 14139 {
+		t.Errorf("alias admin: got %d, want 14139", routes["admin.approvethis.test"].Port)
+	}
+	if routes["approvethis.test"].HostOverride != "" {
+		t.Errorf("primary should have empty HostOverride")
 	}
 }
 
 func TestRouteTableLookup(t *testing.T) {
 	rt := &RouteTable{}
-	rt.update(map[string]int{"myapp.test": 24920})
+	rt.update(map[string]route{"myapp.test": {Port: 24920}})
 
-	port, ok := rt.Lookup("myapp.test")
+	r, ok := rt.Lookup("myapp.test")
 	if !ok {
 		t.Fatal("expected lookup to succeed")
 	}
-	if port != 24920 {
-		t.Errorf("got %d, want 24920", port)
+	if r.Port != 24920 {
+		t.Errorf("got %d, want 24920", r.Port)
 	}
 
 	_, ok = rt.Lookup("unknown.test")
@@ -97,20 +124,20 @@ func TestRouteTableLookup(t *testing.T) {
 
 func TestRouteTableUpdateReplacesRoutes(t *testing.T) {
 	rt := &RouteTable{}
-	rt.update(map[string]int{"old.test": 10000})
-	rt.update(map[string]int{"new.test": 20000})
+	rt.update(map[string]route{"old.test": {Port: 10000}})
+	rt.update(map[string]route{"new.test": {Port: 20000}})
 
 	_, ok := rt.Lookup("old.test")
 	if ok {
 		t.Error("old.test should not exist after update")
 	}
 
-	port, ok := rt.Lookup("new.test")
+	r, ok := rt.Lookup("new.test")
 	if !ok {
 		t.Fatal("expected new.test lookup to succeed")
 	}
-	if port != 20000 {
-		t.Errorf("got %d, want 20000", port)
+	if r.Port != 20000 {
+		t.Errorf("got %d, want 20000", r.Port)
 	}
 }
 
@@ -169,9 +196,9 @@ func TestWatchAndRebuild(t *testing.T) {
 		}
 	}
 
-	port, _ := rt.Lookup("app1.test")
-	if port != 10001 {
-		t.Fatalf("app1.test: got %d, want 10001", port)
+	r, _ := rt.Lookup("app1.test")
+	if r.Port != 10001 {
+		t.Fatalf("app1.test: got %d, want 10001", r.Port)
 	}
 
 	// Update registry with a second project
@@ -198,18 +225,18 @@ func TestWatchAndRebuild(t *testing.T) {
 		}
 	}
 
-	port, _ = rt.Lookup("app2.test")
-	if port != 10002 {
-		t.Fatalf("app2.test: got %d, want 10002", port)
+	r2, _ := rt.Lookup("app2.test")
+	if r2.Port != 10002 {
+		t.Fatalf("app2.test: got %d, want 10002", r2.Port)
 	}
 
 	// Original route should still exist
-	port, ok := rt.Lookup("app1.test")
+	r3, ok := rt.Lookup("app1.test")
 	if !ok {
 		t.Fatal("app1.test should still exist")
 	}
-	if port != 10001 {
-		t.Fatalf("app1.test: got %d, want 10001", port)
+	if r3.Port != 10001 {
+		t.Fatalf("app1.test: got %d, want 10001", r3.Port)
 	}
 
 	// Cancel and verify clean shutdown
@@ -234,7 +261,7 @@ func TestRouteTableAllocations(t *testing.T) {
 			Hostnames:  map[string]string{"web": "myapp.test"},
 			},
 	}
-	rt.UpdateWithAllocations(map[string]int{"myapp.test": 10001}, allocs)
+	rt.UpdateWithAllocations(map[string]route{"myapp.test": {Port: 10001}}, allocs)
 
 	got := rt.Allocations()
 	if len(got) != 1 {

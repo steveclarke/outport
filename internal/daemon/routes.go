@@ -13,6 +13,14 @@ import (
 	"github.com/steveclarke/outport/internal/tunnel"
 )
 
+// route represents a single proxy route entry. Normal routes just carry a
+// port; tunnel routes also carry a HostOverride so the proxy can rewrite the
+// Host header to the original .test hostname before forwarding.
+type route struct {
+	Port         int
+	HostOverride string // empty for normal routes, set for tunnel routes
+}
+
 // RouteTable is a thread-safe mapping from .test hostnames to local service
 // ports. It is the central data structure shared between the proxy (which reads
 // it on every request) and the file watcher (which writes it whenever the
@@ -26,7 +34,7 @@ import (
 // atomically swaps in a new table.
 type RouteTable struct {
 	mu          sync.RWMutex
-	routes      map[string]int                 // hostname (e.g., "myapp.test") -> port (e.g., 12345)
+	routes      map[string]route               // hostname (e.g., "myapp.test") -> route
 	allocations map[string]registry.Allocation // full registry data keyed by "project/instance", used by dashboard
 	ports       []int                          // deduplicated list of all allocated ports across all projects
 	// OnUpdate is an optional callback invoked after every route table update.
@@ -35,19 +43,20 @@ type RouteTable struct {
 	OnUpdate func()
 }
 
-// Lookup returns the port mapped to the given hostname and true, or zero and
-// false if no route exists for that hostname. This is the hot path called on
-// every incoming proxy request, so it uses a read lock for maximum concurrency.
-func (rt *RouteTable) Lookup(hostname string) (int, bool) {
+// Lookup returns the route mapped to the given hostname and true, or a zero
+// route and false if no route exists for that hostname. This is the hot path
+// called on every incoming proxy request, so it uses a read lock for maximum
+// concurrency.
+func (rt *RouteTable) Lookup(hostname string) (route, bool) {
 	rt.mu.RLock()
 	defer rt.mu.RUnlock()
-	port, ok := rt.routes[hostname]
-	return port, ok
+	r, ok := rt.routes[hostname]
+	return r, ok
 }
 
 // update swaps the routing table atomically and fires the OnUpdate callback.
 // Used only in tests to set up minimal route tables without allocation data.
-func (rt *RouteTable) update(routes map[string]int) {
+func (rt *RouteTable) update(routes map[string]route) {
 	rt.mu.Lock()
 	rt.routes = routes
 	rt.mu.Unlock()
@@ -62,7 +71,7 @@ func (rt *RouteTable) update(routes map[string]int) {
 // registry changes. The allocation data is stored so the dashboard can display
 // project names, service names, and port assignments. A deduplicated port list
 // is also computed and cached for the dashboard's health checker.
-func (rt *RouteTable) UpdateWithAllocations(routes map[string]int, allocs map[string]registry.Allocation) {
+func (rt *RouteTable) UpdateWithAllocations(routes map[string]route, allocs map[string]registry.Allocation) {
 	rt.mu.Lock()
 	rt.routes = routes
 	rt.allocations = allocs
@@ -112,21 +121,27 @@ func (rt *RouteTable) Allocations() map[string]registry.Allocation {
 	return result
 }
 
-// BuildRoutes constructs a hostname-to-port routing map from the full registry.
+// BuildRoutes constructs a hostname-to-route mapping from the full registry.
 // It iterates over every project allocation and maps each service's .test
 // hostname to its allocated port. Only services that have a hostname configured
 // in outport.yml (and therefore have an entry in alloc.Hostnames) produce a
 // route. Services without hostnames are port-only and are not reachable
-// through the proxy. The returned map is intended to be passed to
+// through the proxy. Alias hostnames are also included, pointing to the same
+// port as the primary hostname. The returned map is intended to be passed to
 // RouteTable.UpdateWithAllocations.
-func BuildRoutes(reg *registry.Registry) map[string]int {
-	routes := make(map[string]int)
+func BuildRoutes(reg *registry.Registry) map[string]route {
+	routes := make(map[string]route)
 	for _, alloc := range reg.Projects {
 		if alloc.Hostnames == nil {
 			continue
 		}
 		for svcName, hostname := range alloc.Hostnames {
-			routes[hostname] = alloc.Ports[svcName]
+			routes[hostname] = route{Port: alloc.Ports[svcName]}
+		}
+		for svcName, svcAliases := range alloc.Aliases {
+			for _, aliasHostname := range svcAliases {
+				routes[aliasHostname] = route{Port: alloc.Ports[svcName]}
+			}
 		}
 	}
 	return routes
