@@ -1,4 +1,5 @@
 dist/
+completions/
 .claude/settings.local.json
 .superpowers/
 .worktrees/
