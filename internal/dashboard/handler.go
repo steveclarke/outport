@@ -75,6 +75,13 @@ type InstanceJSON struct {
 	Services map[string]ServiceJSON `json:"services"`
 }
 
+// AliasJSON describes a single hostname alias for a service.
+type AliasJSON struct {
+	Hostname  string `json:"hostname"`
+	URL       string `json:"url,omitempty"`
+	TunnelURL string `json:"tunnel_url,omitempty"`
+}
+
 // ServiceJSON describes a single allocated service within a project instance.
 // It carries everything the dashboard needs to display: the port number, the
 // browsable URL, whether the service process is currently running, and any
@@ -104,6 +111,10 @@ type ServiceJSON struct {
 	// TunnelURL is the public URL provided by a tunnel provider (e.g., Cloudflare)
 	// for this service. Empty when no tunnel is active.
 	TunnelURL string `json:"tunnel_url,omitempty"`
+
+	// Aliases maps alias keys to their AliasJSON data. Each alias represents an
+	// additional hostname that routes to this service's port.
+	Aliases map[string]AliasJSON `json:"aliases,omitempty"`
 }
 
 // portEntry maps a port back to the project, instance, and service that own it.
@@ -404,6 +415,29 @@ func (h *Handler) buildStatus() StatusResponse {
 						sj.TunnelURL = turl
 					}
 				}
+			}
+
+			// Aliases
+			if svcAliases, ok := alloc.Aliases[name]; ok && len(svcAliases) > 0 {
+				aliasMap := make(map[string]AliasJSON, len(svcAliases))
+				for aliasKey, aliasHostname := range svcAliases {
+					aj := AliasJSON{
+						Hostname: aliasHostname,
+					}
+					if u := urlutil.ServiceURL(aliasHostname, port, h.https); u != "" {
+						aj.URL = u
+					}
+					if tunnelState != nil {
+						if svcTunnels, ok := tunnelState[key]; ok {
+							tunnelKey := name + "/alias/" + aliasKey
+							if turl, ok := svcTunnels[tunnelKey]; ok {
+								aj.TunnelURL = turl
+							}
+						}
+					}
+					aliasMap[aliasKey] = aj
+				}
+				sj.Aliases = aliasMap
 			}
 
 			ij.Services[name] = sj
