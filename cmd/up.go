@@ -119,6 +119,7 @@ func runUp(cmd *cobra.Command, args []string) error {
 	result, err := writeEnvFiles(dir, cfg, ctx.Instance, ports, alloc.Hostnames, httpsEnabled, EnvWriteOptions{
 		AutoApprove:   yesFlag,
 		ApprovedPaths: approvedPaths,
+		Aliases:       alloc.Aliases,
 		Stdin:         os.Stdin,
 		Stderr:        os.Stderr,
 	})

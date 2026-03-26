@@ -146,7 +146,7 @@ func printStatusJSON(cmd *cobra.Command, reg *registry.Registry, projects map[st
 
 		var computed map[string]computedJSON
 		if cfg != nil && statusComputedFlag {
-			computed = buildComputedMap(cfg.Computed, allocation.ResolveComputed(cfg, instanceName, alloc.Ports, alloc.Hostnames, httpsEnabled, nil))
+			computed = buildComputedMap(cfg.Computed, allocation.ResolveComputed(cfg, instanceName, alloc.Ports, alloc.Hostnames, alloc.Aliases, httpsEnabled, nil))
 		}
 
 		entries = append(entries, statusEntryJSON{
@@ -199,7 +199,7 @@ func printStatusStyled(cmd *cobra.Command, reg *registry.Registry, projects map[
 		}
 
 		if cfg != nil && statusComputedFlag {
-			if resolved := allocation.ResolveComputed(cfg, instanceName, alloc.Ports, alloc.Hostnames, httpsEnabled, nil); len(resolved) > 0 {
+			if resolved := allocation.ResolveComputed(cfg, instanceName, alloc.Ports, alloc.Hostnames, alloc.Aliases, httpsEnabled, nil); len(resolved) > 0 {
 				printComputedValues(w, resolved)
 			}
 		}

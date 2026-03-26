@@ -69,6 +69,7 @@ func runPromote(cmd *cobra.Command, args []string) error {
 		demotedResult, err := writeEnvFiles(mainAlloc.ProjectDir, cfg, demotedTo, mainAlloc.Ports, demotedAlloc.Hostnames, httpsEnabled, EnvWriteOptions{
 			AutoApprove:   yesFlag,
 			ApprovedPaths: demotedAlloc.ApprovedExternalFiles,
+			Aliases:       demotedAlloc.Aliases,
 			Stdin:         os.Stdin,
 			Stderr:        os.Stderr,
 		})
@@ -95,6 +96,7 @@ func runPromote(cmd *cobra.Command, args []string) error {
 	promotedResult, err := writeEnvFiles(ctx.Dir, cfg, "main", currentAlloc.Ports, promotedAlloc.Hostnames, httpsEnabled, EnvWriteOptions{
 		AutoApprove:   yesFlag,
 		ApprovedPaths: promotedAlloc.ApprovedExternalFiles,
+		Aliases:       promotedAlloc.Aliases,
 		Stdin:         os.Stdin,
 		Stderr:        os.Stderr,
 	})

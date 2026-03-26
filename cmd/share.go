@@ -81,6 +81,7 @@ func runShare(cmd *cobra.Command, args []string) error {
 		if _, err := writeEnvFiles(ctx.Dir, ctx.Cfg, ctx.Instance, alloc.Ports, alloc.Hostnames, httpsEnabled, EnvWriteOptions{
 			AutoApprove:   true,
 			ApprovedPaths: alloc.ApprovedExternalFiles,
+			Aliases:       alloc.Aliases,
 			Stderr:        os.Stderr,
 		}); err != nil {
 			fmt.Fprintf(os.Stderr, "Warning: failed to restore .env files: %v\n", err)
@@ -112,6 +113,7 @@ func runShare(cmd *cobra.Command, args []string) error {
 		AutoApprove:   yesFlag,
 		ApprovedPaths: alloc.ApprovedExternalFiles,
 		TunnelURLs:    tunnelURLs,
+		Aliases:       alloc.Aliases,
 		Stdin:         os.Stdin,
 		Stderr:        os.Stderr,
 	})

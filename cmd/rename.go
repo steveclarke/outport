@@ -72,6 +72,7 @@ func runRename(cmd *cobra.Command, args []string) error {
 	result, err := writeEnvFiles(ctx.Dir, cfg, newName, oldAlloc.Ports, newAlloc.Hostnames, httpsEnabled, EnvWriteOptions{
 		AutoApprove:   yesFlag,
 		ApprovedPaths: newAlloc.ApprovedExternalFiles,
+		Aliases:       newAlloc.Aliases,
 		Stdin:         os.Stdin,
 		Stderr:        os.Stderr,
 	})
