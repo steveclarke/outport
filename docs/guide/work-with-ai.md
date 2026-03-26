@@ -39,7 +39,7 @@ The skill covers:
 
 - `outport.yml` configuration — services, hostnames, preferred ports, env files
 - Computed values — template syntax, `url` vs `url:direct`, per-file overrides, `${instance}` variable
-- All CLI commands — `up`, `down`, `ports`, `open`, `share`, `doctor`, `system start/stop/restart`
+- All CLI commands — `up`, `down`, `status`, `open`, `share`, `doctor`, `system start/stop/restart`
 - Multi-instance workflows — worktrees, renaming, promoting
 - Troubleshooting — DNS, daemon, certificates, port conflicts
 
