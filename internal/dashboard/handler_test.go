@@ -18,16 +18,6 @@ func (m *mockAllocProvider) Allocations() map[string]registry.Allocation {
 	return m.allocs
 }
 
-func (m *mockAllocProvider) AllPorts() []int {
-	var ports []int
-	for _, a := range m.allocs {
-		for _, p := range a.Ports {
-			ports = append(ports, p)
-		}
-	}
-	return ports
-}
-
 func TestHandlerAPIStatus(t *testing.T) {
 	provider := &mockAllocProvider{
 		allocs: map[string]registry.Allocation{

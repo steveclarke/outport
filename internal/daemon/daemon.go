@@ -257,9 +257,3 @@ type routeTableProvider struct {
 func (p *routeTableProvider) Allocations() map[string]registry.Allocation {
 	return p.routes.Allocations()
 }
-
-// AllPorts returns the deduplicated list of all allocated ports across every
-// registered project. It satisfies the dashboard.AllocProvider interface.
-func (p *routeTableProvider) AllPorts() []int {
-	return p.routes.AllPorts()
-}

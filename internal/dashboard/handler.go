@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"slices"
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/steveclarke/outport/internal/lanip"
@@ -25,18 +26,13 @@ import (
 
 // AllocProvider is the interface through which the dashboard accesses the current
 // registry state. The daemon's route table implements this interface, allowing the
-// dashboard to read all project allocations and the complete list of allocated ports
-// without importing the registry package directly.
+// dashboard to read all project allocations without importing the daemon package
+// directly.
 type AllocProvider interface {
 	// Allocations returns every registered project/instance allocation, keyed by
 	// "{project}/{instance}" (e.g., "myapp/main"). Each allocation contains the
 	// port mappings, hostnames, and env var names for that instance's services.
 	Allocations() map[string]registry.Allocation
-
-	// AllPorts returns a flat list of every allocated port number across all
-	// projects and instances. The health checker uses this list to know which
-	// ports to probe for liveness.
-	AllPorts() []int
 }
 
 // StatusResponse is the top-level JSON structure returned by GET /api/status.
@@ -138,6 +134,7 @@ type Handler struct {
 	version          string
 	networkInterface string                       // configured LAN interface override
 	indexHTML         []byte
+	portMu           sync.RWMutex                   // protects portIndex
 	portIndex        map[int]portEntry              // port -> owning project/instance/service
 	cachedLANIP      string                         // cached LAN IP string
 	cachedTunnel     map[string]map[string]string   // cached tunnel state
@@ -163,9 +160,9 @@ func NewHandler(provider AllocProvider, httpsEnabled bool, version string, healt
 		networkInterface: networkInterface,
 	}
 
-	h.health = NewHealthChecker(provider.AllPorts, healthInterval, h.onHealthChange)
-	h.indexHTML, _ = staticFiles.ReadFile("static/index.html")
 	h.rebuildPortIndex()
+	h.health = NewHealthChecker(h.currentPorts, healthInterval, h.onHealthChange)
+	h.indexHTML, _ = staticFiles.ReadFile("static/index.html")
 	h.refreshCaches()
 
 	h.mux.HandleFunc("GET /api/status", h.handleStatus)
@@ -287,7 +284,8 @@ func (h *Handler) OnRegistryUpdate() {
 }
 
 // rebuildPortIndex reconstructs the port -> (project, instance, service) reverse index
-// from the current provider allocations.
+// from the current provider allocations. The health checker derives its port list from
+// this same index via currentPorts, ensuring the two never diverge.
 func (h *Handler) rebuildPortIndex() {
 	allocs := h.provider.Allocations()
 	idx := make(map[int]portEntry, len(allocs)*2)
@@ -301,7 +299,21 @@ func (h *Handler) rebuildPortIndex() {
 			}
 		}
 	}
+	h.portMu.Lock()
 	h.portIndex = idx
+	h.portMu.Unlock()
+}
+
+// currentPorts returns the port list derived from portIndex. Used as the health
+// checker's PortProvider so probed ports and the portIndex are always consistent.
+func (h *Handler) currentPorts() []int {
+	h.portMu.RLock()
+	defer h.portMu.RUnlock()
+	ports := make([]int, 0, len(h.portIndex))
+	for p := range h.portIndex {
+		ports = append(ports, p)
+	}
+	return ports
 }
 
 // refreshCaches updates the cached LAN IP and tunnel state.
@@ -348,9 +360,13 @@ func (h *Handler) onHealthChange(changes map[int]bool) {
 		Up       bool   `json:"up"`
 	}
 
+	h.portMu.RLock()
+	idx := h.portIndex
+	h.portMu.RUnlock()
+
 	var entries []changeEntry
 	for port, up := range changes {
-		if pe, ok := h.portIndex[port]; ok {
+		if pe, ok := idx[port]; ok {
 			entries = append(entries, changeEntry{
 				Project:  pe.Project,
 				Instance: pe.Instance,
