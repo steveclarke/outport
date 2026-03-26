@@ -35,6 +35,9 @@ var aliasKeyRe = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]*[a-z0-9])?$`)
 // templateVarRe matches ${service.field} or ${service.field:modifier} references in computed value templates.
 var templateVarRe = regexp.MustCompile(`\$\{(\w+)\.(\w+)(?::(\w+))?\}`)
 
+// aliasVarRe matches ${service.alias.name} and ${service.alias_url.name} references in computed value templates.
+var aliasVarRe = regexp.MustCompile(`\$\{(\w+)\.(alias|alias_url)\.(\w+)\}`)
+
 // standaloneVarRe matches ${word} references that don't contain a dot (i.e., not service.field).
 // It also matches ${word:-...} and ${word:+...} conditional syntax.
 var standaloneVarRe = regexp.MustCompile(`\$\{(\w+)\}|\$\{(\w+):[+-]`)
@@ -73,6 +76,11 @@ func validateTemplateRefs(computedName, template string, services map[string]Ser
 			modifier = m[3]
 		}
 
+		// Skip alias fields — they're validated by aliasVarRe below
+		if field == "alias" || field == "alias_url" {
+			continue
+		}
+
 		if _, ok := services[svcName]; !ok {
 			return fmt.Errorf("computed %q: references unknown service %q", computedName, svcName)
 		}
@@ -96,6 +104,21 @@ func validateTemplateRefs(computedName, template string, services map[string]Ser
 		}
 		if !validStandaloneVars[varName] {
 			return fmt.Errorf("computed %q: unknown variable %q (valid: instance, project_name)", computedName, varName)
+		}
+	}
+
+	// Validate ${service.alias.name} and ${service.alias_url.name} references
+	aliasMatches := aliasVarRe.FindAllStringSubmatch(template, -1)
+	for _, m := range aliasMatches {
+		svcName := m[1]
+		aliasName := m[3]
+
+		svc, ok := services[svcName]
+		if !ok {
+			return fmt.Errorf("computed %q: references unknown service %q", computedName, svcName)
+		}
+		if _, ok := svc.Aliases[aliasName]; !ok {
+			return fmt.Errorf("computed %q: service %q has no alias %q", computedName, svcName, aliasName)
 		}
 	}
 
