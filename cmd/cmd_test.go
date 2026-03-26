@@ -1519,7 +1519,7 @@ func TestBuildTemplateVarsHTTPS(t *testing.T) {
 	hostnames := map[string]string{"rails": "myapp.test"}
 
 	httpsEnabled := certmanager.IsCAInstalled()
-	vars := allocation.BuildTemplateVars(cfg, "main", ports, hostnames, httpsEnabled, nil)
+	vars := allocation.BuildTemplateVars(cfg, "main", ports, hostnames, nil, httpsEnabled, nil)
 
 	if vars["rails.url"] != "https://myapp.test" {
 		t.Errorf("rails.url = %q, want %q", vars["rails.url"], "https://myapp.test")
@@ -1543,7 +1543,7 @@ func TestBuildTemplateVarsHTTP(t *testing.T) {
 	hostnames := map[string]string{"rails": "myapp.test"}
 
 	httpsEnabled := certmanager.IsCAInstalled()
-	vars := allocation.BuildTemplateVars(cfg, "main", ports, hostnames, httpsEnabled, nil)
+	vars := allocation.BuildTemplateVars(cfg, "main", ports, hostnames, nil, httpsEnabled, nil)
 
 	if vars["rails.url"] != "http://myapp.test" {
 		t.Errorf("rails.url = %q, want %q", vars["rails.url"], "http://myapp.test")
@@ -1560,12 +1560,12 @@ func TestBuildTemplateVarsInstance(t *testing.T) {
 	ports := map[string]int{"web": 3000}
 	hostnames := map[string]string{}
 
-	vars := allocation.BuildTemplateVars(cfg, "main", ports, hostnames, false, nil)
+	vars := allocation.BuildTemplateVars(cfg, "main", ports, hostnames, nil, false, nil)
 	if vars["instance"] != "" {
 		t.Errorf("instance for main = %q, want empty string", vars["instance"])
 	}
 
-	vars = allocation.BuildTemplateVars(cfg, "xbjf", ports, hostnames, false, nil)
+	vars = allocation.BuildTemplateVars(cfg, "xbjf", ports, hostnames, nil, false, nil)
 	if vars["instance"] != "xbjf" {
 		t.Errorf("instance = %q, want %q", vars["instance"], "xbjf")
 	}
@@ -1582,7 +1582,7 @@ func TestBuildTemplateVarsNewFields(t *testing.T) {
 	ports := map[string]int{"web": 3000, "db": 5432}
 	hostnames := map[string]string{}
 
-	vars := allocation.BuildTemplateVars(cfg, "main", ports, hostnames, false, nil)
+	vars := allocation.BuildTemplateVars(cfg, "main", ports, hostnames, nil, false, nil)
 
 	// project_name
 	if vars["project_name"] != "myapp" {
@@ -1729,7 +1729,7 @@ func TestBuildTemplateVars_TunnelOverrides(t *testing.T) {
 	hostnames := map[string]string{"rails": "myapp.test"}
 	tunnelURLs := map[string]string{"rails": "https://abc-def.trycloudflare.com"}
 
-	vars := allocation.BuildTemplateVars(cfg, "main", ports, hostnames, true, tunnelURLs)
+	vars := allocation.BuildTemplateVars(cfg, "main", ports, hostnames, nil, true, tunnelURLs)
 
 	// Tunneled service: url overridden, url:direct stays localhost
 	if got := vars["rails.url"]; got != "https://abc-def.trycloudflare.com" {
@@ -1763,7 +1763,7 @@ func TestBuildTemplateVars_NilTunnelURLs(t *testing.T) {
 	ports := map[string]int{"rails": 3000}
 	hostnames := map[string]string{"rails": "myapp.test"}
 
-	vars := allocation.BuildTemplateVars(cfg, "main", ports, hostnames, true, nil)
+	vars := allocation.BuildTemplateVars(cfg, "main", ports, hostnames, nil, true, nil)
 
 	if got := vars["rails.url"]; got != "https://myapp.test" {
 		t.Errorf("rails.url = %q, want https://myapp.test", got)
@@ -1835,7 +1835,7 @@ func TestMergeEnvFiles_WithTunnelURLs(t *testing.T) {
 	}
 
 	// Write with tunnel URLs
-	_, err := mergeEnvFiles(dir, mustLoadConfig(t, dir), "main", ports, hostnames, false, tunnelURLs)
+	_, err := mergeEnvFiles(dir, mustLoadConfig(t, dir), "main", ports, hostnames, nil, false, tunnelURLs)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1861,7 +1861,7 @@ func TestMergeEnvFiles_WithTunnelURLs(t *testing.T) {
 	}
 
 	// Now revert (nil tunnelURLs) — simulates cleanup on exit
-	_, err = mergeEnvFiles(dir, mustLoadConfig(t, dir), "main", ports, hostnames, false, nil)
+	_, err = mergeEnvFiles(dir, mustLoadConfig(t, dir), "main", ports, hostnames, nil, false, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

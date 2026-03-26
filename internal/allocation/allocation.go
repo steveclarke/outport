@@ -34,6 +34,7 @@ func Build(cfg *config.Config, instanceName, dir string, ports map[string]int) r
 		ProjectDir: dir,
 		Ports:      ports,
 		Hostnames:  ComputeHostnames(cfg, instanceName),
+		Aliases:    ComputeAliases(cfg, instanceName),
 		EnvVars:    computeEnvVars(cfg),
 	}
 }
@@ -71,6 +72,31 @@ func ComputeHostnames(cfg *config.Config, instanceName string) map[string]string
 	return hostnames
 }
 
+// ComputeAliases builds a map of service name -> alias name -> .test hostname
+// for every service that declares aliases in the config. Instance suffixing
+// follows the same rules as primary hostnames.
+func ComputeAliases(cfg *config.Config, instanceName string) map[string]map[string]string {
+	result := make(map[string]map[string]string)
+	for svcName, svc := range cfg.Services {
+		if len(svc.Aliases) == 0 {
+			continue
+		}
+		svcAliases := make(map[string]string)
+		for key, aliasHostname := range svc.Aliases {
+			stem := strings.TrimSuffix(aliasHostname, ".test")
+			if instanceName != "main" {
+				idx := strings.LastIndex(stem, cfg.Name)
+				if idx >= 0 {
+					stem = stem[:idx] + cfg.Name + "-" + instanceName + stem[idx+len(cfg.Name):]
+				}
+			}
+			svcAliases[key] = stem + ".test"
+		}
+		result[svcName] = svcAliases
+	}
+	return result
+}
+
 // computeEnvVars builds a service name -> env_var map from config.
 func computeEnvVars(cfg *config.Config) map[string]string {
 	envVars := make(map[string]string)
@@ -106,7 +132,7 @@ func computeEnvVars(cfg *config.Config) map[string]string {
 // The httpsEnabled flag controls the scheme for .test hostname URLs: when true,
 // services with .test hostnames get https:// URLs (because the daemon's TLS proxy
 // is active). Non-.test hostnames always use http://.
-func BuildTemplateVars(cfg *config.Config, instanceName string, ports map[string]int, hostnames map[string]string, httpsEnabled bool, tunnelURLs map[string]string) map[string]string {
+func BuildTemplateVars(cfg *config.Config, instanceName string, ports map[string]int, hostnames map[string]string, aliases map[string]map[string]string, httpsEnabled bool, tunnelURLs map[string]string) map[string]string {
 	vars := make(map[string]string)
 	vars["project_name"] = cfg.Name
 	if instanceName == "main" {
@@ -135,6 +161,20 @@ func BuildTemplateVars(cfg *config.Config, instanceName string, ports map[string
 			}
 			vars[name+".hostname"] = hostname
 		}
+
+		// Alias template variables
+		if svcAliases, ok := aliases[name]; ok {
+			for key, aliasHostname := range svcAliases {
+				vars[name+".alias."+key] = aliasHostname
+
+				tunnelKey := name + "/alias/" + key
+				if tunnelURL, hasTunnel := tunnelURLs[tunnelKey]; hasTunnel {
+					vars[name+".alias_url."+key] = tunnelURL
+				} else {
+					vars[name+".alias_url."+key] = fmt.Sprintf("%s://%s", urlutil.EffectiveScheme(aliasHostname, httpsEnabled), aliasHostname)
+				}
+			}
+		}
 	}
 	return vars
 }
@@ -153,10 +193,10 @@ func BuildTemplateVars(cfg *config.Config, instanceName string, ports map[string
 // resolved string with all ${...} references expanded.
 //
 // Returns nil if the config has no computed values defined.
-func ResolveComputed(cfg *config.Config, instanceName string, ports map[string]int, hostnames map[string]string, httpsEnabled bool, tunnelURLs map[string]string) map[string]map[string]string {
+func ResolveComputed(cfg *config.Config, instanceName string, ports map[string]int, hostnames map[string]string, aliases map[string]map[string]string, httpsEnabled bool, tunnelURLs map[string]string) map[string]map[string]string {
 	if len(cfg.Computed) == 0 {
 		return nil
 	}
-	templateVars := BuildTemplateVars(cfg, instanceName, ports, hostnames, httpsEnabled, tunnelURLs)
+	templateVars := BuildTemplateVars(cfg, instanceName, ports, hostnames, aliases, httpsEnabled, tunnelURLs)
 	return config.ResolveComputed(cfg.Computed, templateVars)
 }

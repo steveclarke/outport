@@ -86,7 +86,7 @@ func (p *ProxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	port, ok := p.routes.Lookup(hostname)
+	rt, ok := p.routes.Lookup(hostname)
 	if !ok {
 		writeErrorPage(w, http.StatusBadGateway, hostname,
 			"No project is configured for this hostname.<br>Add a matching hostname to your <code>outport.yml</code> and run:",
@@ -94,9 +94,18 @@ func (p *ProxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	proxy := p.getOrCreateProxy(port)
+	// Rewrite Host header for tunnel routes so the backend sees the original .test hostname
+	if rt.HostOverride != "" {
+		r.Host = rt.HostOverride
+	}
+
+	proxy := p.getOrCreateProxy(rt.Port)
+	displayHostname := hostname
+	if rt.HostOverride != "" {
+		displayHostname = rt.HostOverride
+	}
 	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
-		writeErrorPage(w, http.StatusBadGateway, hostname,
+		writeErrorPage(w, http.StatusBadGateway, displayHostname,
 			"This app isn't running yet.<br>Start your app, then refresh this page.",
 			"")
 	}

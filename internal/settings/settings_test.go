@@ -220,6 +220,48 @@ func TestDefaultConfigContentRoundTrips(t *testing.T) {
 	}
 }
 
+func TestLoadMaxTunnels(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config")
+	if err := os.WriteFile(path, []byte(`
+[tunnels]
+max = 12
+`), 0644); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+
+	s, err := LoadFrom(path)
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if s.Tunnels.Max != 12 {
+		t.Errorf("max = %d, want 12", s.Tunnels.Max)
+	}
+}
+
+func TestDefaultMaxTunnels(t *testing.T) {
+	s := Defaults()
+	if s.Tunnels.Max != 8 {
+		t.Errorf("default max = %d, want 8", s.Tunnels.Max)
+	}
+}
+
+func TestMaxTunnelsValidation(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config")
+	if err := os.WriteFile(path, []byte(`
+[tunnels]
+max = 0
+`), 0644); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+
+	_, err := LoadFrom(path)
+	if err == nil {
+		t.Fatal("expected error for max=0")
+	}
+}
+
 func TestPathReturnsConfigOutportConfig(t *testing.T) {
 	p, err := Path()
 	if err != nil {

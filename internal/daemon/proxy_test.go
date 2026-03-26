@@ -28,7 +28,7 @@ func TestProxyRoutesToBackend(t *testing.T) {
 
 	port := backendPort(t, backend)
 	routes := &RouteTable{}
-	routes.update(map[string]int{"myapp.test": port})
+	routes.update(map[string]route{"myapp.test": {Port: port}})
 
 	proxy := NewProxy(routes)
 	srv := httptest.NewServer(proxy)
@@ -58,7 +58,7 @@ func TestProxyPreservesPath(t *testing.T) {
 
 	port := backendPort(t, backend)
 	routes := &RouteTable{}
-	routes.update(map[string]int{"myapp.test": port})
+	routes.update(map[string]route{"myapp.test": {Port: port}})
 
 	proxy := NewProxy(routes)
 	srv := httptest.NewServer(proxy)
@@ -79,7 +79,7 @@ func TestProxyPreservesPath(t *testing.T) {
 
 func TestProxyUnknownHostReturnsError(t *testing.T) {
 	routes := &RouteTable{}
-	routes.update(map[string]int{})
+	routes.update(map[string]route{})
 
 	proxy := NewProxy(routes)
 	srv := httptest.NewServer(proxy)
@@ -105,7 +105,7 @@ func TestProxyUnknownHostReturnsError(t *testing.T) {
 
 func TestProxyBackendDownReturnsError(t *testing.T) {
 	routes := &RouteTable{}
-	routes.update(map[string]int{"myapp.test": 59999})
+	routes.update(map[string]route{"myapp.test": {Port: 59999}})
 
 	proxy := NewProxy(routes)
 	srv := httptest.NewServer(proxy)
@@ -137,7 +137,7 @@ func TestProxyStripsPortFromHost(t *testing.T) {
 
 	port := backendPort(t, backend)
 	routes := &RouteTable{}
-	routes.update(map[string]int{"myapp.test": port})
+	routes.update(map[string]route{"myapp.test": {Port: port}})
 
 	proxy := NewProxy(routes)
 	srv := httptest.NewServer(proxy)
@@ -159,7 +159,7 @@ func TestProxyStripsPortFromHost(t *testing.T) {
 
 func TestProxyRoutesOutportTestToDashboard(t *testing.T) {
 	routes := &RouteTable{}
-	routes.update(map[string]int{})
+	routes.update(map[string]route{})
 
 	dashHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte("dashboard"))
@@ -201,7 +201,7 @@ func TestProxyWebSocketUpgrade(t *testing.T) {
 
 	port := backendPort(t, backend)
 	routes := &RouteTable{}
-	routes.update(map[string]int{"myapp.test": port})
+	routes.update(map[string]route{"myapp.test": {Port: port}})
 
 	proxy := NewProxy(routes)
 	srv := httptest.NewServer(proxy)
@@ -240,5 +240,39 @@ func TestProxyWebSocketUpgrade(t *testing.T) {
 
 	if reply != "echo: hello" {
 		t.Errorf("got %q, want %q", reply, "echo: hello")
+	}
+}
+
+func TestProxyHostOverrideRewritesHostHeader(t *testing.T) {
+	var gotHost string
+	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotHost = r.Host
+		_, _ = w.Write([]byte("ok"))
+	}))
+	defer backend.Close()
+
+	port := backendPort(t, backend)
+	routes := &RouteTable{}
+	routes.update(map[string]route{
+		"abc123.trycloudflare.com": {Port: port, HostOverride: "myapp.test"},
+	})
+
+	proxy := NewProxy(routes)
+	srv := httptest.NewServer(proxy)
+	defer srv.Close()
+
+	req, _ := http.NewRequest("GET", srv.URL+"/", nil)
+	req.Host = "abc123.trycloudflare.com"
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("request: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("status: got %d, want 200", resp.StatusCode)
+	}
+	if gotHost != "myapp.test" {
+		t.Errorf("backend saw Host %q, want %q", gotHost, "myapp.test")
 	}
 }

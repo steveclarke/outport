@@ -37,6 +37,7 @@ type EnvWriteOptions struct {
 	AutoApprove   bool
 	ApprovedPaths []string
 	TunnelURLs    map[string]string
+	Aliases       map[string]map[string]string
 	Stdin         io.Reader
 	Stderr        io.Writer
 }
@@ -104,7 +105,7 @@ func writeEnvFiles(
 		return nil, err
 	}
 
-	resolvedComputed, err := mergeEnvFiles(dir, cfg, instanceName, ports, hostnames, httpsEnabled, opts.TunnelURLs)
+	resolvedComputed, err := mergeEnvFiles(dir, cfg, instanceName, ports, hostnames, opts.Aliases, httpsEnabled, opts.TunnelURLs)
 	if err != nil {
 		return nil, fmt.Errorf("writing env files: %w", err)
 	}
@@ -119,7 +120,7 @@ func writeEnvFiles(
 // mergeEnvFiles rebuilds and writes env file vars for an allocation.
 // Called by writeEnvFiles after external file confirmation.
 // Returns the resolved computed values so callers can reuse them for display.
-func mergeEnvFiles(dir string, cfg *config.Config, instanceName string, ports map[string]int, hostnames map[string]string, httpsEnabled bool, tunnelURLs map[string]string) (map[string]map[string]string, error) {
+func mergeEnvFiles(dir string, cfg *config.Config, instanceName string, ports map[string]int, hostnames map[string]string, aliases map[string]map[string]string, httpsEnabled bool, tunnelURLs map[string]string) (map[string]map[string]string, error) {
 	envFileVars := make(map[string]map[string]string)
 
 	for svcName, svc := range cfg.Services {
@@ -133,7 +134,7 @@ func mergeEnvFiles(dir string, cfg *config.Config, instanceName string, ports ma
 	}
 
 	// Resolve computed values and add to envFileVars
-	resolvedComputed := allocation.ResolveComputed(cfg, instanceName, ports, hostnames, httpsEnabled, tunnelURLs)
+	resolvedComputed := allocation.ResolveComputed(cfg, instanceName, ports, hostnames, aliases, httpsEnabled, tunnelURLs)
 	for name, fileValues := range resolvedComputed {
 		for file, value := range fileValues {
 			if envFileVars[file] == nil {

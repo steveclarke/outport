@@ -51,7 +51,7 @@ func runPorts(cmd *cobra.Command, args []string) error {
 }
 
 func printPortsJSON(cmd *cobra.Command, cfg *config.Config, instanceName string, alloc registry.Allocation, httpsEnabled bool) error {
-	services := buildServiceMap(cfg, alloc.Ports, alloc.Hostnames, httpsEnabled)
+	services := buildServiceMap(cfg, alloc.Ports, alloc.Hostnames, alloc.Aliases, httpsEnabled)
 
 	if portsCheckFlag {
 		portStatus := checkPorts(alloc.Ports)
@@ -67,7 +67,7 @@ func printPortsJSON(cmd *cobra.Command, cfg *config.Config, instanceName string,
 		Services: services,
 	}
 	if portsComputedFlag {
-		out.Computed = buildComputedMap(cfg.Computed, allocation.ResolveComputed(cfg, instanceName, alloc.Ports, alloc.Hostnames, httpsEnabled, nil))
+		out.Computed = buildComputedMap(cfg.Computed, allocation.ResolveComputed(cfg, instanceName, alloc.Ports, alloc.Hostnames, alloc.Aliases, httpsEnabled, nil))
 	}
 	return writeJSON(cmd, out)
 }
@@ -83,10 +83,10 @@ func printPortsStyled(cmd *cobra.Command, cfg *config.Config, instanceName strin
 		portStatus = checkPorts(alloc.Ports)
 	}
 
-	printFlatServices(w, cfg, serviceNames, alloc.Ports, alloc.Hostnames, portStatus, httpsEnabled)
+	printFlatServices(w, cfg, serviceNames, alloc.Ports, alloc.Hostnames, alloc.Aliases, portStatus, httpsEnabled)
 
 	if portsComputedFlag {
-		if resolved := allocation.ResolveComputed(cfg, instanceName, alloc.Ports, alloc.Hostnames, httpsEnabled, nil); len(resolved) > 0 {
+		if resolved := allocation.ResolveComputed(cfg, instanceName, alloc.Ports, alloc.Hostnames, alloc.Aliases, httpsEnabled, nil); len(resolved) > 0 {
 			printComputedValues(w, resolved)
 		}
 	}

@@ -15,8 +15,9 @@ const StateFilename = "tunnels.json"
 
 // TunnelState represents the persisted state of active tunnels.
 type TunnelState struct {
-	PID     int                          `json:"pid"`
-	Tunnels map[string]map[string]string `json:"tunnels"` // key -> service -> URL
+	PID         int                          `json:"pid"`
+	Tunnels     map[string]map[string]string `json:"tunnels"`                // key -> service -> URL
+	HostnameMap map[string]string            `json:"hostname_map,omitempty"` // tunnel hostname -> .test hostname
 }
 
 // DefaultStatePath returns ~/.local/share/outport/tunnels.json.
@@ -29,10 +30,14 @@ func DefaultStatePath() (string, error) {
 }
 
 // WriteState writes tunnel state to the given path with the current PID.
-func WriteState(path string, key string, tunnels map[string]string) error {
+// The hostnameMap parameter maps tunnel hostnames (e.g., "abc123.trycloudflare.com")
+// to their corresponding .test hostnames (e.g., "myapp.test"), enabling the daemon
+// to build HostOverride proxy routes for active tunnels.
+func WriteState(path string, key string, tunnels map[string]string, hostnameMap map[string]string) error {
 	state := TunnelState{
-		PID:     os.Getpid(),
-		Tunnels: map[string]map[string]string{key: tunnels},
+		PID:         os.Getpid(),
+		Tunnels:     map[string]map[string]string{key: tunnels},
+		HostnameMap: hostnameMap,
 	}
 	data, err := json.MarshalIndent(state, "", "  ")
 	if err != nil {

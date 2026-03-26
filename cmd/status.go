@@ -13,7 +13,6 @@ import (
 	"github.com/steveclarke/outport/internal/portcheck"
 	"github.com/steveclarke/outport/internal/registry"
 	"github.com/steveclarke/outport/internal/ui"
-	"github.com/steveclarke/outport/internal/urlutil"
 	"github.com/spf13/cobra"
 )
 
@@ -130,23 +129,25 @@ func printStatusJSON(cmd *cobra.Command, reg *registry.Registry, projects map[st
 		cfg := loadProjectConfig(alloc.ProjectDir)
 		_, instanceName := registry.ParseKey(key)
 
-		services := make(map[string]svcJSON)
-		for svcName, port := range alloc.Ports {
-			s := svcJSON{Port: port}
-			if cfg != nil {
-				if svc, ok := cfg.Services[svcName]; ok {
-					s.URL = urlutil.ServiceURL(resolvedHostname(svc, alloc.Hostnames, svcName), port, httpsEnabled)
-				}
+		var services map[string]svcJSON
+		if cfg != nil {
+			services = buildServiceMap(cfg, alloc.Ports, alloc.Hostnames, alloc.Aliases, httpsEnabled)
+		} else {
+			services = make(map[string]svcJSON)
+			for svcName, port := range alloc.Ports {
+				services[svcName] = svcJSON{Port: port}
 			}
-			if portStatus != nil {
-				s.Up = boolPtr(portStatus[port])
+		}
+		if portStatus != nil {
+			for svcName, s := range services {
+				s.Up = boolPtr(portStatus[s.Port])
+				services[svcName] = s
 			}
-			services[svcName] = s
 		}
 
 		var computed map[string]computedJSON
 		if cfg != nil && statusComputedFlag {
-			computed = buildComputedMap(cfg.Computed, allocation.ResolveComputed(cfg, instanceName, alloc.Ports, alloc.Hostnames, httpsEnabled, nil))
+			computed = buildComputedMap(cfg.Computed, allocation.ResolveComputed(cfg, instanceName, alloc.Ports, alloc.Hostnames, alloc.Aliases, httpsEnabled, nil))
 		}
 
 		entries = append(entries, statusEntryJSON{
@@ -196,10 +197,13 @@ func printStatusStyled(cmd *cobra.Command, reg *registry.Registry, projects map[
 		}
 		for _, svcName := range svcNames {
 			printServiceLineCompact(w, renderCfg, svcName, alloc.Ports[svcName], alloc.Hostnames, portStatus, httpsEnabled)
+			if svcAliases, ok := alloc.Aliases[svcName]; ok {
+				printAliasLines(w, svcAliases, alloc.Ports[svcName], httpsEnabled)
+			}
 		}
 
 		if cfg != nil && statusComputedFlag {
-			if resolved := allocation.ResolveComputed(cfg, instanceName, alloc.Ports, alloc.Hostnames, httpsEnabled, nil); len(resolved) > 0 {
+			if resolved := allocation.ResolveComputed(cfg, instanceName, alloc.Ports, alloc.Hostnames, alloc.Aliases, httpsEnabled, nil); len(resolved) > 0 {
 				printComputedValues(w, resolved)
 			}
 		}

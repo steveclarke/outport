@@ -72,12 +72,12 @@ func TestDaemonStartAndShutdown(t *testing.T) {
 	time.Sleep(200 * time.Millisecond)
 
 	// Verify the route table was populated by the watcher
-	port, ok := d.routes.Lookup("app1.test")
+	r, ok := d.routes.Lookup("app1.test")
 	if !ok {
 		t.Fatal("expected app1.test route after daemon start")
 	}
-	if port != 10001 {
-		t.Fatalf("app1.test: got %d, want 10001", port)
+	if r.Port != 10001 {
+		t.Fatalf("app1.test: got %d, want 10001", r.Port)
 	}
 
 	// Shutdown

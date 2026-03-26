@@ -14,14 +14,20 @@ import (
 
 // JSON types shared across multiple commands (up, ports, status, share).
 
+type svcAliasJSON struct {
+	Hostname string `json:"hostname"`
+	URL      string `json:"url,omitempty"`
+}
+
 type svcJSON struct {
-	Port          int      `json:"port"`
-	PreferredPort int      `json:"preferred_port,omitempty"`
-	EnvVar        string   `json:"env_var"`
-	Hostname      string   `json:"hostname,omitempty"`
-	URL           string   `json:"url,omitempty"`
-	EnvFiles      []string `json:"env_files"`
-	Up            *bool    `json:"up,omitempty"`
+	Port          int                      `json:"port"`
+	PreferredPort int                      `json:"preferred_port,omitempty"`
+	EnvVar        string                   `json:"env_var"`
+	Hostname      string                   `json:"hostname,omitempty"`
+	URL           string                   `json:"url,omitempty"`
+	EnvFiles      []string                 `json:"env_files"`
+	Up            *bool                    `json:"up,omitempty"`
+	Aliases       map[string]svcAliasJSON  `json:"aliases,omitempty"`
 }
 
 type computedJSON struct {
@@ -51,11 +57,11 @@ func resolvedHostname(svc config.Service, hostnames map[string]string, name stri
 }
 
 // buildServiceMap builds the JSON service map used by up, ports, and status.
-func buildServiceMap(cfg *config.Config, ports map[string]int, hostnames map[string]string, httpsEnabled bool) map[string]svcJSON {
+func buildServiceMap(cfg *config.Config, ports map[string]int, hostnames map[string]string, aliases map[string]map[string]string, httpsEnabled bool) map[string]svcJSON {
 	services := make(map[string]svcJSON)
 	for name, svc := range cfg.Services {
 		hostname := resolvedHostname(svc, hostnames, name)
-		services[name] = svcJSON{
+		sj := svcJSON{
 			Port:          ports[name],
 			PreferredPort: svc.PreferredPort,
 			EnvVar:        svc.EnvVar,
@@ -63,6 +69,16 @@ func buildServiceMap(cfg *config.Config, ports map[string]int, hostnames map[str
 			URL:           urlutil.ServiceURL(hostname, ports[name], httpsEnabled),
 			EnvFiles:      svc.EnvFiles,
 		}
+		if svcAliases, ok := aliases[name]; ok && len(svcAliases) > 0 {
+			sj.Aliases = make(map[string]svcAliasJSON, len(svcAliases))
+			for key, aliasHostname := range svcAliases {
+				sj.Aliases[key] = svcAliasJSON{
+					Hostname: aliasHostname,
+					URL:      urlutil.ServiceURL(aliasHostname, ports[name], httpsEnabled),
+				}
+			}
+		}
+		services[name] = sj
 	}
 	return services
 }
@@ -148,9 +164,27 @@ func printComputedValues(w io.Writer, resolved map[string]map[string]string) {
 }
 
 // printFlatServices renders the full service list with env var columns (used by up/ports).
-func printFlatServices(w io.Writer, cfg *config.Config, serviceNames []string, ports map[string]int, hostnames map[string]string, portStatus map[int]bool, httpsEnabled bool) {
+func printFlatServices(w io.Writer, cfg *config.Config, serviceNames []string, ports map[string]int, hostnames map[string]string, aliases map[string]map[string]string, portStatus map[int]bool, httpsEnabled bool) {
 	for _, svcName := range serviceNames {
 		printServiceLineDetailed(w, cfg, svcName, ports[svcName], hostnames, portStatus, httpsEnabled)
+		if svcAliases, ok := aliases[svcName]; ok {
+			printAliasLines(w, svcAliases, ports[svcName], httpsEnabled)
+		}
+	}
+}
+
+// printAliasLines renders alias URLs underneath a service line, aligned and labeled.
+func printAliasLines(w io.Writer, svcAliases map[string]string, port int, httpsEnabled bool) {
+	aliasKeys := slices.Sorted(maps.Keys(svcAliases))
+	for _, key := range aliasKeys {
+		aliasHostname := svcAliases[key]
+		if u := urlutil.ServiceURL(aliasHostname, port, httpsEnabled); u != "" {
+			line := fmt.Sprintf("    %s  %s",
+				ui.DimStyle.Render(fmt.Sprintf("%-38s", "alias: "+key)),
+				ui.UrlStyle.Render(u),
+			)
+			lipgloss.Fprintln(w, line)
+		}
 	}
 }
 

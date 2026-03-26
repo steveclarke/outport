@@ -13,6 +13,14 @@ import (
 	"github.com/steveclarke/outport/internal/tunnel"
 )
 
+// route represents a single proxy route entry. Normal routes just carry a
+// port; tunnel routes also carry a HostOverride so the proxy can rewrite the
+// Host header to the original .test hostname before forwarding.
+type route struct {
+	Port         int
+	HostOverride string // empty for normal routes, set for tunnel routes
+}
+
 // RouteTable is a thread-safe mapping from .test hostnames to local service
 // ports. It is the central data structure shared between the proxy (which reads
 // it on every request) and the file watcher (which writes it whenever the
@@ -26,7 +34,7 @@ import (
 // atomically swaps in a new table.
 type RouteTable struct {
 	mu          sync.RWMutex
-	routes      map[string]int                 // hostname (e.g., "myapp.test") -> port (e.g., 12345)
+	routes      map[string]route               // hostname (e.g., "myapp.test") -> route
 	allocations map[string]registry.Allocation // full registry data keyed by "project/instance", used by dashboard
 	ports       []int                          // deduplicated list of all allocated ports across all projects
 	// OnUpdate is an optional callback invoked after every route table update.
@@ -35,19 +43,20 @@ type RouteTable struct {
 	OnUpdate func()
 }
 
-// Lookup returns the port mapped to the given hostname and true, or zero and
-// false if no route exists for that hostname. This is the hot path called on
-// every incoming proxy request, so it uses a read lock for maximum concurrency.
-func (rt *RouteTable) Lookup(hostname string) (int, bool) {
+// Lookup returns the route mapped to the given hostname and true, or a zero
+// route and false if no route exists for that hostname. This is the hot path
+// called on every incoming proxy request, so it uses a read lock for maximum
+// concurrency.
+func (rt *RouteTable) Lookup(hostname string) (route, bool) {
 	rt.mu.RLock()
 	defer rt.mu.RUnlock()
-	port, ok := rt.routes[hostname]
-	return port, ok
+	r, ok := rt.routes[hostname]
+	return r, ok
 }
 
 // update swaps the routing table atomically and fires the OnUpdate callback.
 // Used only in tests to set up minimal route tables without allocation data.
-func (rt *RouteTable) update(routes map[string]int) {
+func (rt *RouteTable) update(routes map[string]route) {
 	rt.mu.Lock()
 	rt.routes = routes
 	rt.mu.Unlock()
@@ -62,7 +71,7 @@ func (rt *RouteTable) update(routes map[string]int) {
 // registry changes. The allocation data is stored so the dashboard can display
 // project names, service names, and port assignments. A deduplicated port list
 // is also computed and cached for the dashboard's health checker.
-func (rt *RouteTable) UpdateWithAllocations(routes map[string]int, allocs map[string]registry.Allocation) {
+func (rt *RouteTable) UpdateWithAllocations(routes map[string]route, allocs map[string]registry.Allocation) {
 	rt.mu.Lock()
 	rt.routes = routes
 	rt.allocations = allocs
@@ -112,35 +121,103 @@ func (rt *RouteTable) Allocations() map[string]registry.Allocation {
 	return result
 }
 
-// BuildRoutes constructs a hostname-to-port routing map from the full registry.
+// BuildRoutes constructs a hostname-to-route mapping from the full registry.
 // It iterates over every project allocation and maps each service's .test
 // hostname to its allocated port. Only services that have a hostname configured
 // in outport.yml (and therefore have an entry in alloc.Hostnames) produce a
 // route. Services without hostnames are port-only and are not reachable
-// through the proxy. The returned map is intended to be passed to
+// through the proxy. Alias hostnames are also included, pointing to the same
+// port as the primary hostname. The returned map is intended to be passed to
 // RouteTable.UpdateWithAllocations.
-func BuildRoutes(reg *registry.Registry) map[string]int {
-	routes := make(map[string]int)
+func BuildRoutes(reg *registry.Registry) map[string]route {
+	routes := make(map[string]route)
 	for _, alloc := range reg.Projects {
 		if alloc.Hostnames == nil {
 			continue
 		}
 		for svcName, hostname := range alloc.Hostnames {
-			routes[hostname] = alloc.Ports[svcName]
+			routes[hostname] = route{Port: alloc.Ports[svcName]}
+		}
+		for svcName, svcAliases := range alloc.Aliases {
+			for _, aliasHostname := range svcAliases {
+				routes[aliasHostname] = route{Port: alloc.Ports[svcName]}
+			}
 		}
 	}
 	return routes
 }
 
+// BuildTunnelRoutes reads the tunnel state and returns HostOverride routes.
+// Each tunnel URL hostname maps to the service's port with the original .test
+// hostname as HostOverride, enabling the proxy to rewrite the Host header
+// before forwarding to the local service.
+func BuildTunnelRoutes(tunnelState *tunnel.TunnelState, allocs map[string]registry.Allocation) map[string]route {
+	if tunnelState == nil || len(tunnelState.HostnameMap) == 0 {
+		return nil
+	}
+	routes := make(map[string]route)
+	for tunnelHostname, testHostname := range tunnelState.HostnameMap {
+		// Find which port this .test hostname maps to
+		found := false
+		for _, alloc := range allocs {
+			// Check primary hostnames
+			for svcName, h := range alloc.Hostnames {
+				if h == testHostname {
+					routes[tunnelHostname] = route{Port: alloc.Ports[svcName], HostOverride: testHostname}
+					found = true
+					break
+				}
+			}
+			if found {
+				break
+			}
+			// Check aliases
+			for svcName, svcAliases := range alloc.Aliases {
+				for _, h := range svcAliases {
+					if h == testHostname {
+						routes[tunnelHostname] = route{Port: alloc.Ports[svcName], HostOverride: testHostname}
+						found = true
+						break
+					}
+				}
+				if found {
+					break
+				}
+			}
+			if found {
+				break
+			}
+		}
+	}
+	return routes
+}
+
+// MergeTunnelRoutes adds temporary HostOverride routes for active tunnels.
+// These routes are merged into the existing route map without replacing it.
+func (rt *RouteTable) MergeTunnelRoutes(tunnelRoutes map[string]route) {
+	rt.mu.Lock()
+	if rt.routes == nil {
+		rt.routes = make(map[string]route)
+	}
+	for hostname, r := range tunnelRoutes {
+		rt.routes[hostname] = r
+	}
+	rt.mu.Unlock()
+	if rt.OnUpdate != nil {
+		rt.OnUpdate()
+	}
+}
+
 // WatchAndRebuild performs an initial route build from the registry file, then
 // watches the registry's parent directory for file changes. When registry.json
-// is created or written, the routing table is rebuilt from the new file
-// contents. When the tunnel state file changes, the OnUpdate callback is fired
-// without rebuilding routes (so the dashboard can refresh tunnel status). The
-// function blocks until the context is cancelled or a watcher error occurs.
-// Errors during the initial load are returned immediately; errors during
-// subsequent reloads are silently ignored (best-effort) to keep the daemon
-// running with the last known good routes.
+// is created or written, the routing table is rebuilt from the new file contents
+// and any active tunnel routes are re-applied on top. When the tunnel state file
+// changes, HostOverride routes are built from the tunnel state and merged into
+// the route table (so the proxy can forward tunnel traffic to local services
+// with the correct Host header). The function blocks until the context is
+// cancelled or a watcher error occurs. Errors during the initial load are
+// returned immediately; errors during subsequent reloads are silently ignored
+// (best-effort) to keep the daemon running with the last known good routes.
 func WatchAndRebuild(ctx context.Context, regPath string, rt *RouteTable) error {
 	// Initial load
 	if err := rebuildFromFile(regPath, rt); err != nil {
@@ -173,11 +250,9 @@ func WatchAndRebuild(ctx context.Context, regPath string, rt *RouteTable) error 
 			}
 			if eventBase == base {
 				_ = rebuildFromFile(regPath, rt) // best-effort
+				addTunnelRoutes(regPath, rt)     // re-apply tunnel routes after registry rebuild
 			} else if eventBase == tunnel.StateFilename {
-				// Tunnel state changed — notify dashboard without rebuilding routes
-				if rt.OnUpdate != nil {
-					rt.OnUpdate()
-				}
+				addTunnelRoutes(regPath, rt)
 			}
 		case err, ok := <-watcher.Errors:
 			if !ok {
@@ -185,6 +260,26 @@ func WatchAndRebuild(ctx context.Context, regPath string, rt *RouteTable) error 
 			}
 			return fmt.Errorf("watcher error: %w", err)
 		}
+	}
+}
+
+// addTunnelRoutes reads the tunnel state file and merges HostOverride routes
+// into the route table. If the tunnel state file is missing or stale, this is
+// a no-op. Called both when the tunnel state file changes and after registry
+// rebuilds (to re-apply tunnel routes that would otherwise be lost).
+//
+// Known limitation: fsnotify does not fire events for file removals, so when
+// tunnels stop and the state file is deleted, these routes linger until the
+// next registry rebuild (e.g., any "outport up" or "outport down").
+func addTunnelRoutes(regPath string, rt *RouteTable) {
+	statePath := filepath.Join(filepath.Dir(regPath), tunnel.StateFilename)
+	state, err := tunnel.ReadState(statePath)
+	if err != nil || state == nil {
+		return
+	}
+	tunnelRoutes := BuildTunnelRoutes(state, rt.Allocations())
+	if len(tunnelRoutes) > 0 {
+		rt.MergeTunnelRoutes(tunnelRoutes)
 	}
 }
 

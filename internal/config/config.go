@@ -29,8 +29,14 @@ import (
 // hostnameRe validates hostname stems: lowercase alphanumeric, hyphens, and dots.
 var hostnameRe = regexp.MustCompile(`^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$`)
 
+// aliasKeyRe validates alias keys: lowercase alphanumeric with hyphens, no leading/trailing hyphens.
+var aliasKeyRe = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]*[a-z0-9])?$`)
+
 // templateVarRe matches ${service.field} or ${service.field:modifier} references in computed value templates.
 var templateVarRe = regexp.MustCompile(`\$\{(\w+)\.(\w+)(?::(\w+))?\}`)
+
+// aliasVarRe matches ${service.alias.name} and ${service.alias_url.name} references in computed value templates.
+var aliasVarRe = regexp.MustCompile(`\$\{(\w+)\.(alias|alias_url)\.(\w+)\}`)
 
 // standaloneVarRe matches ${word} references that don't contain a dot (i.e., not service.field).
 // It also matches ${word:-...} and ${word:+...} conditional syntax.
@@ -70,6 +76,11 @@ func validateTemplateRefs(computedName, template string, services map[string]Ser
 			modifier = m[3]
 		}
 
+		// Skip alias fields — they're validated by aliasVarRe below
+		if field == "alias" || field == "alias_url" {
+			continue
+		}
+
 		if _, ok := services[svcName]; !ok {
 			return fmt.Errorf("computed %q: references unknown service %q", computedName, svcName)
 		}
@@ -93,6 +104,21 @@ func validateTemplateRefs(computedName, template string, services map[string]Ser
 		}
 		if !validStandaloneVars[varName] {
 			return fmt.Errorf("computed %q: unknown variable %q (valid: instance, project_name)", computedName, varName)
+		}
+	}
+
+	// Validate ${service.alias.name} and ${service.alias_url.name} references
+	aliasMatches := aliasVarRe.FindAllStringSubmatch(template, -1)
+	for _, m := range aliasMatches {
+		svcName := m[1]
+		aliasName := m[3]
+
+		svc, ok := services[svcName]
+		if !ok {
+			return fmt.Errorf("computed %q: references unknown service %q", computedName, svcName)
+		}
+		if _, ok := svc.Aliases[aliasName]; !ok {
+			return fmt.Errorf("computed %q: service %q has no alias %q", computedName, svcName, aliasName)
 		}
 	}
 
@@ -174,6 +200,12 @@ type Service struct {
 	// lowercase alphanumeric characters, hyphens, and dots. "outport.test" is reserved.
 	Hostname string `yaml:"hostname"`
 
+	// Aliases is an optional map of named additional hostnames for this service.
+	// Keys are short labels (e.g., "app", "admin") and values are hostname stems
+	// (e.g., "app.myproject", "admin.myproject"). Requires Hostname to be set.
+	// Each alias hostname must follow the same rules as the primary hostname.
+	Aliases map[string]string `yaml:"aliases"`
+
 	// rawEnvFile holds the YAML-deserialized env_file value before normalization.
 	// It is cleared during normalize and should not be accessed after Load returns.
 	rawEnvFile envFileField
@@ -186,10 +218,11 @@ type Service struct {
 
 // rawService is used for YAML unmarshaling to capture env_file before normalization.
 type rawService struct {
-	PreferredPort int          `yaml:"preferred_port"`
-	EnvVar        string       `yaml:"env_var"`
-	Hostname      string       `yaml:"hostname"`
-	EnvFile       envFileField `yaml:"env_file"`
+	PreferredPort int               `yaml:"preferred_port"`
+	EnvVar        string            `yaml:"env_var"`
+	Hostname      string            `yaml:"hostname"`
+	Aliases       map[string]string `yaml:"aliases"`
+	EnvFile       envFileField      `yaml:"env_file"`
 }
 
 // ComputedValue represents a derived environment variable whose value is built from a
@@ -374,6 +407,7 @@ func toService(rs rawService) Service {
 		PreferredPort: rs.PreferredPort,
 		EnvVar:        rs.EnvVar,
 		Hostname:      rs.Hostname,
+		Aliases:       rs.Aliases,
 		rawEnvFile:    rs.EnvFile,
 	}
 }
@@ -426,6 +460,31 @@ func (c *Config) validate() error {
 		}
 	}
 
+	// Collect all hostnames for intra-config duplicate detection.
+	// Two passes: primaries first, then aliases. This ensures aliases that
+	// duplicate their own service's primary hostname get a specific error message.
+	allHostnames := make(map[string]string) // stem -> label
+	for name, svc := range c.Services {
+		if svc.Hostname != "" {
+			stem := strings.TrimSuffix(svc.Hostname, ".test")
+			allHostnames[stem] = fmt.Sprintf("service %q", name)
+		}
+	}
+	for name, svc := range c.Services {
+		primaryStem := strings.TrimSuffix(svc.Hostname, ".test")
+		for key, aliasHostname := range svc.Aliases {
+			aliasStem := strings.TrimSuffix(aliasHostname, ".test")
+			label := fmt.Sprintf("service %q alias %q", name, key)
+			if aliasStem == primaryStem {
+				return fmt.Errorf("service %q: alias %q hostname conflicts with service's own hostname", name, key)
+			}
+			if existing, ok := allHostnames[aliasStem]; ok {
+				return fmt.Errorf("%s: hostname %q conflicts with %s", label, aliasHostname, existing)
+			}
+			allHostnames[aliasStem] = label
+		}
+	}
+
 	for name, svc := range c.Services {
 		if svc.Hostname != "" {
 			if svc.Hostname == "outport.test" {
@@ -437,6 +496,26 @@ func (c *Config) validate() error {
 			}
 			if !strings.Contains(stem, c.Name) {
 				return fmt.Errorf("service %q: hostname %q must contain project name %q", name, svc.Hostname, c.Name)
+			}
+		}
+
+		if len(svc.Aliases) > 0 && svc.Hostname == "" {
+			return fmt.Errorf("service %q: aliases require a primary hostname", name)
+		}
+
+		for key, aliasHostname := range svc.Aliases {
+			if !aliasKeyRe.MatchString(key) {
+				return fmt.Errorf("service %q: alias key %q is invalid (must be lowercase alphanumeric with hyphens)", name, key)
+			}
+			if aliasHostname == "outport.test" {
+				return fmt.Errorf("service %q: alias %q hostname %q is reserved for the Outport dashboard", name, key, aliasHostname)
+			}
+			aliasStem := strings.TrimSuffix(aliasHostname, ".test")
+			if !hostnameRe.MatchString(aliasStem) {
+				return fmt.Errorf("service %q: alias %q hostname %q contains invalid characters (use lowercase alphanumeric, hyphens, dots)", name, key, aliasHostname)
+			}
+			if !strings.Contains(aliasStem, c.Name) {
+				return fmt.Errorf("service %q: alias %q hostname %q must contain project name %q", name, key, aliasHostname, c.Name)
 			}
 		}
 	}

@@ -922,3 +922,303 @@ services:
 	}
 }
 
+// --- Aliases ---
+
+func TestLoad_ServiceAliases(t *testing.T) {
+	dir := writeConfig(t, `name: approvethis
+services:
+  web:
+    env_var: PORT
+    hostname: approvethis
+    aliases:
+      app: app.approvethis
+      admin: admin.approvethis
+`)
+	cfg, err := Load(dir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	web := cfg.Services["web"]
+	if len(web.Aliases) != 2 {
+		t.Fatalf("aliases count = %d, want 2", len(web.Aliases))
+	}
+	if web.Aliases["app"] != "app.approvethis" {
+		t.Errorf("alias app = %q, want %q", web.Aliases["app"], "app.approvethis")
+	}
+	if web.Aliases["admin"] != "admin.approvethis" {
+		t.Errorf("alias admin = %q, want %q", web.Aliases["admin"], "admin.approvethis")
+	}
+}
+
+func TestLoad_AliasesWithTestSuffix(t *testing.T) {
+	dir := writeConfig(t, `name: approvethis
+services:
+  web:
+    env_var: PORT
+    hostname: approvethis.test
+    aliases:
+      app: app.approvethis.test
+`)
+	cfg, err := Load(dir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.Services["web"].Aliases["app"] != "app.approvethis.test" {
+		t.Errorf("alias should preserve .test suffix from config")
+	}
+}
+
+func TestLoad_NoAliases(t *testing.T) {
+	dir := writeConfig(t, `name: myapp
+services:
+  web:
+    env_var: PORT
+    hostname: myapp
+`)
+	cfg, err := Load(dir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.Services["web"].Aliases != nil {
+		t.Errorf("aliases should be nil when not specified")
+	}
+}
+
+func TestValidateAliasKeyFormat(t *testing.T) {
+	tests := []struct {
+		name    string
+		key     string
+		wantErr bool
+	}{
+		{"valid lowercase", "app", false},
+		{"valid with hyphens", "my-app", false},
+		{"valid with digits", "app2", false},
+		{"invalid uppercase", "App", true},
+		{"invalid underscore", "my_app", true},
+		{"invalid dot", "my.app", true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			yaml := fmt.Sprintf(`
+name: approvethis
+services:
+  web:
+    env_var: PORT
+    hostname: approvethis
+    aliases:
+      %s: app.approvethis
+`, tt.key)
+			dir := writeConfig(t, yaml)
+			_, err := Load(dir)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("alias key %q: err=%v, wantErr=%v", tt.key, err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestValidateAliasHostnameRules(t *testing.T) {
+	tests := []struct {
+		name     string
+		hostname string
+		wantErr  bool
+	}{
+		{"valid subdomain", "app.approvethis", false},
+		{"valid with test suffix", "app.approvethis.test", false},
+		{"invalid chars", "app_approvethis", true},
+		{"missing project name", "app.other", true},
+		{"reserved outport.test", "outport.test", true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			yaml := fmt.Sprintf(`
+name: approvethis
+services:
+  web:
+    env_var: PORT
+    hostname: approvethis
+    aliases:
+      app: %s
+`, tt.hostname)
+			dir := writeConfig(t, yaml)
+			_, err := Load(dir)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("alias hostname %q: err=%v, wantErr=%v", tt.hostname, err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestValidateAliasDuplicatesOwnHostname(t *testing.T) {
+	dir := writeConfig(t, `
+name: approvethis
+services:
+  web:
+    env_var: PORT
+    hostname: approvethis
+    aliases:
+      dupe: approvethis
+`)
+	_, err := Load(dir)
+	if err == nil {
+		t.Fatal("expected error when alias duplicates primary hostname")
+	}
+	if !strings.Contains(err.Error(), "conflicts with service's own hostname") {
+		t.Errorf("error = %v, want mention of own hostname conflict", err)
+	}
+}
+
+func TestValidateAliasDuplicatesAnotherAlias(t *testing.T) {
+	dir := writeConfig(t, `
+name: approvethis
+services:
+  web:
+    env_var: PORT
+    hostname: approvethis
+    aliases:
+      app: app.approvethis
+      dupe: app.approvethis
+`)
+	_, err := Load(dir)
+	if err == nil {
+		t.Fatal("expected error when two aliases share a hostname")
+	}
+}
+
+func TestValidateAliasWithoutPrimaryHostname(t *testing.T) {
+	dir := writeConfig(t, `
+name: approvethis
+services:
+  web:
+    env_var: PORT
+    aliases:
+      app: app.approvethis
+`)
+	_, err := Load(dir)
+	if err == nil {
+		t.Fatal("expected error when aliases defined without primary hostname")
+	}
+}
+
+func TestValidateAliasDuplicatesAnotherServiceHostname(t *testing.T) {
+	dir := writeConfig(t, `
+name: approvethis
+services:
+  web:
+    env_var: PORT
+    hostname: approvethis
+    aliases:
+      app: api.approvethis
+  api:
+    env_var: API_PORT
+    hostname: api.approvethis
+`)
+	_, err := Load(dir)
+	if err == nil {
+		t.Fatal("expected error when alias duplicates another service's hostname")
+	}
+}
+
+func TestValidateAliasDuplicatesAnotherServiceAlias(t *testing.T) {
+	dir := writeConfig(t, `
+name: approvethis
+services:
+  web:
+    env_var: PORT
+    hostname: approvethis
+    aliases:
+      app: app.approvethis
+  api:
+    env_var: API_PORT
+    hostname: api.approvethis
+    aliases:
+      dupe: app.approvethis
+`)
+	_, err := Load(dir)
+	if err == nil {
+		t.Fatal("expected error when aliases across services share a hostname")
+	}
+}
+
+// --- Alias Template References ---
+
+func TestValidateTemplateRefAlias(t *testing.T) {
+	dir := writeConfig(t, `name: approvethis
+services:
+  web:
+    env_var: PORT
+    hostname: approvethis
+    aliases:
+      app: app.approvethis
+computed:
+  APP_URL:
+    value: "${web.alias_url.app}"
+    env_file: .env
+`)
+	_, err := Load(dir)
+	if err != nil {
+		t.Fatalf("expected valid alias template ref, got: %v", err)
+	}
+}
+
+func TestValidateTemplateRefAliasHostname(t *testing.T) {
+	dir := writeConfig(t, `name: approvethis
+services:
+  web:
+    env_var: PORT
+    hostname: approvethis
+    aliases:
+      app: app.approvethis
+computed:
+  APP_HOSTNAME:
+    value: "${web.alias.app}"
+    env_file: .env
+`)
+	_, err := Load(dir)
+	if err != nil {
+		t.Fatalf("expected valid alias hostname template ref, got: %v", err)
+	}
+}
+
+func TestValidateTemplateRefAliasUnknown(t *testing.T) {
+	dir := writeConfig(t, `name: approvethis
+services:
+  web:
+    env_var: PORT
+    hostname: approvethis
+    aliases:
+      app: app.approvethis
+computed:
+  BAD:
+    value: "${web.alias.missing}"
+    env_file: .env
+`)
+	_, err := Load(dir)
+	if err == nil {
+		t.Fatal("expected error for unknown alias name in template")
+	}
+	if !strings.Contains(err.Error(), "missing") {
+		t.Errorf("error = %v, want mention of missing alias", err)
+	}
+}
+
+func TestValidateTemplateRefAliasUnknownService(t *testing.T) {
+	dir := writeConfig(t, `name: approvethis
+services:
+  web:
+    env_var: PORT
+    hostname: approvethis
+computed:
+  BAD:
+    value: "${unknown.alias.app}"
+    env_file: .env
+`)
+	_, err := Load(dir)
+	if err == nil {
+		t.Fatal("expected error for unknown service in alias template ref")
+	}
+	if !strings.Contains(err.Error(), "unknown") {
+		t.Errorf("error = %v, want mention of unknown service", err)
+	}
+}
+
