@@ -6,7 +6,10 @@ All tasks use the `justfile`:
 just build            # Compile to dist/outport
 just test             # Run all tests (verbose)
 just test-short       # Run tests (compact output)
+just test-e2e         # Run BATS end-to-end tests
 just lint             # Run golangci-lint
+just gosec            # Run gosec security scanner (source code)
+just vulncheck        # Run govulncheck (dependencies)
 just install          # Install to $GOPATH/bin
 just run <args>       # Build and run (e.g., just run up)
 just release-dry-run  # Test GoReleaser locally

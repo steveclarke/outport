@@ -38,7 +38,7 @@ func Execute() error {
 		// When --json is active, emit an error envelope to stdout so
 		// machine consumers always get structured output.
 		if jsonFlag && !errors.Is(err, ErrSilent) {
-			hint := jsonErrorHint(err)
+			hint := ErrorHint(err)
 			writeJSONError(cmd.OutOrStdout(), err.Error(), hint)
 			return ErrSilent // suppress stderr duplicate from main.go
 		}
@@ -46,8 +46,8 @@ func Execute() error {
 	return err
 }
 
-// jsonErrorHint returns a contextual hint for common errors.
-func jsonErrorHint(err error) string {
+// ErrorHint returns a contextual hint for common errors.
+func ErrorHint(err error) string {
 	msg := err.Error()
 	switch {
 	case strings.Contains(msg, "No outport.yml"):
