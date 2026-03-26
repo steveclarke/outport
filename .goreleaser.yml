@@ -28,6 +28,18 @@ changelog:
       - "^chore:"
       - "^test:"
 
+nfpms:
+  - package_name: outport
+    vendor: Steve Clarke
+    homepage: "https://outport.dev"
+    maintainer: "Steve Clarke <steve@outport.dev>"
+    description: "Dev port manager for multi-project, multi-worktree development"
+    license: MIT
+    formats:
+      - deb
+      - rpm
+    bindir: /usr/local/bin
+
 brews:
   - repository:
       owner: steveclarke

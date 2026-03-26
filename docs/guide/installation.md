@@ -1,10 +1,32 @@
 ---
-description: Install Outport via Homebrew, go install, or build from source. macOS and Linux supported.
+description: Install Outport via the install script, Homebrew, .deb/.rpm package, go install, or build from source. macOS and Linux supported.
 ---
 
 # Installation
 
-## Homebrew (Recommended)
+## Install Script (Recommended)
+
+Works on macOS and Linux. Downloads the latest release, verifies the checksum, and installs to `~/.local/bin`:
+
+```bash
+curl -fsSL https://outport.dev/install.sh | sh
+```
+
+Options:
+
+```bash
+# Install to a specific directory
+curl -fsSL https://outport.dev/install.sh | sh -s -- --dir /usr/local/bin
+
+# Install a specific version
+curl -fsSL https://outport.dev/install.sh | sh -s -- --version 0.30.0
+```
+
+::: tip
+If `~/.local/bin` is not in your `PATH`, the script will show the command to add it.
+:::
+
+## Homebrew
 
 ```bash
 brew install steveclarke/tap/outport
@@ -14,6 +36,18 @@ To update:
 
 ```bash
 brew upgrade outport
+```
+
+## .deb / .rpm Package
+
+Download the `.deb` or `.rpm` from the [latest release](https://github.com/steveclarke/outport/releases/latest):
+
+```bash
+# Debian / Ubuntu
+sudo dpkg -i outport_*.deb
+
+# Fedora / RHEL
+sudo rpm -i outport-*.rpm
 ```
 
 ## From Source

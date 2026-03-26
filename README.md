@@ -21,11 +21,16 @@ Outport fixes this. Declare your services once in `outport.yml`, check it into y
 ## Install
 
 ```bash
+curl -fsSL https://outport.dev/install.sh | sh
+```
+
+Or with Homebrew:
+
+```bash
 brew install steveclarke/tap/outport
 ```
 
-> [!TIP]
-> You can also install [from source](https://outport.dev/guide/installation) with `go install`.
+See all [installation options](https://outport.dev/guide/installation) including .deb/.rpm packages and building from source.
 
 ## Quick Start
 
