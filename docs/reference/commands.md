@@ -1,5 +1,5 @@
 ---
-description: All Outport CLI commands — setup, init, up, down, ports, open, share, rename, promote, doctor, and system management.
+description: All Outport CLI commands — setup, init, up, down, status, open, share, rename, promote, doctor, and system management.
 ---
 
 # Commands
@@ -271,9 +271,27 @@ outport doctor
 
 Runs diagnostic checks on all Outport infrastructure and project configuration. Reports pass/warn/fail for each check with actionable fix suggestions. Checks include:
 
-**System checks** (always run): DNS resolver config, resolver content, daemon service file, service binary validity, daemon status, DNS resolution, HTTP proxy (port 80), HTTPS proxy (port 443), CA certificate and key existence, CA expiry, CA trust, registry validity, cloudflared availability.
+**System checks** (always run):
 
-**Project checks** (when `outport.yml` found): config file validation, project registration in the registry, per-service port status (running or not — both are informational, not failures).
+- DNS resolver config
+- Resolver content
+- Daemon service file
+- Service binary validity
+- Daemon status
+- DNS resolution
+- HTTP proxy (port 80)
+- HTTPS proxy (port 443)
+- CA certificate and key existence
+- CA expiry
+- CA trust
+- Registry validity
+- Cloudflared availability
+
+**Project checks** (when `outport.yml` found):
+
+- Config file validation
+- Project registration in the registry
+- Per-service port status (running or not — both are informational, not failures)
 
 Exit code 0 if all checks pass or warn. Exit code 1 if any check fails.
 
