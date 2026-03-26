@@ -49,7 +49,7 @@ func NewProxy(routes *RouteTable) *ProxyHandler {
 // ClearCache discards all cached reverse proxies, forcing new ones to be
 // created on the next request. Call this after route table updates.
 func (p *ProxyHandler) ClearCache() {
-	p.proxies = sync.Map{}
+	p.proxies.Clear()
 }
 
 // getOrCreateProxy returns a cached reverse proxy for the given port, creating
