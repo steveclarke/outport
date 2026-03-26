@@ -1506,3 +1506,65 @@ services:
 	}
 }
 
+func TestLoad_OpenUnknownServiceErrors(t *testing.T) {
+	dir := writeConfig(t, `name: myapp
+services:
+  web:
+    env_var: PORT
+    hostname: myapp
+open:
+  - web
+  - missing
+`)
+	_, err := Load(dir)
+	if err == nil {
+		t.Fatal("expected error for unknown service in open, got nil")
+	}
+	if !strings.Contains(err.Error(), `"missing"`) {
+		t.Errorf("error = %q, want to contain '\"missing\"'", err.Error())
+	}
+}
+
+func TestLoad_OpenServiceWithoutHostnameErrors(t *testing.T) {
+	dir := writeConfig(t, `name: myapp
+services:
+  web:
+    env_var: PORT
+    hostname: myapp
+  postgres:
+    env_var: DB_PORT
+open:
+  - web
+  - postgres
+`)
+	_, err := Load(dir)
+	if err == nil {
+		t.Fatal("expected error for service without hostname in open, got nil")
+	}
+	if !strings.Contains(err.Error(), `"postgres"`) {
+		t.Errorf("error = %q, want to contain '\"postgres\"'", err.Error())
+	}
+	if !strings.Contains(err.Error(), "hostname") {
+		t.Errorf("error = %q, want to contain 'hostname'", err.Error())
+	}
+}
+
+func TestLoad_OpenDuplicateErrors(t *testing.T) {
+	dir := writeConfig(t, `name: myapp
+services:
+  web:
+    env_var: PORT
+    hostname: myapp
+open:
+  - web
+  - web
+`)
+	_, err := Load(dir)
+	if err == nil {
+		t.Fatal("expected error for duplicate in open, got nil")
+	}
+	if !strings.Contains(err.Error(), "duplicate") {
+		t.Errorf("error = %q, want to contain 'duplicate'", err.Error())
+	}
+}
+
