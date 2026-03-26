@@ -14,7 +14,7 @@ func TestWriteState_CreatesFile(t *testing.T) {
 		"rails": "https://abc-123.trycloudflare.com",
 		"vite":  "https://def-456.trycloudflare.com",
 	}
-	err := WriteState(path, "myapp/main", tunnels)
+	err := WriteState(path, "myapp/main", tunnels, nil)
 	if err != nil {
 		t.Fatalf("WriteState: %v", err)
 	}
@@ -31,7 +31,7 @@ func TestReadState_ReturnsWrittenData(t *testing.T) {
 	tunnels := map[string]string{
 		"rails": "https://abc-123.trycloudflare.com",
 	}
-	if err := WriteState(path, "myapp/main", tunnels); err != nil {
+	if err := WriteState(path, "myapp/main", tunnels, nil); err != nil {
 		t.Fatalf("WriteState: %v", err)
 	}
 
@@ -64,7 +64,7 @@ func TestRemoveState(t *testing.T) {
 	path := filepath.Join(dir, "tunnels.json")
 
 	tunnels := map[string]string{"rails": "https://example.com"}
-	if err := WriteState(path, "myapp/main", tunnels); err != nil {
+	if err := WriteState(path, "myapp/main", tunnels, nil); err != nil {
 		t.Fatalf("WriteState: %v", err)
 	}
 
@@ -72,6 +72,32 @@ func TestRemoveState(t *testing.T) {
 
 	if _, err := os.Stat(path); !os.IsNotExist(err) {
 		t.Error("state file should have been removed")
+	}
+}
+
+func TestWriteState_IncludesHostnameMap(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "tunnels.json")
+
+	tunnels := map[string]string{
+		"web": "https://abc123.trycloudflare.com",
+	}
+	hostnameMap := map[string]string{
+		"abc123.trycloudflare.com": "myapp.test",
+	}
+	if err := WriteState(path, "myapp/main", tunnels, hostnameMap); err != nil {
+		t.Fatalf("WriteState: %v", err)
+	}
+
+	state, err := ReadState(path)
+	if err != nil {
+		t.Fatalf("ReadState: %v", err)
+	}
+	if state == nil {
+		t.Fatal("expected non-nil state")
+	}
+	if got := state.HostnameMap["abc123.trycloudflare.com"]; got != "myapp.test" {
+		t.Errorf("hostname map: got %q, want %q", got, "myapp.test")
 	}
 }
 

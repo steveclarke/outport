@@ -54,19 +54,17 @@ Removes the managed block from all env files and removes the project/instance fr
 | `--yes`, `-y` | Auto-approve removing env files outside the project directory |
 | `--json` | Output results as JSON |
 
-### `outport ports`
+### `outport status`
 
-Show ports for the current project.
+Show status for the current project — ports, hostnames, health, and URLs. Health checks run by default.
 
 ```bash
-outport ports
-outport ports --check    # check if ports are accepting connections
-outport ports --computed  # include computed values
+outport status
+outport status --computed  # include computed values
 ```
 
 | Flag | Description |
 |------|-------------|
-| `--check` | Check if ports are accepting connections |
 | `--computed` | Show computed values |
 | `--json` | Output results as JSON |
 
@@ -112,6 +110,8 @@ outport share web vite     # tunnel specific services
 ```
 
 Creates temporary public URLs for HTTP services (those with a `hostname`). Requires `cloudflared` (`brew install cloudflared`). The command blocks until you press Ctrl+C.
+
+Each hostname gets its own tunnel — primary hostnames and named aliases are each tunneled independently. Tunnels route through the local proxy (port 80) using Host header rewriting, so the proxy dispatches to the correct service. The maximum number of concurrent tunnels is controlled by the [`tunnels.max` setting](/reference/configuration#global-settings) (default `8`).
 
 While sharing, env files are rewritten so computed values using `${service.url}` resolve to the tunnel URLs. This means CORS origins, API base URLs, and other computed values automatically point to the public tunnel URLs. Values using `${service.url:direct}` stay as localhost. On exit, env files revert to local URLs. Restart your services after starting and stopping `outport share`.
 
@@ -242,6 +242,20 @@ Stops the daemon, removes the service configuration, removes the DNS resolver co
 | Flag | Description |
 |------|-------------|
 | `--json` | Output results as JSON (includes `ca_removed`, `certs_cleaned` fields) |
+
+## Utility Commands
+
+### `outport completion`
+
+Generate shell completion scripts.
+
+```bash
+outport completion bash   # bash completions
+outport completion zsh    # zsh completions
+outport completion fish   # fish completions
+```
+
+See [Installation — Shell Completions](/guide/installation#shell-completions) for setup instructions.
 
 ### `outport doctor`
 

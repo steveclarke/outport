@@ -232,6 +232,66 @@ func TestFindHostname(t *testing.T) {
 	}
 }
 
+func TestFindHostname_Aliases(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "registry.json")
+	reg, _ := Load(path)
+
+	reg.Set("approvethis", "main", Allocation{
+		ProjectDir: "/src/approvethis",
+		Ports:      map[string]int{"web": 14139},
+		Hostnames:  map[string]string{"web": "approvethis.test"},
+		Aliases: map[string]map[string]string{
+			"web": {"app": "app.approvethis.test"},
+		},
+	})
+
+	// Should find alias hostname
+	key, found := reg.FindHostname("app.approvethis.test", "other/main")
+	if !found {
+		t.Fatal("expected to find alias hostname")
+	}
+	if key != "approvethis/main" {
+		t.Errorf("key = %q, want approvethis/main", key)
+	}
+
+	// Self-exclude should skip alias
+	_, found = reg.FindHostname("app.approvethis.test", "approvethis/main")
+	if found {
+		t.Error("expected self-exclude to skip alias")
+	}
+}
+
+func TestRegistry_SaveAndReloadAliases(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "registry.json")
+
+	reg, _ := Load(path)
+	reg.Set("approvethis", "main", Allocation{
+		ProjectDir: "/src/approvethis",
+		Ports:      map[string]int{"web": 14139},
+		Hostnames:  map[string]string{"web": "approvethis.test"},
+		Aliases: map[string]map[string]string{
+			"web": {"app": "app.approvethis.test"},
+		},
+	})
+	if err := reg.Save(); err != nil {
+		t.Fatalf("save: %v", err)
+	}
+
+	reg2, err := Load(path)
+	if err != nil {
+		t.Fatalf("reload: %v", err)
+	}
+	got, ok := reg2.Get("approvethis", "main")
+	if !ok {
+		t.Fatal("allocation lost after reload")
+	}
+	if got.Aliases["web"]["app"] != "app.approvethis.test" {
+		t.Errorf("alias lost after reload: %v", got.Aliases)
+	}
+}
+
 func TestRemoveStale(t *testing.T) {
 	reg := &Registry{Projects: make(map[string]Allocation)}
 	reg.Set("app1", "main", Allocation{ProjectDir: "/src/app1"})

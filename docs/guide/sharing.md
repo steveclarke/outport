@@ -15,6 +15,8 @@ outport share web          # tunnel a specific service
 
 The command blocks until you press Ctrl+C.
 
+Each hostname gets its own tunnel — if a service has named [aliases](/reference/configuration#aliases), each alias is tunneled independently alongside the primary hostname. All tunnels route through the local proxy so host-based routing works correctly. The maximum number of concurrent tunnels is controlled by the [`tunnels.max` setting](/reference/configuration#global-settings) (default `8`).
+
 While sharing, `.env` files are rewritten so computed values using `${service.url}` resolve to the tunnel URLs automatically. CORS origins, API base URLs, and other cross-service values just work. Values using `${service.url:direct}` stay as localhost (server-to-server calls still go direct). On exit, `.env` files revert to local URLs. Restart your services after starting and stopping `outport share`.
 
 ## QR codes for mobile access

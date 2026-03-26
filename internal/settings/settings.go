@@ -30,6 +30,8 @@ type Settings struct {
 	Dashboard DashboardSettings
 	// DNS contains settings that control Outport's built-in DNS server.
 	DNS DNSSettings
+	// Tunnels contains settings that control the outport share tunnel feature.
+	Tunnels TunnelSettings
 }
 
 // DashboardSettings controls the behavior of the web dashboard served at outport.test.
@@ -40,6 +42,14 @@ type DashboardSettings struct {
 	// is not open. Set via the "health_interval" key in the [dashboard] section.
 	// Default: 3 seconds. Minimum: 1 second.
 	HealthInterval time.Duration
+}
+
+// TunnelSettings controls the behavior of the `outport share` tunnel feature.
+type TunnelSettings struct {
+	// Max is the maximum number of concurrent cloudflared tunnel processes.
+	// When the cap is reached, primary hostnames are tunneled first, then
+	// aliases in config order. Default: 8. Must be greater than 0.
+	Max int
 }
 
 // DNSSettings controls the behavior of Outport's built-in DNS server, which
@@ -58,6 +68,7 @@ type DNSSettings struct {
 // or when specific keys are omitted from the file. The defaults are:
 //   - dashboard.health_interval: 3 seconds
 //   - dns.ttl: 60 seconds
+//   - tunnels.max: 8
 func Defaults() Settings {
 	return Settings{
 		Dashboard: DashboardSettings{
@@ -65,6 +76,9 @@ func Defaults() Settings {
 		},
 		DNS: DNSSettings{
 			TTL: 60,
+		},
+		Tunnels: TunnelSettings{
+			Max: 8,
 		},
 	}
 }
@@ -131,6 +145,15 @@ func LoadFrom(path string) (*Settings, error) {
 		s.DNS.TTL = v
 	}
 
+	tunnels := cfg.Section("tunnels")
+	if key, err := tunnels.GetKey("max"); err == nil {
+		v, err := key.Int()
+		if err != nil {
+			return nil, fmt.Errorf("invalid tunnels max: %w", err)
+		}
+		s.Tunnels.Max = v
+	}
+
 	if err := s.validate(); err != nil {
 		return nil, err
 	}
@@ -145,6 +168,9 @@ func (s *Settings) validate() error {
 	}
 	if s.DNS.TTL <= 0 {
 		return fmt.Errorf("ttl %d must be greater than 0", s.DNS.TTL)
+	}
+	if s.Tunnels.Max <= 0 {
+		return fmt.Errorf("tunnels max %d must be greater than 0", s.Tunnels.Max)
 	}
 	return nil
 }
@@ -167,5 +193,10 @@ func DefaultConfigContent() string {
 # Time-to-live in seconds for .test DNS responses. Lower values mean the
 # browser picks up service changes faster, but increases DNS queries.
 # ttl = 60
+
+[tunnels]
+# Maximum number of concurrent tunnel processes for outport share.
+# Primary hostnames are tunneled first, then aliases.
+# max = 8
 `
 }

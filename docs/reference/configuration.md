@@ -89,6 +89,25 @@ All `.test` hostnames get HTTPS automatically when the local CA is installed —
 
 For non-main instances, hostnames are automatically suffixed with the instance code: `myapp.test` → `myapp-bkrm.test`.
 
+#### `aliases`
+
+Named alternative hostnames for a service. Each alias registers an additional proxy route to the same port, so a single service can be reached under multiple `.test` hostnames. Keys are short labels used in template variables; values are hostnames that follow the same rules as the primary `hostname` (must contain the project name, globally unique).
+
+```yaml
+# project name: approvethis
+services:
+  web:
+    env_var: PORT
+    hostname: approvethis
+    aliases:
+      app: app.approvethis
+      admin: admin.approvethis
+```
+
+This exposes `approvethis.test`, `app.approvethis.test`, and `admin.approvethis.test` — all proxied to the same port. For non-main instances, all aliases are suffixed with the instance code just like the primary hostname.
+
+Alias hostnames can be referenced in computed values via `${service.alias.NAME}` and `${service.alias_url.NAME}`.
+
 #### `preferred_port`
 
 Request a specific port. Useful for services like Postgres or MySQL that expect a conventional port. Outport uses this port if it's available. In the rare case another project has already claimed it, Outport falls back to hash-based allocation — you'll see the actual allocated port in the `outport up` output and in your env file.
@@ -163,6 +182,8 @@ Templates use bash-style `${...}` parameter expansion. You can reference any ser
 | `${service.url}` | `https://myapp.test` | Browser-facing URLs (CORS, asset hosts) |
 | `${service.url:direct}` | `http://localhost:24920` | Server-to-server (API calls, WebSocket) |
 | `${service.env_var}` | `PORT` | Env var name for the service |
+| `${service.alias.NAME}` | `app.myapp.test` | Alias hostname by label |
+| `${service.alias_url.NAME}` | `https://app.myapp.test` | Alias URL by label |
 
 Use `${service.url}` for URLs the browser sees — it produces `https://` URLs when the local CA is installed (via `outport system start`). Use `${service.url:direct}` for server-to-server communication that bypasses the proxy (always `http://localhost:{port}`).
 
@@ -225,11 +246,16 @@ Outport stores machine-level settings in `~/.config/outport/config` (INI format)
 # Time-to-live in seconds for .test DNS responses. Lower values mean the
 # browser picks up service changes faster, but increases DNS queries.
 # ttl = 60
+
+[tunnels]
+# Maximum number of concurrent tunnel processes when running outport share.
+# max = 8
 ```
 
 | Setting | Default | Description |
 |---------|---------|-------------|
 | `dashboard.health_interval` | `3s` | How often the dashboard polls port health. Accepts Go duration syntax (`1s`, `5s`, `500ms`). Minimum `1s`. |
 | `dns.ttl` | `60` | Time-to-live (in seconds) for `.test` DNS responses. Lower values mean faster updates when services start/stop. |
+| `tunnels.max` | `8` | Maximum number of concurrent tunnel processes when running `outport share`. |
 
 Missing settings use defaults. The file is entirely optional — if it doesn't exist, everything uses the defaults above.

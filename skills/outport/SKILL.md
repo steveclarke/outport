@@ -1,6 +1,6 @@
 ---
 name: outport
-description: Manage dev ports with Outport. Use when setting up a new project, adding services, resolving port conflicts, configuring monorepo cross-service URLs, or working with worktrees and multiple instances. Triggers on "outport", "port conflict", "port allocation", "dev ports", "outport.yml", "port management", "env var ports", "computed values", "cross-service URLs", "CORS origins from ports", ".test domains", "local DNS", "reverse proxy", "cookie isolation", "tunnel", "share localhost", "public URL", "cloudflare tunnel", "outport doctor", "health check", "diagnose outport", "QR code", "mobile access", "phone testing", "LAN IP". Also use when the user mentions running multiple instances of a project, worktree port setup, or when services need to discover each other's URLs.
+description: Manage dev ports with Outport. Use when setting up a new project, adding services, resolving port conflicts, configuring monorepo cross-service URLs, or working with worktrees and multiple instances. Triggers on "outport", "port conflict", "port allocation", "dev ports", "outport.yml", "port management", "env var ports", "computed values", "cross-service URLs", "CORS origins from ports", ".test domains", "local DNS", "reverse proxy", "cookie isolation", "tunnel", "share localhost", "public URL", "cloudflare tunnel", "outport doctor", "health check", "diagnose outport", "QR code", "mobile access", "phone testing", "LAN IP", "hostname aliases", "multiple hostnames", "subdomain routing". Also use when the user mentions running multiple instances of a project, worktree port setup, or when services need to discover each other's URLs.
 ---
 
 # Outport — Dev Port Manager
@@ -20,9 +20,9 @@ outport up --force        # Clear and re-allocate all ports from scratch
 outport down              # Remove ports and clean .env files
 
 # Inspect & diagnose
-outport ports             # Show ports for current project
-outport ports --computed  # Show ports and computed values
-outport ports --json      # Machine-readable output
+outport status            # Show project status (ports, health, URLs)
+outport status --computed # Include computed values
+outport status --json     # Machine-readable output
 outport open              # Open HTTP services in browser
 outport open web          # Open a specific service
 outport share             # Tunnel HTTP services to public URLs
@@ -156,6 +156,7 @@ myapp [bkrm]   web → 28104   http://myapp-bkrm.test
 |-------|----------|-------------|
 | `env_var` | yes | Environment variable name written to `.env` |
 | `hostname` | no | `.test` hostname for this service (e.g., `myapp.test`). Implies HTTP. Non-main instances get the instance code appended. |
+| `aliases` | no | Named alternative hostnames (map of label → hostname). Each alias routes to the same port. Requires `hostname`. |
 | `preferred_port` | no | Port to try first. Falls back to hash-based allocation if already in use |
 | `env_file` | no | Where to write. String or array. Defaults to `.env` in project root |
 
@@ -204,6 +205,8 @@ computed:
 | `${rails.url}` | `http://myapp.test` | Browser-facing URLs (CORS, asset hosts), routed via proxy |
 | `${rails.url:direct}` | `http://localhost:24920` | Server-to-server calls that bypass the proxy |
 | `${rails.env_var}` | `PORT` | Env var name for the service |
+| `${rails.alias.NAME}` | `app.myapp.test` | Alias hostname by label |
+| `${rails.alias_url.NAME}` | `https://app.myapp.test` | Alias URL by label |
 
 **When to use `url` vs `url:direct`:**
 - `${service.url}` — for values the browser sends (CORS origins, asset
@@ -408,7 +411,7 @@ Add it to `outport.yml` and run `outport up`. Existing allocations
 are preserved — only the new service gets a port.
 
 ### Agent needs to know the project's URLs
-Run `outport ports --json` for structured output with ports and URLs.
+Run `outport status --json` for structured output with ports, health, and URLs.
 
 ### Services moved to different ports than expected
 Check `outport system status` to see all allocations. If another project

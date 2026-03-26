@@ -42,6 +42,11 @@ type Allocation struct {
 	// "myapp-bxcf.test" to ensure global uniqueness.
 	Hostnames map[string]string `json:"hostnames,omitempty"`
 
+	// Aliases maps service names to their named alias hostnames. Each service can
+	// have zero or more aliases, keyed by alias name (e.g., {"web": {"app": "app.myapp.test"}}).
+	// Aliases register additional proxy routes to the same port as the primary hostname.
+	Aliases map[string]map[string]string `json:"aliases,omitempty"`
+
 	// EnvVars maps environment variable names to their computed values after
 	// template expansion. These are the key=value pairs written into .env files
 	// by the dotenv package. For example, {"PORT": "13542", "DATABASE_URL": "..."}.
@@ -235,6 +240,13 @@ func (r *Registry) FindHostname(hostname, excludeKey string) (string, bool) {
 		for _, h := range alloc.Hostnames {
 			if h == hostname {
 				return key, true
+			}
+		}
+		for _, svcAliases := range alloc.Aliases {
+			for _, h := range svcAliases {
+				if h == hostname {
+					return key, true
+				}
 			}
 		}
 	}

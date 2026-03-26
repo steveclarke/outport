@@ -21,11 +21,16 @@ Outport fixes this. Declare your services once in `outport.yml`, check it into y
 ## Install
 
 ```bash
+curl -fsSL https://outport.dev/install.sh | sh
+```
+
+Or with Homebrew:
+
+```bash
 brew install steveclarke/tap/outport
 ```
 
-> [!TIP]
-> You can also install [from source](https://outport.dev/guide/installation) with `go install`.
+See all [installation options](https://outport.dev/guide/installation) including .deb/.rpm packages and building from source.
 
 ## Quick Start
 
@@ -55,7 +60,7 @@ That's it. Outport writes finished environment variables to `.env` — every fra
 
 ### .test Domains with HTTPS
 
-Run `outport system start` once to enable `.test` hostnames. This installs a local DNS server, reverse proxy, and CA — your services become accessible at `https://myapp.test` instead of `http://localhost:24920`. The proxy starts at login and updates routes automatically.
+Run `outport system start` once to enable `.test` hostnames. This installs a local DNS server, reverse proxy, and CA — your services become accessible at `https://myapp.test` instead of `http://localhost:24920`. The proxy starts at login and updates routes automatically. Services that respond to multiple hostnames (e.g., subdomain routing) can declare [aliases](https://outport.dev/reference/configuration#aliases) — additional `.test` hostnames routed to the same port.
 
 ### Multiple Instances
 
@@ -118,7 +123,7 @@ outport setup              One-time system setup
 outport init               Create outport.yml
 outport up [--force]       Allocate ports, write .env
 outport down               Remove ports, clean .env
-outport ports [--computed] Show allocated ports
+outport status [--computed] Show project status
 outport open               Open services in the browser
 outport qr [--tunnel]      QR codes for mobile access
 outport share [service]    Tunnel services to public URLs
@@ -127,6 +132,7 @@ outport promote            Promote instance to main
 outport doctor             Diagnose issues
 outport system start       Install DNS, HTTPS, start daemon
 outport system stop|restart|status|prune|uninstall
+outport completion [shell] Generate shell completions
 ```
 
 See the [Commands reference](https://outport.dev/reference/commands) for full details.

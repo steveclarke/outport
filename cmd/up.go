@@ -105,6 +105,13 @@ func runUp(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("hostname %q (service %q) conflicts with %s", hostname, svcName, conflictKey)
 		}
 	}
+	for svcName, svcAliases := range alloc.Aliases {
+		for aliasKey, hostname := range svcAliases {
+			if conflictKey, found := reg.FindHostname(hostname, selfKey); found {
+				return fmt.Errorf("alias %q hostname %q (service %q) conflicts with %s", aliasKey, hostname, svcName, conflictKey)
+			}
+		}
+	}
 
 	reg.Set(cfg.Name, ctx.Instance, alloc)
 
@@ -119,6 +126,7 @@ func runUp(cmd *cobra.Command, args []string) error {
 	result, err := writeEnvFiles(dir, cfg, ctx.Instance, ports, alloc.Hostnames, httpsEnabled, EnvWriteOptions{
 		AutoApprove:   yesFlag,
 		ApprovedPaths: approvedPaths,
+		Aliases:       alloc.Aliases,
 		Stdin:         os.Stdin,
 		Stderr:        os.Stderr,
 	})
@@ -139,10 +147,10 @@ func runUp(cmd *cobra.Command, args []string) error {
 	envFiles := mergedEnvFileList(cfg, result.ResolvedComputed)
 
 	if jsonFlag {
-		return printUpJSON(cmd, cfg, ctx.Instance, ports, alloc.Hostnames, result.ResolvedComputed, envFiles, httpsEnabled, result.ExternalFiles)
+		return printUpJSON(cmd, cfg, ctx.Instance, ports, alloc.Hostnames, alloc.Aliases, result.ResolvedComputed, envFiles, httpsEnabled, result.ExternalFiles)
 	}
 
-	if err := printUpStyled(cmd, cfg, ctx.Instance, serviceNames, ports, alloc.Hostnames, result.ResolvedComputed, envFiles, httpsEnabled); err != nil {
+	if err := printUpStyled(cmd, cfg, ctx.Instance, serviceNames, ports, alloc.Hostnames, alloc.Aliases, result.ResolvedComputed, envFiles, httpsEnabled); err != nil {
 		return err
 	}
 
@@ -177,11 +185,11 @@ func mergedEnvFileList(cfg *config.Config, resolvedComputed map[string]map[strin
 	return slices.Sorted(maps.Keys(files))
 }
 
-func printUpJSON(cmd *cobra.Command, cfg *config.Config, instanceName string, ports map[string]int, hostnames map[string]string, resolvedComputed map[string]map[string]string, envFiles []string, httpsEnabled bool, externalFiles []envpath.EnvFilePath) error {
+func printUpJSON(cmd *cobra.Command, cfg *config.Config, instanceName string, ports map[string]int, hostnames map[string]string, aliases map[string]map[string]string, resolvedComputed map[string]map[string]string, envFiles []string, httpsEnabled bool, externalFiles []envpath.EnvFilePath) error {
 	out := upJSON{
 		Project:       cfg.Name,
 		Instance:      instanceName,
-		Services:      buildServiceMap(cfg, ports, hostnames, httpsEnabled),
+		Services:      buildServiceMap(cfg, ports, hostnames, aliases, httpsEnabled),
 		Computed:      buildComputedMap(cfg.Computed, resolvedComputed),
 		EnvFiles:      envFiles,
 		ExternalFiles: toExternalFileJSON(externalFiles),
@@ -189,12 +197,12 @@ func printUpJSON(cmd *cobra.Command, cfg *config.Config, instanceName string, po
 	return writeJSON(cmd, out)
 }
 
-func printUpStyled(cmd *cobra.Command, cfg *config.Config, instanceName string, serviceNames []string, ports map[string]int, hostnames map[string]string, resolvedComputed map[string]map[string]string, envFiles []string, httpsEnabled bool) error {
+func printUpStyled(cmd *cobra.Command, cfg *config.Config, instanceName string, serviceNames []string, ports map[string]int, hostnames map[string]string, aliases map[string]map[string]string, resolvedComputed map[string]map[string]string, envFiles []string, httpsEnabled bool) error {
 	w := cmd.OutOrStdout()
 
 	printHeader(w, cfg.Name, instanceName)
 
-	printFlatServices(w, cfg, serviceNames, ports, hostnames, nil, httpsEnabled)
+	printFlatServices(w, cfg, serviceNames, ports, hostnames, aliases, nil, httpsEnabled)
 
 	if len(resolvedComputed) > 0 {
 		printComputedValues(w, resolvedComputed)

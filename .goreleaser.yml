@@ -1,5 +1,9 @@
 version: 2
 
+before:
+  hooks:
+    - sh -c 'mkdir -p completions && go run . completion bash > completions/outport.bash && go run . completion zsh > completions/_outport && go run . completion fish > completions/outport.fish'
+
 builds:
   - env:
       - CGO_ENABLED=0
@@ -9,6 +13,8 @@ builds:
     goarch:
       - amd64
       - arm64
+    flags:
+      - -trimpath
     ldflags:
       - -s -w -X github.com/steveclarke/outport/cmd.version={{.Version}}
 
@@ -16,6 +22,9 @@ archives:
   - formats:
       - tar.gz
     name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - LICENSE
+      - completions/*
 
 checksum:
   name_template: "checksums.txt"
@@ -27,6 +36,29 @@ changelog:
       - "^docs:"
       - "^chore:"
       - "^test:"
+
+nfpms:
+  - package_name: outport
+    vendor: Steve Clarke
+    homepage: "https://outport.dev"
+    maintainer: "Steve Clarke <steve@outport.dev>"
+    description: "Dev port manager for multi-project, multi-worktree development"
+    license: MIT
+    formats:
+      - deb
+      - rpm
+    bindir: /usr/local/bin
+    contents:
+      - src: completions/outport.bash
+        dst: /usr/share/bash-completion/completions/outport
+      - src: completions/_outport
+        dst: /usr/share/zsh/vendor-completions/_outport
+        packager: deb
+      - src: completions/_outport
+        dst: /usr/share/zsh/site-functions/_outport
+        packager: rpm
+      - src: completions/outport.fish
+        dst: /usr/share/fish/vendor_completions.d/outport.fish
 
 brews:
   - repository:
@@ -40,6 +72,9 @@ brews:
     license: "MIT"
     install: |
       bin.install "outport"
+      bash_completion.install "completions/outport.bash" => "outport"
+      zsh_completion.install "completions/_outport"
+      fish_completion.install "completions/outport.fish"
     test: |
       system "#{bin}/outport --version"
     commit_msg_template: "Brew formula update for {{ .ProjectName }} version {{ .Tag }}"
