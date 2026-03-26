@@ -323,8 +323,22 @@ func (h *Handler) refreshCaches() {
 
 // onHealthChange is the callback from the health checker when port statuses change.
 // It maps port numbers back to project/instance/service names and broadcasts
-// a health event to all SSE clients.
+// a health event to all SSE clients. It also refreshes the tunnel cache on each
+// tick so stale tunnel URLs (from an exited outport share process) disappear
+// within one health interval.
 func (h *Handler) onHealthChange(changes map[int]bool) {
+	// Refresh tunnel state on each health tick so stale tunnels disappear within
+	// one interval after outport share exits. If the tunnel state changed, also
+	// send a registry event so the dashboard UI updates immediately.
+	oldTunnel := h.cachedTunnel
+	h.refreshCaches()
+	tunnelChanged := (oldTunnel == nil) != (h.cachedTunnel == nil) || len(oldTunnel) != len(h.cachedTunnel)
+	if tunnelChanged {
+		resp := h.buildStatus()
+		data, _ := json.Marshal(resp)
+		h.sse.Send(Event{Type: "registry", Data: string(data)})
+	}
+
 	type changeEntry struct {
 		Project  string `json:"project"`
 		Instance string `json:"instance"`
