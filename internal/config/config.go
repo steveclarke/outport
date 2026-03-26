@@ -627,7 +627,7 @@ func (c *Config) validate() error {
 	}
 
 	// Validate open list
-	if c.Open != nil {
+	if len(c.Open) > 0 {
 		seen := make(map[string]bool)
 		for _, name := range c.Open {
 			svc, ok := c.Services[name]
