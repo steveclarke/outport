@@ -132,6 +132,7 @@ outport promote            Promote instance to main
 outport doctor             Diagnose issues
 outport system start       Install DNS, HTTPS, start daemon
 outport system stop|restart|status|prune|uninstall
+outport completion [shell] Generate shell completions
 ```
 
 See the [Commands reference](https://outport.dev/reference/commands) for full details.

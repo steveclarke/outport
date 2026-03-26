@@ -243,6 +243,20 @@ Stops the daemon, removes the service configuration, removes the DNS resolver co
 |------|-------------|
 | `--json` | Output results as JSON (includes `ca_removed`, `certs_cleaned` fields) |
 
+## Utility Commands
+
+### `outport completion`
+
+Generate shell completion scripts.
+
+```bash
+outport completion bash   # bash completions
+outport completion zsh    # zsh completions
+outport completion fish   # fish completions
+```
+
+See [Installation — Shell Completions](/guide/installation#shell-completions) for setup instructions.
+
 ### `outport doctor`
 
 Diagnose issues with the Outport system.

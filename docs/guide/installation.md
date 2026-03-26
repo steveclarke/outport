@@ -12,6 +12,8 @@ Works on macOS and Linux. Downloads the latest release, verifies the checksum, a
 curl -fsSL https://outport.dev/install.sh | sh
 ```
 
+The binary is installed to `~/.local/bin/outport` (or `/usr/local/bin/outport` when run as root). If the install directory is not in your `PATH`, the script will show the exact command to add it.
+
 Options:
 
 ```bash
@@ -21,10 +23,6 @@ curl -fsSL https://outport.dev/install.sh | sh -s -- --dir /usr/local/bin
 # Install a specific version
 curl -fsSL https://outport.dev/install.sh | sh -s -- --version 0.30.0
 ```
-
-::: tip
-If `~/.local/bin` is not in your `PATH`, the script will show the command to add it.
-:::
 
 ## Homebrew
 
@@ -73,6 +71,21 @@ Or using [just](https://github.com/casey/just):
 ```bash
 just build      # Compiles to dist/outport
 just install    # Installs to $GOPATH/bin
+```
+
+## Shell Completions
+
+Outport supports tab completion for bash, zsh, and fish. Homebrew and .deb/.rpm packages install completions automatically. For other install methods:
+
+```bash
+# Bash — add to ~/.bashrc
+eval "$(outport completion bash)"
+
+# Zsh — add to ~/.zshrc (after compinit)
+eval "$(outport completion zsh)"
+
+# Fish — run once
+outport completion fish > ~/.config/fish/completions/outport.fish
 ```
 
 ## Verify
