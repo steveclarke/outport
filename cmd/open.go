@@ -17,7 +17,7 @@ import (
 var openCmd = &cobra.Command{
 	Use:     "open [service]",
 	Short:   "Open web services in the browser",
-	Long:    "Opens all web services (those with a hostname) for the current project in your default browser. Specify a service name to open just one.",
+	Long:    "Opens web services for the current project in your default browser. By default, opens all services with a hostname. If the 'open' field is set in outport.yml, only the listed services are opened. Specify a service name to open just that one.",
 	GroupID: "project",
 	Args:    MaximumArgs(1, "accepts at most one service name"),
 	RunE:    runOpen,
