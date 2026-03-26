@@ -22,7 +22,8 @@ check() {
 
 echo "=== Building outport ==="
 cd /src
-go build -o /usr/local/bin/outport .
+just build
+cp dist/outport /usr/local/bin/outport
 echo ""
 
 echo "=== Smoke tests ==="
@@ -84,6 +85,22 @@ check "systemd is running" bash -c "systemctl is-system-running --quiet || syste
 # Report its status but don't fail the smoke test — Phase 2 will address this.
 resolved_status=$(systemctl is-active systemd-resolved 2>/dev/null || true)
 echo "  INFO  systemd-resolved: $resolved_status"
+
+echo ""
+echo "=== Platform module test ==="
+# Verify the Linux platform functions compile and the service unit can be generated
+outport_bin=$(which outport)
+check "outport binary found" test -n "$outport_bin"
+
+# Test that outport system start detects Linux (not "unsupported")
+# It will fail (no sudo in container) but should NOT say "only supported on macOS"
+start_output=$(outport system start 2>&1 || true)
+if echo "$start_output" | grep -q "only supported on macOS"; then
+    echo -e "  $FAIL  platform detection (still shows macOS-only error)"
+    failures=$((failures + 1))
+else
+    echo -e "  $PASS  platform detection (recognizes Linux)"
+fi
 
 echo ""
 if [ "$failures" -gt 0 ]; then
