@@ -68,7 +68,7 @@ Tests use table-driven patterns and `t.TempDir()` for filesystem isolation. No m
 
 ## Release
 
-Version injected via ldflags: `-X github.com/steveclarke/outport/cmd.version={{.Version}}`. Releases triggered by pushing `v*` tags. Publishes to Homebrew tap `steveclarke/homebrew-tap`. Release process docs are in the private `backstage` repo.
+Version injected via ldflags: `-X github.com/steveclarke/outport/cmd.version={{.Version}}`. Releases triggered by pushing `v*` tags. GoReleaser produces: tar.gz archives (with shell completions), `.deb`/`.rpm` Linux packages (with completions in system directories), and a Homebrew formula update to `steveclarke/homebrew-tap`. A `curl|sh` install script (`install.sh`) downloads from GitHub Releases with SHA-256 verification. Release process docs are in the private `backstage` repo.
 
 ## Git Conventions
 
