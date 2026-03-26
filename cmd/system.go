@@ -22,5 +22,5 @@ type systemStatusResponse struct {
 }
 
 func printSystemStatusJSON(w io.Writer, status string) error {
-	return writeJSONTo(w, systemStatusResponse{Status: status})
+	return writeJSONTo(w, systemStatusResponse{Status: status}, status)
 }

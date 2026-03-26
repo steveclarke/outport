@@ -140,7 +140,7 @@ func printPromoteJSON(cmd *cobra.Command, project, promoted, demotedTo string, e
 		Status:        "promoted",
 		ExternalFiles: toExternalFileJSON(externalFiles),
 	}
-	return writeJSON(cmd, out)
+	return writeJSON(cmd, out, "instance promoted to main")
 }
 
 func printPromoteStyled(cmd *cobra.Command, project, promoted, demotedTo string) error {

@@ -249,6 +249,15 @@ Stops the daemon, removes the service configuration, removes the DNS resolver co
 
 ## Utility Commands
 
+### `outport version`
+
+Show version, commit hash, and build date.
+
+```bash
+outport version          # styled output
+outport version --json   # JSON envelope with version data
+```
+
 ### `outport completion`
 
 Generate shell completion scripts.
@@ -298,3 +307,29 @@ Exit code 0 if all checks pass or warn. Exit code 1 if any check fails.
 | Flag | Description |
 |------|-------------|
 | `--json` | Output results as JSON (includes `results` array and `passed` boolean) |
+
+## JSON Output Format
+
+All commands support `--json` for machine-readable output. Output is wrapped in a consistent envelope.
+
+**Success:**
+
+```json
+{
+  "ok": true,
+  "data": { ... },
+  "summary": "3 services allocated"
+}
+```
+
+**Error:**
+
+```json
+{
+  "ok": false,
+  "error": "No outport.yml found in /path or any parent directory.",
+  "hint": "Run: outport init"
+}
+```
+
+The `summary` field is a human-readable one-liner describing what happened. The `hint` field appears on common errors with a suggested next step. Both are omitted when empty.

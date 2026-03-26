@@ -66,7 +66,9 @@ func printProjectStatusJSON(cmd *cobra.Command, cfg *config.Config, instanceName
 	if projectStatusComputedFlag {
 		out.Computed = buildComputedMap(cfg.Computed, allocation.ResolveComputed(cfg, instanceName, alloc.Ports, alloc.Hostnames, alloc.Aliases, httpsEnabled, nil))
 	}
-	return writeJSON(cmd, out)
+	n := len(out.Services)
+	summary := fmt.Sprintf("%d %s", n, pluralize(n, "service", "services"))
+	return writeJSON(cmd, out, summary)
 }
 
 func printProjectStatusStyled(cmd *cobra.Command, cfg *config.Config, instanceName string, alloc registry.Allocation, portStatus map[int]bool, httpsEnabled bool) error {

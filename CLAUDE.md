@@ -38,12 +38,13 @@ Entry point: `main.go` → `cmd.Execute()` (Cobra CLI).
 - **tunnel** — Provider abstraction + concurrent manager with all-or-nothing semantics.
 - **tunnel/cloudflare** — Shells out to `cloudflared tunnel --url`, parses URL from stderr.
 - **settings** — Global user settings from `~/.config/outport/config` (INI format, `go-ini/ini`). `Load()` returns defaults for missing file/keys. Consumers receive values as parameters — internal packages never import this.
+- **ui** — Terminal color palette and text styles (lipgloss). `Init()` adapts to the terminal: respects `NO_COLOR` (strips all color, preserves bold), detects dark backgrounds (shifts grays brighter). Called once at CLI startup.
 
 ### CLI commands (`cmd/`)
 
 Commands are defined in `cmd/*.go` — read them for details. Key conventions:
 
-- All commands support `--json` for machine-readable output. Each command has paired `print*Styled()` and `print*JSON()` output functions.
+- All commands support `--json` for machine-readable output. Each command has paired `print*Styled()` and `print*JSON()` output functions. JSON output uses an envelope: `{"ok": true, "data": ..., "summary": "..."}` for success, `{"ok": false, "error": "...", "hint": "..."}` for errors. All JSON flows through `writeJSON()` / `writeJSONError()` in `cmd/cmdutil.go`.
 - **daemon** is a hidden command invoked by launchd, not by users.
 
 ## Key Design Decisions

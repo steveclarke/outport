@@ -13,24 +13,60 @@ import (
 // without printing an error message to stderr.
 var ErrSilent = errors.New("")
 
-// writeJSON marshals v as indented JSON and writes it to the command's stdout.
-func writeJSON(cmd *cobra.Command, v any) error {
-	data, err := json.MarshalIndent(v, "", "  ")
-	if err != nil {
-		return err
-	}
-	fmt.Fprintln(cmd.OutOrStdout(), string(data))
-	return nil
+// jsonEnvelope is the top-level wrapper for all --json output.
+type jsonEnvelope struct {
+	OK      bool   `json:"ok"`
+	Data    any    `json:"data"`
+	Summary string `json:"summary,omitempty"`
 }
 
-// writeJSONTo marshals v as indented JSON and writes it to the writer.
-func writeJSONTo(w io.Writer, v any) error {
-	data, err := json.MarshalIndent(v, "", "  ")
+// jsonErrorEnvelope is the top-level wrapper for --json error output.
+type jsonErrorEnvelope struct {
+	OK    bool   `json:"ok"`
+	Error string `json:"error"`
+	Hint  string `json:"hint,omitempty"`
+}
+
+// writeJSON marshals v as indented JSON wrapped in an envelope and writes it to the command's stdout.
+func writeJSON(cmd *cobra.Command, v any, summary string) error {
+	return writeJSONTo(cmd.OutOrStdout(), v, summary)
+}
+
+// writeJSONTo marshals v as indented JSON wrapped in an envelope and writes it to the writer.
+func writeJSONTo(w io.Writer, v any, summary string) error {
+	envelope := jsonEnvelope{
+		OK:      true,
+		Data:    v,
+		Summary: summary,
+	}
+	data, err := json.MarshalIndent(envelope, "", "  ")
 	if err != nil {
 		return err
 	}
 	fmt.Fprintln(w, string(data))
 	return nil
+}
+
+// writeJSONError marshals an error envelope and writes it to the writer.
+func writeJSONError(w io.Writer, errMsg, hint string) {
+	envelope := jsonErrorEnvelope{
+		OK:    false,
+		Error: errMsg,
+		Hint:  hint,
+	}
+	data, err := json.MarshalIndent(envelope, "", "  ")
+	if err != nil {
+		return // best-effort
+	}
+	fmt.Fprintln(w, string(data))
+}
+
+// pluralize returns singular when n == 1, plural otherwise.
+func pluralize(n int, singular, plural string) string {
+	if n == 1 {
+		return singular
+	}
+	return plural
 }
 
 // FlagError is a special error type that signals the error is due to

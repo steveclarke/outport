@@ -75,7 +75,7 @@ func printDownJSON(cmd *cobra.Command, project, instance string, cleanedFiles []
 		CleanedFiles:  cleanedFiles,
 		ExternalFiles: toExternalFileJSON(externalFiles),
 	}
-	return writeJSON(cmd, out)
+	return writeJSON(cmd, out, "project removed")
 }
 
 func printDownStyled(cmd *cobra.Command, project, instanceName string, cleanedFiles []string) error {
