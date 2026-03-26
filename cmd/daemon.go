@@ -40,11 +40,12 @@ func runDaemon(cmd *cobra.Command, args []string) error {
 	}
 
 	cfg := &daemon.DaemonConfig{
-		DNSAddr:        "127.0.0.1:15353",
-		RegistryPath:   regPath,
-		Version:        version,
-		DNSTTL:         uint32(s.DNS.TTL),
-		HealthInterval: s.Dashboard.HealthInterval,
+		DNSAddr:          "127.0.0.1:15353",
+		RegistryPath:     regPath,
+		Version:          version,
+		DNSTTL:           uint32(s.DNS.TTL),
+		HealthInterval:   s.Dashboard.HealthInterval,
+		NetworkInterface: s.Network.Interface,
 	}
 
 	// Try launchd HTTP socket activation (darwin only)

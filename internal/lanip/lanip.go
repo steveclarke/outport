@@ -73,7 +73,7 @@ func autoDetect() (net.IP, error) {
 			return ip, nil
 		}
 	}
-	return nil, fmt.Errorf("no suitable LAN interface found. Use --interface to specify one")
+	return nil, fmt.Errorf("no suitable LAN interface found. Set [network] interface in ~/.config/outport/config, or use --interface")
 }
 
 func ipv4FromInterface(iface *net.Interface) (net.IP, error) {

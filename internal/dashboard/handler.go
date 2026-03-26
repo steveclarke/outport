@@ -130,16 +130,17 @@ type portEntry struct {
 // (which pushes real-time updates to connected dashboard clients), and caches for LAN IP
 // and tunnel state to avoid repeated lookups on every API request.
 type Handler struct {
-	mux          *http.ServeMux
-	provider     AllocProvider
-	health       *HealthChecker
-	sse          *Broadcaster
-	https        bool
-	version      string
-	indexHTML     []byte
-	portIndex    map[int]portEntry              // port -> owning project/instance/service
-	cachedLANIP  string                         // cached LAN IP string
-	cachedTunnel map[string]map[string]string   // cached tunnel state
+	mux              *http.ServeMux
+	provider         AllocProvider
+	health           *HealthChecker
+	sse              *Broadcaster
+	https            bool
+	version          string
+	networkInterface string                       // configured LAN interface override
+	indexHTML         []byte
+	portIndex        map[int]portEntry              // port -> owning project/instance/service
+	cachedLANIP      string                         // cached LAN IP string
+	cachedTunnel     map[string]map[string]string   // cached tunnel state
 }
 
 // NewHandler creates a dashboard handler with all HTTP routes registered. It sets up
@@ -152,13 +153,14 @@ type Handler struct {
 //   - GET /api/qr      — SVG QR code generator for a given URL parameter
 //   - GET /static/...  — embedded CSS, JS, and image assets
 //   - GET /            — the dashboard HTML page
-func NewHandler(provider AllocProvider, httpsEnabled bool, version string, healthInterval time.Duration) *Handler {
+func NewHandler(provider AllocProvider, httpsEnabled bool, version string, healthInterval time.Duration, networkInterface string) *Handler {
 	h := &Handler{
-		mux:      http.NewServeMux(),
-		provider: provider,
-		sse:      NewBroadcaster(),
-		https:    httpsEnabled,
-		version:  version,
+		mux:              http.NewServeMux(),
+		provider:         provider,
+		sse:              NewBroadcaster(),
+		https:            httpsEnabled,
+		version:          version,
+		networkInterface: networkInterface,
 	}
 
 	h.health = NewHealthChecker(provider.AllPorts, healthInterval, h.onHealthChange)
@@ -305,7 +307,7 @@ func (h *Handler) rebuildPortIndex() {
 // refreshCaches updates the cached LAN IP and tunnel state.
 // Called on startup and on every registry/tunnel file change.
 func (h *Handler) refreshCaches() {
-	if ip, err := lanip.Detect(""); err == nil {
+	if ip, err := lanip.Detect(h.networkInterface); err == nil {
 		h.cachedLANIP = ip.String()
 	}
 	statePath, err := tunnel.DefaultStatePath()

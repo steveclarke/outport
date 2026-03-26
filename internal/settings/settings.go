@@ -32,6 +32,8 @@ type Settings struct {
 	DNS DNSSettings
 	// Tunnels contains settings that control the outport share tunnel feature.
 	Tunnels TunnelSettings
+	// Network contains settings for LAN IP detection.
+	Network NetworkSettings
 }
 
 // DashboardSettings controls the behavior of the web dashboard served at outport.test.
@@ -50,6 +52,16 @@ type TunnelSettings struct {
 	// When the cap is reached, primary hostnames are tunneled first, then
 	// aliases in config order. Default: 8. Must be greater than 0.
 	Max int
+}
+
+// NetworkSettings controls how Outport detects the machine's LAN IP address,
+// used for QR codes and the dashboard's LAN URL display.
+type NetworkSettings struct {
+	// Interface is the network interface name (e.g., "en0", "eth0", "wlan0")
+	// used for LAN IP detection. When empty, Outport auto-detects by scanning
+	// common interface names. Set via the "interface" key in the [network] section.
+	// Default: empty (auto-detect).
+	Interface string
 }
 
 // DNSSettings controls the behavior of Outport's built-in DNS server, which
@@ -154,6 +166,11 @@ func LoadFrom(path string) (*Settings, error) {
 		s.Tunnels.Max = v
 	}
 
+	network := cfg.Section("network")
+	if key, err := network.GetKey("interface"); err == nil {
+		s.Network.Interface = key.String()
+	}
+
 	if err := s.validate(); err != nil {
 		return nil, err
 	}
@@ -198,5 +215,11 @@ func DefaultConfigContent() string {
 # Maximum number of concurrent tunnel processes for outport share.
 # Primary hostnames are tunneled first, then aliases.
 # max = 8
+
+[network]
+# Network interface for LAN IP detection (e.g., en0, eth0, wlan0).
+# Used by QR codes and the dashboard to show your LAN address.
+# When unset, Outport auto-detects by scanning common interface names.
+# interface = en0
 `
 }

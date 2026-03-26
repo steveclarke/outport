@@ -250,6 +250,12 @@ Outport stores machine-level settings in `~/.config/outport/config` (INI format)
 [tunnels]
 # Maximum number of concurrent tunnel processes when running outport share.
 # max = 8
+
+[network]
+# Network interface for LAN IP detection (e.g., en0, eth0, wlan0).
+# Used by QR codes and the dashboard to show your LAN address.
+# When unset, Outport auto-detects by scanning common interface names.
+# interface = en0
 ```
 
 | Setting | Default | Description |
@@ -257,5 +263,6 @@ Outport stores machine-level settings in `~/.config/outport/config` (INI format)
 | `dashboard.health_interval` | `3s` | How often the dashboard polls port health. Accepts Go duration syntax (`1s`, `5s`, `500ms`). Minimum `1s`. |
 | `dns.ttl` | `60` | Time-to-live (in seconds) for `.test` DNS responses. Lower values mean faster updates when services start/stop. |
 | `tunnels.max` | `8` | Maximum number of concurrent tunnel processes when running `outport share`. |
+| `network.interface` | _(auto-detect)_ | Network interface for LAN IP detection (e.g., `en0`, `eth0`). Used by QR codes and the dashboard. When unset, Outport scans common interface names. |
 
 Missing settings use defaults. The file is entirely optional — if it doesn't exist, everything uses the defaults above.

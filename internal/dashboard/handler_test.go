@@ -39,7 +39,7 @@ func TestHandlerAPIStatus(t *testing.T) {
 		},
 	}
 
-	h := NewHandler(provider, true, "test", 3*time.Second)
+	h := NewHandler(provider, true, "test", 3*time.Second, "")
 
 	req := httptest.NewRequest(http.MethodGet, "/api/status", nil)
 	rec := httptest.NewRecorder()
@@ -122,7 +122,7 @@ func TestHandlerAPIStatusMultipleInstances(t *testing.T) {
 		},
 	}
 
-	h := NewHandler(provider, false, "test", 3*time.Second)
+	h := NewHandler(provider, false, "test", 3*time.Second, "")
 
 	req := httptest.NewRequest(http.MethodGet, "/api/status", nil)
 	rec := httptest.NewRecorder()
@@ -174,7 +174,7 @@ func TestHandlerServesIndex(t *testing.T) {
 		allocs: map[string]registry.Allocation{},
 	}
 
-	h := NewHandler(provider, false, "test", 3*time.Second)
+	h := NewHandler(provider, false, "test", 3*time.Second, "")
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
@@ -207,7 +207,7 @@ func TestHandlerStatusHTTPScheme(t *testing.T) {
 	}
 
 	// HTTPS disabled — URL should use http://
-	h := NewHandler(provider, false, "test", 3*time.Second)
+	h := NewHandler(provider, false, "test", 3*time.Second, "")
 
 	req := httptest.NewRequest(http.MethodGet, "/api/status", nil)
 	rec := httptest.NewRecorder()
@@ -235,7 +235,7 @@ func TestHandlerStatusNoURLForNonWebServices(t *testing.T) {
 		},
 	}
 
-	h := NewHandler(provider, true, "test", 3*time.Second)
+	h := NewHandler(provider, true, "test", 3*time.Second, "")
 
 	req := httptest.NewRequest(http.MethodGet, "/api/status", nil)
 	rec := httptest.NewRecorder()
@@ -265,7 +265,7 @@ func TestHandlerAPIStatusIncludesEnvVar(t *testing.T) {
 		},
 	}
 	provider := &mockAllocProvider{allocs: allocs}
-	h := NewHandler(provider, false, "test", 3*time.Second)
+	h := NewHandler(provider, false, "test", 3*time.Second, "")
 
 	req := httptest.NewRequest("GET", "/api/status", nil)
 	w := httptest.NewRecorder()
