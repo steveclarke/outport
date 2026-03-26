@@ -205,7 +205,8 @@ func TrustCA(certPath string) error {
 
 	args := append([]string{cfg.updateCmd}, cfg.updateArgs...)
 	cmd := exec.Command("sudo", args...)
-	cmd.Stderr = os.Stderr
+	// Suppress stderr — update-ca-certificates emits a benign "rehash: warning"
+	// about the bundled ca-certificates.crt that looks like an error to users.
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("updating CA trust store: %w", err)
 	}

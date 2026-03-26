@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"runtime"
 	"strings"
 	"time"
 
@@ -337,11 +338,15 @@ func checkRegistryValid(path string) *Result {
 func checkCloudflared() *Result {
 	path, err := exec.LookPath("cloudflared")
 	if err != nil {
+		fix := "Install cloudflared: brew install cloudflare/cloudflare/cloudflared"
+		if runtime.GOOS == "linux" {
+			fix = "Install cloudflared: https://pkg.cloudflare.com/#linux-cloudflared"
+		}
 		return &Result{
 			Name:    "cloudflared",
 			Status:  Warn,
 			Message: "cloudflared not found (needed for outport share)",
-			Fix:     "Install cloudflared: brew install cloudflare/cloudflare/cloudflared",
+			Fix:     fix,
 		}
 	}
 	return &Result{
