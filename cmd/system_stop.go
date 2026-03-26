@@ -51,7 +51,12 @@ func resolveAndWritePlist() error {
 	if err != nil {
 		return fmt.Errorf("could not resolve outport binary path: %w", err)
 	}
-	return platform.WritePlist(outportBin)
+	if err := platform.WritePlist(outportBin); err != nil {
+		return err
+	}
+	// Re-apply port capabilities on every write — setcap is lost when the
+	// binary is replaced (new inode). No-op on macOS (launchd handles ports).
+	return platform.EnsurePrivilegedPorts(outportBin)
 }
 
 func runSystemStop(cmd *cobra.Command, args []string) error {

@@ -3,7 +3,6 @@ package cmd
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 
 	"github.com/steveclarke/outport/internal/certmanager"
 	"github.com/steveclarke/outport/internal/platform"
@@ -116,16 +115,6 @@ func runSystemStart(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("CA must be trusted for HTTPS to work: %w", err)
 	}
 	caTrusted = true
-
-	// Ensure the binary can bind to ports 80/443 (setcap on Linux, no-op on macOS)
-	exe, exeErr := os.Executable()
-	if exeErr == nil {
-		if resolved, evalErr := filepath.EvalSymlinks(exe); evalErr == nil {
-			if err := platform.EnsurePrivilegedPorts(resolved); err != nil {
-				return fmt.Errorf("could not set port capabilities: %w", err)
-			}
-		}
-	}
 
 	if err := platform.LoadAgent(); err != nil {
 		return err

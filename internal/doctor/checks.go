@@ -131,8 +131,7 @@ func checkPlistBinary(plistPath string) *Result {
 		}
 	}
 
-	// On Linux, the service file is a systemd unit (INI format), not a plist (XML).
-	if !bytes.Contains(data, []byte("<?xml")) {
+	if runtime.GOOS == "linux" {
 		return checkServiceBinary(data)
 	}
 

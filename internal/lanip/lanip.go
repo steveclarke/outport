@@ -2,8 +2,9 @@
 // "outport share" command to display the local network URL and QR code so that
 // mobile devices on the same Wi-Fi network can access locally running services.
 //
-// Auto-detection follows a two-phase strategy: first it checks well-known macOS
-// interface names (en0, en1), then falls back to scanning all interfaces while
+// Auto-detection follows a two-phase strategy: first it checks well-known
+// interface names (en0, en1 on macOS; eth0, wlan0 on Linux), then falls back
+// to scanning all interfaces while
 // filtering out virtual, loopback, and point-to-point interfaces. A specific
 // interface name can also be provided to skip auto-detection entirely.
 package lanip

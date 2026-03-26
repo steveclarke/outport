@@ -20,7 +20,6 @@ const (
 )
 
 // PlistPath returns the path to the systemd user service file.
-// Named PlistPath for API compatibility with darwin.go.
 func PlistPath() string {
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -40,7 +39,6 @@ func isPlistInstalled() bool {
 }
 
 // GeneratePlist returns the systemd service unit content for the outport daemon.
-// Named GeneratePlist for API compatibility with darwin.go.
 func GeneratePlist(outportBinary string) string {
 	return fmt.Sprintf(`[Unit]
 Description=Outport development proxy daemon
@@ -96,9 +94,9 @@ func LoadAgent() error {
 	return nil
 }
 
-// UnloadAgent stops the systemd user service.
+// UnloadAgent disables and stops the systemd user service.
 func UnloadAgent() error {
-	cmd := exec.Command("systemctl", "--user", "stop", serviceName)
+	cmd := exec.Command("systemctl", "--user", "disable", "--now", serviceName)
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("stopping outport service: %w", err)
@@ -229,16 +227,17 @@ func UntrustCA(certPath string) error {
 		return fmt.Errorf("removing CA from trust store: %w", err)
 	}
 
+	// Suppress stderr — same benign "rehash: warning" as TrustCA
 	args := append([]string{cfg.updateCmd}, cfg.updateArgs...)
 	cmd := exec.Command("sudo", args...)
-	cmd.Stderr = os.Stderr
 	_ = cmd.Run()
 
 	return nil
 }
 
 // IsCATrusted checks if the outport CA is installed in the system trust store.
-func IsCATrusted(certPath string) bool {
+// certPath is unused on Linux — we check by presence in the distro trust directory.
+func IsCATrusted(_ string) bool {
 	cfg, err := detectCATrust()
 	if err != nil {
 		return false
