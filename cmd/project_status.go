@@ -13,24 +13,23 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var portsCheckFlag bool
-var portsComputedFlag bool
+var projectStatusComputedFlag bool
 
-var portsCmd = &cobra.Command{
-	Use:     "ports",
-	Short:   "Show ports for the current project",
+var projectStatusCmd = &cobra.Command{
+	Use:     "status",
+	Short:   "Show status for the current project",
+	Long:    "Shows ports, hostnames, health status, and computed values for the current project. Health checks run by default.",
 	GroupID: "project",
 	Args:    NoArgs,
-	RunE:    runPorts,
+	RunE:    runProjectStatus,
 }
 
 func init() {
-	portsCmd.Flags().BoolVar(&portsCheckFlag, "check", false, "check if ports are accepting connections")
-	portsCmd.Flags().BoolVar(&portsComputedFlag, "computed", false, "show computed values")
-	rootCmd.AddCommand(portsCmd)
+	projectStatusCmd.Flags().BoolVar(&projectStatusComputedFlag, "computed", false, "show computed values")
+	rootCmd.AddCommand(projectStatusCmd)
 }
 
-func runPorts(cmd *cobra.Command, args []string) error {
+func runProjectStatus(cmd *cobra.Command, args []string) error {
 	ctx, err := loadProjectContext()
 	if err != nil {
 		return err
@@ -43,22 +42,20 @@ func runPorts(cmd *cobra.Command, args []string) error {
 	}
 
 	httpsEnabled := certmanager.IsCAInstalled()
+	portStatus := checkPorts(alloc.Ports)
 
 	if jsonFlag {
-		return printPortsJSON(cmd, ctx.Cfg, ctx.Instance, alloc, httpsEnabled)
+		return printProjectStatusJSON(cmd, ctx.Cfg, ctx.Instance, alloc, portStatus, httpsEnabled)
 	}
-	return printPortsStyled(cmd, ctx.Cfg, ctx.Instance, alloc, httpsEnabled)
+	return printProjectStatusStyled(cmd, ctx.Cfg, ctx.Instance, alloc, portStatus, httpsEnabled)
 }
 
-func printPortsJSON(cmd *cobra.Command, cfg *config.Config, instanceName string, alloc registry.Allocation, httpsEnabled bool) error {
+func printProjectStatusJSON(cmd *cobra.Command, cfg *config.Config, instanceName string, alloc registry.Allocation, portStatus map[int]bool, httpsEnabled bool) error {
 	services := buildServiceMap(cfg, alloc.Ports, alloc.Hostnames, alloc.Aliases, httpsEnabled)
 
-	if portsCheckFlag {
-		portStatus := checkPorts(alloc.Ports)
-		for name, s := range services {
-			s.Up = boolPtr(portStatus[s.Port])
-			services[name] = s
-		}
+	for name, s := range services {
+		s.Up = boolPtr(portStatus[s.Port])
+		services[name] = s
 	}
 
 	out := upJSON{
@@ -66,26 +63,20 @@ func printPortsJSON(cmd *cobra.Command, cfg *config.Config, instanceName string,
 		Instance: instanceName,
 		Services: services,
 	}
-	if portsComputedFlag {
+	if projectStatusComputedFlag {
 		out.Computed = buildComputedMap(cfg.Computed, allocation.ResolveComputed(cfg, instanceName, alloc.Ports, alloc.Hostnames, alloc.Aliases, httpsEnabled, nil))
 	}
 	return writeJSON(cmd, out)
 }
 
-func printPortsStyled(cmd *cobra.Command, cfg *config.Config, instanceName string, alloc registry.Allocation, httpsEnabled bool) error {
+func printProjectStatusStyled(cmd *cobra.Command, cfg *config.Config, instanceName string, alloc registry.Allocation, portStatus map[int]bool, httpsEnabled bool) error {
 	w := cmd.OutOrStdout()
 	printHeader(w, cfg.Name, instanceName)
 
 	serviceNames := slices.Sorted(maps.Keys(alloc.Ports))
-
-	var portStatus map[int]bool
-	if portsCheckFlag {
-		portStatus = checkPorts(alloc.Ports)
-	}
-
 	printFlatServices(w, cfg, serviceNames, alloc.Ports, alloc.Hostnames, alloc.Aliases, portStatus, httpsEnabled)
 
-	if portsComputedFlag {
+	if projectStatusComputedFlag {
 		if resolved := allocation.ResolveComputed(cfg, instanceName, alloc.Ports, alloc.Hostnames, alloc.Aliases, httpsEnabled, nil); len(resolved) > 0 {
 			printComputedValues(w, resolved)
 		}

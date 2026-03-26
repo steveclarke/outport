@@ -347,16 +347,16 @@ func TestUp_NoComputed_OmitsFromJSON(t *testing.T) {
 	}
 }
 
-// --- ports ---
+// --- status (project) ---
 
-func TestPorts_ShowsAllocatedPorts(t *testing.T) {
+func TestStatus_ShowsAllocatedPorts(t *testing.T) {
 	setupProject(t, testConfig)
 
 	// First allocate ports
 	executeCmd(t, "up", "--json")
 
 	// Then query them
-	output := executeCmd(t, "ports", "--json")
+	output := executeCmd(t, "status", "--json")
 
 	var result struct {
 		Project  string `json:"project"`
@@ -382,10 +382,10 @@ func TestPorts_ShowsAllocatedPorts(t *testing.T) {
 	}
 }
 
-func TestPorts_NoAllocation(t *testing.T) {
+func TestStatus_NoAllocation(t *testing.T) {
 	setupProject(t, testConfig)
 
-	output := executeCmd(t, "ports")
+	output := executeCmd(t, "status")
 
 	if !bytes.Contains([]byte(output), []byte("No ports allocated")) {
 		t.Errorf("expected 'No ports allocated' message, got:\n%s", output)
@@ -708,11 +708,11 @@ func TestInit_ErrorWhenConfigExists(t *testing.T) {
 	}
 }
 
-func TestPorts_StyledOutput(t *testing.T) {
+func TestStatus_StyledOutput(t *testing.T) {
 	setupProject(t, testConfig)
 	executeCmd(t, "up")
 
-	output := executeCmd(t, "ports")
+	output := executeCmd(t, "status")
 
 	if !bytes.Contains([]byte(output), []byte("testapp")) {
 		t.Errorf("styled output missing project name, got:\n%s", output)
@@ -734,9 +734,9 @@ func TestDown_RemovesFromRegistry(t *testing.T) {
 		t.Errorf("expected 'Done' message, got:\n%s", output)
 	}
 
-	portsOutput := executeCmd(t, "ports")
-	if !bytes.Contains([]byte(portsOutput), []byte("No ports allocated")) {
-		t.Errorf("expected no ports after unregister, got:\n%s", portsOutput)
+	statusOutput := executeCmd(t, "status")
+	if !bytes.Contains([]byte(statusOutput), []byte("No ports allocated")) {
+		t.Errorf("expected no ports after unregister, got:\n%s", statusOutput)
 	}
 }
 

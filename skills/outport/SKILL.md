@@ -20,9 +20,9 @@ outport up --force        # Clear and re-allocate all ports from scratch
 outport down              # Remove ports and clean .env files
 
 # Inspect & diagnose
-outport ports             # Show ports for current project
-outport ports --computed  # Show ports and computed values
-outport ports --json      # Machine-readable output
+outport status            # Show project status (ports, health, URLs)
+outport status --computed # Include computed values
+outport status --json     # Machine-readable output
 outport open              # Open HTTP services in browser
 outport open web          # Open a specific service
 outport share             # Tunnel HTTP services to public URLs
@@ -411,7 +411,7 @@ Add it to `outport.yml` and run `outport up`. Existing allocations
 are preserved — only the new service gets a port.
 
 ### Agent needs to know the project's URLs
-Run `outport ports --json` for structured output with ports and URLs.
+Run `outport status --json` for structured output with ports, health, and URLs.
 
 ### Services moved to different ports than expected
 Check `outport system status` to see all allocations. If another project

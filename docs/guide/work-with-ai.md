@@ -48,7 +48,7 @@ The skill covers:
 Every outport command supports `--json` for structured output that agents can parse:
 
 ```bash
-outport ports --json      # current port allocations
+outport status --json     # current port allocations and health
 outport doctor --json     # system health check results
 outport up --json         # allocation results after setup
 ```

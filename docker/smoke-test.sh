@@ -68,8 +68,8 @@ kill "$APP_PID" 2>/dev/null || true
 wait "$APP_PID" 2>/dev/null || true
 
 echo ""
-echo "=== outport ports ==="
-outport ports
+echo "=== outport status ==="
+outport status
 
 echo ""
 echo "=== Cleanup ==="

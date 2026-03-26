@@ -123,7 +123,7 @@ outport setup              One-time system setup
 outport init               Create outport.yml
 outport up [--force]       Allocate ports, write .env
 outport down               Remove ports, clean .env
-outport ports [--computed] Show allocated ports
+outport status [--computed] Show project status
 outport open               Open services in the browser
 outport qr [--tunnel]      QR codes for mobile access
 outport share [service]    Tunnel services to public URLs

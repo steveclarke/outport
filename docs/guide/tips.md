@@ -102,7 +102,7 @@ Outport allocates deterministic ports — the same project, instance, and servic
 - **You used `--force`** — this re-allocates all ports from scratch
 - **Another project claimed your preferred port** — preferred ports are first-come-first-served across all registered projects
 
-Run `outport ports` to see your current allocations and `outport system status` to see all registered projects.
+Run `outport status` to see your current allocations and `outport system status` to see all registered projects.
 
 ### Stale registry entries
 
