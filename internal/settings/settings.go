@@ -156,11 +156,16 @@ func (s *Settings) validate() error {
 func DefaultConfigContent() string {
 	return `# Outport global settings
 # Uncomment and change values to override defaults.
+# Restart the daemon after changes: outport system restart
 
 [dashboard]
+# How often the dashboard checks whether services are accepting connections.
+# Accepts Go duration syntax: 1s, 5s, 500ms. Minimum 1s.
 # health_interval = 3s
 
 [dns]
+# Time-to-live in seconds for .test DNS responses. Lower values mean the
+# browser picks up service changes faster, but increases DNS queries.
 # ttl = 60
 `
 }

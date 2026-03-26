@@ -1,12 +1,17 @@
 ---
-description: Complete outport.yml reference — services, env_var, hostname, preferred_port, env_file, computed values, and template syntax.
+description: Complete outport.yml reference — services, env_var, hostname, preferred_port, env_file, computed values, template syntax, and global settings.
 ---
 
 # Configuration
 
-Outport is configured with an `outport.yml` file in your project root, checked into version control. It declares your services, how their ports are exposed, and any computed values that wire services together.
+Outport has two configuration files:
 
-## Minimal Example
+- **Project config** (`outport.yml`) — lives in each project directory, checked into version control. Declares your services, ports, hostnames, and computed values.
+- **Global settings** (`~/.config/outport/config`) — machine-wide preferences like dashboard health check interval and DNS TTL. Optional — everything has sensible defaults.
+
+## Project Config (`outport.yml`)
+
+### Minimal Example
 
 ```yaml
 name: myapp
@@ -17,7 +22,7 @@ services:
     env_var: DB_PORT
 ```
 
-## Typical Example
+### Typical Example
 
 ```yaml
 name: myapp
@@ -27,7 +32,6 @@ services:
     hostname: myapp
   postgres:
     env_var: DB_PORT
-    preferred_port: 5432
   redis:
     env_var: REDIS_PORT
 
@@ -40,17 +44,17 @@ computed:
     env_file: backend/.env
 ```
 
-## Fields
+### Fields
 
-### `name` (required)
+#### `name` (required)
 
-The project name. Used for registry keys, hostname generation, and port hash input. Must be lowercase alphanumeric with hyphens.
+The project name. Must be unique across all your projects — two projects with the same name will collide in the registry. Used for port allocation, hostname generation, and as the registry key. Lowercase alphanumeric with hyphens.
 
 ```yaml
 name: my-app
 ```
 
-### `services` (required)
+#### `services` (required)
 
 A map of service names to their configuration. At least one service is required.
 
@@ -66,22 +70,28 @@ services:
 
 #### `hostname`
 
-The `.test` hostname for this service. Must contain the project name. Implies HTTP — services with a hostname work with `outport open` and get a `.test` domain.
+The `.test` hostname for this service. Implies HTTP — services with a hostname work with `outport open` and get a `.test` domain.
+
+The hostname must contain the project name somewhere in it. For a project named `myapp`, valid hostnames include `myapp`, `api-myapp`, `myapp-admin`. This keeps each project's hostnames within its own namespace.
 
 ```yaml
+# project name: myapp
 services:
   web:
     env_var: PORT
-    hostname: myapp
+    hostname: myapp          # → myapp.test
+  api:
+    env_var: API_PORT
+    hostname: api-myapp      # → api-myapp.test
 ```
 
-This makes the service accessible at `https://myapp.test` (after running `outport system start`). All `.test` hostnames get HTTPS automatically when the local CA is installed — no per-service configuration is needed.
+All `.test` hostnames get HTTPS automatically when the local CA is installed — no per-service configuration needed.
 
-For non-main instances, the hostname is automatically suffixed: `https://myapp-bkrm.test`.
+For non-main instances, hostnames are automatically suffixed with the instance code: `myapp.test` → `myapp-bkrm.test`.
 
 #### `preferred_port`
 
-Request a specific port. Outport uses this port if available, falling back to hash-based allocation if it's taken.
+Request a specific port. Useful for services like Postgres or MySQL that expect a conventional port. Outport uses this port if it's available. In the rare case another project has already claimed it, Outport falls back to hash-based allocation — you'll see the actual allocated port in the `outport up` output and in your env file.
 
 ```yaml
 services:
@@ -94,7 +104,9 @@ services:
 
 Where to write the environment variable. Defaults to `.env` in the project root. Can be a string or array.
 
-Paths outside the project directory (e.g., `../sibling/.env`) require explicit approval. Outport will prompt before writing to external paths. Use `--yes`/`-y` to auto-approve in scripts or CI. Approved paths are remembered so subsequent runs don't re-prompt. Use `--force` to clear saved approvals.
+::: warning External paths require approval
+Paths outside the project directory (e.g., `../sibling/.env`) require explicit approval. Outport will prompt before writing to external paths. Use `--yes`/`-y` to auto-approve in scripts or CI. Approved paths are remembered so subsequent runs don't re-prompt.
+:::
 
 ```yaml
 services:
@@ -108,7 +120,24 @@ services:
       - shared/.env
 ```
 
-### `computed`
+#### Env File Output
+
+Outport writes managed variables inside a fenced block in your env files:
+
+```bash
+# Your existing variables are untouched
+DATABASE_URL=postgres://localhost/myapp
+
+# --- begin outport.dev ---
+PORT=24920
+DB_PORT=21536
+REDIS_PORT=29454
+# --- end outport.dev ---
+```
+
+Everything between the markers is managed by Outport. Everything outside is yours. If you define a variable like `PORT=3000` above the block and Outport also manages `PORT`, it will relocate your definition into the managed block so there's a single source of truth.
+
+#### `computed`
 
 Computed environment variables that reference service values. Useful for wiring URLs between services.
 
@@ -121,7 +150,9 @@ computed:
 
 #### Template Syntax
 
-Computed values use bash-style parameter expansion:
+Computed values are where Outport goes beyond port allocation. They let you wire services together — build a `DATABASE_URL` from an allocated port, set `CORS_ORIGINS` to another service's URL, or create instance-aware Docker project names that keep worktrees isolated.
+
+Templates use bash-style `${...}` parameter expansion. You can reference any service's port, hostname, or URL, and use operators to handle conditional values like worktree suffixes.
 
 **Service variables:**
 
@@ -164,7 +195,7 @@ This produces `myapp` for the main instance and `myapp-xbjf` for worktrees, so `
 
 #### Per-File Overrides
 
-When the same env var needs different values per file:
+A computed value's `env_file` can also be an array of objects with `file` and `value` fields. This lets you write different values to different files for the same env var — useful in monorepos where each app needs a different URL or config:
 
 ```yaml
 computed:
@@ -176,23 +207,6 @@ computed:
         value: "${rails.url:direct}/portal/api/v1"
 ```
 
-## .env Output
-
-Outport writes managed variables inside a fenced block:
-
-```bash
-# Your existing variables are untouched
-DATABASE_URL=postgres://localhost/myapp
-
-# --- begin outport.dev ---
-PORT=24920
-DB_PORT=21536
-REDIS_PORT=29454
-# --- end outport.dev ---
-```
-
-Variables declared in `outport.yml` are managed by Outport — if they appear outside the fenced block, they're automatically relocated into it.
-
 ## Global Settings
 
 Outport stores machine-level settings in `~/.config/outport/config` (INI format). This file is created by `outport setup` with all values commented out. To change a setting, uncomment the line and edit the value, then run `outport system restart`.
@@ -200,11 +214,16 @@ Outport stores machine-level settings in `~/.config/outport/config` (INI format)
 ```ini
 # Outport global settings
 # Uncomment and change values to override defaults.
+# Restart the daemon after changes: outport system restart
 
 [dashboard]
+# How often the dashboard checks whether services are accepting connections.
+# Accepts Go duration syntax: 1s, 5s, 500ms. Minimum 1s.
 # health_interval = 3s
 
 [dns]
+# Time-to-live in seconds for .test DNS responses. Lower values mean the
+# browser picks up service changes faster, but increases DNS queries.
 # ttl = 60
 ```
 
@@ -213,4 +232,4 @@ Outport stores machine-level settings in `~/.config/outport/config` (INI format)
 | `dashboard.health_interval` | `3s` | How often the dashboard polls port health. Accepts Go duration syntax (`1s`, `5s`, `500ms`). Minimum `1s`. |
 | `dns.ttl` | `60` | Time-to-live (in seconds) for `.test` DNS responses. Lower values mean faster updates when services start/stop. |
 
-Missing settings use defaults. A missing file is equivalent to all defaults — there is no behavior change for existing installations.
+Missing settings use defaults. The file is entirely optional — if it doesn't exist, everything uses the defaults above.

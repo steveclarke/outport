@@ -6,48 +6,52 @@ description: All Outport CLI commands — setup, init, up, down, ports, open, sh
 
 Outport commands fall into two groups: **project commands** that operate on the current directory's `outport.yml`, and **system commands** that manage machine-wide infrastructure like DNS, HTTPS, and the daemon. All commands support `--json` for machine-readable output.
 
+Port allocations are stored in the **registry** — a JSON file at `~/.local/share/outport/registry.json` that maps every project and instance to its allocated ports, hostnames, and env vars. The registry is what makes allocations persistent and deterministic across runs.
+
 ## Project Commands
 
-These commands operate on the current project (the directory containing `outport.yml`). Use `--yes`/`-y` to auto-approve writing env files outside the project directory.
+These commands operate on the current project (the directory containing `outport.yml`).
 
 ### `outport init`
 
-Create `outport.yml` for this project.
+Create an `outport.yml` in the current directory. This marks the directory as an Outport project — all commands run from this directory or any subdirectory will use this config.
 
 ```bash
 outport init
 ```
 
-Creates a commented template in the current directory. Does not allocate ports or modify the registry.
+Creates a commented template in the current directory. This is a config-only step — it does not allocate ports or register the project.
 
 ### `outport up`
 
-Allocate ports, assign hostnames, and write `.env` files.
+Allocate ports, assign hostnames, and write env files.
 
 ```bash
 outport up
 outport up --force  # re-allocate all ports from scratch
 ```
 
-Reads `outport.yml`, allocates deterministic ports, saves to the registry, and writes them to `.env`. Idempotent — running again reuses existing allocations.
+Reads `outport.yml`, preserves existing port allocations from the registry, allocates ports for any new services, and writes everything to your env files (`.env` by default, configurable per service via `env_file`). Safe to run repeatedly — existing ports stay the same.
 
 | Flag | Description |
 |------|-------------|
-| `--force` | Ignore existing allocations and re-allocate all ports |
+| `--force` | Discard existing allocations and re-allocate all ports from scratch |
+| `--yes`, `-y` | Auto-approve writing env files outside the project directory |
 | `--json` | Output results as JSON |
 
 ### `outport down`
 
-Remove ports and clean `.env` files.
+Remove ports and clean env files.
 
 ```bash
 outport down
 ```
 
-Removes the managed block from all `.env` files and removes the project/instance from the registry.
+Removes the managed block from all env files and removes the project/instance from the registry.
 
 | Flag | Description |
 |------|-------------|
+| `--yes`, `-y` | Auto-approve removing env files outside the project directory |
 | `--json` | Output results as JSON |
 
 ### `outport ports`
@@ -94,7 +98,7 @@ If the service appears to be bound to localhost only, a hint is shown suggesting
 | Flag | Description |
 |------|-------------|
 | `--tunnel` | Show tunnel URL instead of LAN URL |
-| `--interface` | Override auto-detected network interface (e.g., `en0`) |
+| `--interface` | Override auto-detected network interface (e.g., `en0`). Outport scans your network interfaces to find your LAN IP — if it picks the wrong one (e.g., VPN adapter instead of Wi-Fi), use this to specify the correct interface. |
 | `--json` | Output URLs as JSON |
 
 ### `outport share`
@@ -109,7 +113,7 @@ outport share web vite     # tunnel specific services
 
 Creates temporary public URLs for HTTP services (those with a `hostname`). Requires `cloudflared` (`brew install cloudflared`). The command blocks until you press Ctrl+C.
 
-While sharing, `.env` files are rewritten so computed values using `${service.url}` resolve to the tunnel URLs. This means CORS origins, API base URLs, and other computed values automatically point to the public tunnel URLs. Values using `${service.url:direct}` stay as localhost. On exit, `.env` files revert to local URLs. Restart your services after starting and stopping `outport share`.
+While sharing, env files are rewritten so computed values using `${service.url}` resolve to the tunnel URLs. This means CORS origins, API base URLs, and other computed values automatically point to the public tunnel URLs. Values using `${service.url:direct}` stay as localhost. On exit, env files revert to local URLs. Restart your services after starting and stopping `outport share`.
 
 | Flag | Description |
 |------|-------------|
@@ -123,7 +127,7 @@ Rename an instance of the current project.
 outport rename [old-name] <new-name>
 ```
 
-If `old-name` is omitted, renames the current directory's instance. Updates the instance name in the registry and regenerates hostnames in `.env` files.
+If `old-name` is omitted, renames the current directory's instance. Updates the instance name in the registry and regenerates hostnames in env files.
 
 | Flag | Description |
 |------|-------------|
@@ -155,7 +159,7 @@ Interactive first-run system setup.
 outport setup
 ```
 
-Guides you through enabling `.test` domains with HTTPS. The `.test` domain setup is optional — without it, `outport up` still works for deterministic ports and `.env` files. Also creates the [global settings](/reference/configuration#global-settings) file at `~/.config/outport/config` if it doesn't exist.
+Guides you through enabling `.test` domains with HTTPS. The `.test` domain setup is optional — without it, `outport up` still works for deterministic ports and env files. Also creates the [global settings](/reference/configuration#global-settings) file at `~/.config/outport/config` if it doesn't exist.
 
 | Flag | Description |
 |------|-------------|
@@ -163,19 +167,17 @@ Guides you through enabling `.test` domains with HTTPS. The `.test` domain setup
 
 ### `outport system start`
 
-Install the DNS resolver, daemon, and local Certificate Authority.
+Install the daemon, DNS resolver, and local Certificate Authority.
 
 ```bash
 outport system start
 ```
 
-For first-time setup, prefer `outport setup` — it provides a guided interactive experience. Use `outport system start` directly to start the daemon on machines where setup has already been completed.
+::: tip First-time setup?
+Use `outport setup` instead — it provides a guided interactive experience. `outport system start` is for machines where setup has already been completed.
+:::
 
-On first run, installs the `.test` DNS resolver (`/etc/resolver/test`, requires sudo), a LaunchAgent that runs a DNS server (port 15353) and reverse proxy (ports 80 and 443), and generates a local Certificate Authority that is added to the macOS trust store. After setup, `*.test` hostnames resolve to your local services with full HTTPS support. HTTP requests are automatically redirected to HTTPS via 307.
-
-On subsequent runs, starts the daemon if it is not already running.
-
-Once the daemon is running, a live dashboard is available at `https://outport.test` showing all registered projects, services, and health status with real-time updates.
+On first run, installs the `.test` domain infrastructure (requires sudo) and generates a local Certificate Authority. On subsequent runs, starts the daemon if it is not already running. See [How It Works](/guide/how-it-works) for details on what the daemon does.
 
 | Flag | Description |
 |------|-------------|

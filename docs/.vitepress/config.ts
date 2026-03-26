@@ -46,6 +46,7 @@ export default defineConfig({
           { text: 'Why Outport?', link: '/guide/why-outport' },
           { text: 'Installation', link: '/guide/installation' },
           { text: 'Getting Started', link: '/guide/getting-started' },
+          { text: 'How It Works', link: '/guide/how-it-works' },
           { text: 'Examples', link: '/guide/examples' },
           { text: 'Dashboard', link: '/guide/dashboard' },
           { text: 'Sharing & Mobile', link: '/guide/sharing' },
