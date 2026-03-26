@@ -2,12 +2,19 @@
   <div class="home-layout">
     <!-- HERO -->
     <section class="hero">
-      <h1>Deterministic port orchestration for <span class="accent">the agentic era</span></h1>
+      <h1>Deterministic ports across <span class="accent">projects and worktrees</span></h1>
       <p class="subtitle">
-        Deterministic ports, <code>.test</code> hostnames, and wired
+        Stable ports, <code>.test</code> hostnames, and wired
         <code>.env</code> files for every project, worktree, and agent instance.
         Declare your services once — every checkout is isolated automatically.
       </p>
+      <ul class="pain-points">
+        <li><span class="pain-text">Editing <code>/etc/hosts</code></span></li>
+        <li><span class="pain-text">Port conflicts between projects</span></li>
+        <li><span class="pain-text">Updating five <code>.env</code> files when a port changes</span></li>
+        <li><span class="pain-text">Self-signed certificate warnings</span></li>
+        <li><span class="pain-text">"What port was this on again?"</span></li>
+      </ul>
       <div class="hero-ctas">
         <a href="/guide/getting-started" class="btn-primary">Get Started</a>
         <a
@@ -201,7 +208,7 @@ CORS_ORIGINS=<span class="success">https://myapp-frontend.test</span>
         <div><span class="dollar">$</span> brew install steveclarke/tap/outport</div>
         <div><span class="dollar">$</span> outport setup</div>
       </div>
-      <p class="install-note">macOS only. Linux support is planned.</p>
+      <p class="install-note">macOS and Linux. See <a href="/guide/installation">all install options</a>.</p>
     </section>
 
     <!-- FOOTER -->
@@ -251,6 +258,49 @@ CORS_ORIGINS=<span class="success">https://myapp-frontend.test</span>
   padding: 0.1em 0.4em;
   border-radius: 4px;
   font-size: 0.9em;
+}
+.pain-points {
+  list-style: none;
+  padding: 0;
+  margin: 0 auto 2.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  max-width: 750px;
+}
+.pain-points li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  color: var(--vp-c-text-3);
+  background: var(--vp-c-bg-soft);
+  border: 1px solid var(--vp-c-divider);
+  padding: 0.35rem 0.75rem;
+  border-radius: 100px;
+  white-space: nowrap;
+  transition: border-color 0.2s;
+}
+.pain-points li:hover {
+  border-color: var(--outport-accent);
+}
+.pain-points li::before {
+  content: '✕';
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--outport-accent);
+  flex-shrink: 0;
+}
+.pain-points .pain-text {
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in srgb, var(--vp-c-text-3) 40%, transparent);
+}
+.pain-points code {
+  background: none;
+  font-size: 0.9em;
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in srgb, var(--vp-c-text-3) 40%, transparent);
 }
 .story-link {
   display: inline-block;
@@ -476,9 +526,9 @@ CORS_ORIGINS=<span class="success">https://myapp-frontend.test</span>
   border: 1px solid var(--vp-c-divider);
 }
 .dashboard-frame img {
-  display: block;
   width: 100%;
   height: auto;
+  vertical-align: bottom;
 }
 .dashboard-note {
   color: var(--vp-c-text-3);
@@ -616,5 +666,6 @@ CORS_ORIGINS=<span class="success">https://myapp-frontend.test</span>
   .hero-ctas { flex-direction: column; align-items: center; }
   .terminal-pair { flex-direction: column; }
   .example-pair { flex-direction: column; }
+  .pain-points { justify-content: center; }
 }
 </style>

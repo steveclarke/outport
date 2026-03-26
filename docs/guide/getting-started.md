@@ -4,10 +4,29 @@ description: Install Outport, run setup, create your first outport.yml config, a
 
 # Getting Started
 
-## Prerequisites
+Three commands to get started:
 
-- macOS or Linux (systemd-based distros: Ubuntu, Fedora, Arch, etc.)
-- Outport installed — see [Installation](/guide/installation)
+- **`outport setup`** — one-time machine config (DNS, HTTPS, daemon)
+- **`outport init`** — create an `outport.yml` in your project
+- **`outport up`** — allocate ports and write `.env` (run again whenever you change your config)
+
+## Install
+
+::: code-group
+```bash [Homebrew]
+brew install steveclarke/tap/outport
+```
+
+```bash [Install script]
+curl -fsSL https://outport.dev/install.sh | sh
+```
+:::
+
+macOS or Linux (systemd-based distros). See [Installation](/guide/installation) for .deb/.rpm packages, building from source, and shell completions.
+
+::: info Windows
+Outport does not currently support Windows. WSL2 with systemd enabled (Ubuntu 22.04+) may work but is untested.
+:::
 
 ## Run Setup
 
@@ -48,6 +67,10 @@ computed:
 ```
 
 Each service needs at least an `env_var` — the environment variable that will hold the allocated port. The `computed` section wires up values that depend on your services — URLs, CORS origins, API endpoints — so your app gets finished environment variables, not just port numbers.
+
+::: tip \`${service.url}\` vs \`${service.url:direct}\`
+Use `${service.url}` for URLs the browser sees — it produces `https://myapp.test` URLs via the local proxy. Use `${service.url:direct}` for server-to-server calls (API requests between services) — it produces `http://localhost:24920` URLs that bypass the proxy. If you're not using `.test` domains, both produce localhost URLs.
+:::
 
 ## Bring It Up
 

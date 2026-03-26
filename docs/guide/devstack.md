@@ -4,6 +4,10 @@ description: A convention for telling AI agents how to start, stop, and health-c
 
 # Running Your Dev Stack
 
+::: tip This is optional
+Outport works on its own — you can keep using whatever you already use to start your services (Procfile, Makefile, `docker compose up`, or just running commands in separate terminals).
+:::
+
 Outport allocates ports and writes `.env` files — it doesn't start or stop your services. But if you're using Outport, you'll also need a way to run your dev stack, and increasingly you'll want your AI coding agents to be able to start, stop, and health-check services on your behalf.
 
 This page describes a complementary convention — `DEVSTACK.md` — that solves that problem. It's not part of Outport, but it pairs well with it. A file committed to your project root that tells agents how to run your dev environment. `CLAUDE.md` tells agents how to work in a codebase. `DEVSTACK.md` tells them how to start it, stop it, and check if it's healthy.

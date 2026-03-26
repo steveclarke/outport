@@ -64,6 +64,14 @@ When your browser navigates to `myapp.test`, three things happen in quick succes
 
 This is why `.test` hostnames work without any changes to `/etc/hosts` and why HTTPS just works without self-signed certificate warnings.
 
+::: details What are DNS, daemons, and certificate authorities?
+**DNS** (Domain Name System) translates names like `myapp.test` into IP addresses. Normally your ISP handles this, but Outport runs a tiny local DNS server just for `.test` domains — it tells your browser "that's at 127.0.0.1" (your own machine).
+
+A **daemon** is a program that runs in the background. Outport's daemon handles DNS lookups and proxies web requests to the right port. Your OS manages it automatically — you don't need to start it manually.
+
+A **Certificate Authority** (CA) is what makes HTTPS work. Browsers only show the padlock icon if the certificate was signed by a trusted authority. Outport creates a private CA on your machine and tells your OS to trust it, so your `.test` domains get real HTTPS locally. This CA only exists on your machine and only signs certificates for `.test` domains.
+:::
+
 ## Key concepts
 
 **Registry** — The JSON file (`~/.local/share/outport/registry.json`) that stores all port allocations, hostnames, and env var names for every project and instance. This is the source of truth that persists between runs and that the daemon watches for changes.

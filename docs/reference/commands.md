@@ -6,6 +6,10 @@ description: All Outport CLI commands — setup, init, up, down, ports, open, sh
 
 Outport commands fall into two groups: **project commands** that operate on the current directory's `outport.yml`, and **system commands** that manage machine-wide infrastructure like DNS, HTTPS, and the daemon. All commands support `--json` for machine-readable output.
 
+::: tip Day-to-day commands
+After initial setup, you'll mostly use **`outport open`** (open services in the browser) and **`outport status`** (check what's allocated and running). Run **`outport up`** when you add a new project or change your config. Everything else is for setup, troubleshooting, or specific workflows.
+:::
+
 Port allocations are stored in the **registry** — a JSON file at `~/.local/share/outport/registry.json` that maps every project and instance to its allocated ports, hostnames, and env vars. The registry is what makes allocations persistent and deterministic across runs.
 
 ## Project Commands

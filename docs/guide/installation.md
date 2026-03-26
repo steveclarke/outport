@@ -1,8 +1,10 @@
 ---
-description: Install Outport via the install script, Homebrew, .deb/.rpm package, go install, or build from source. macOS and Linux supported.
+description: All install methods for Outport — install script, Homebrew, .deb/.rpm package, go install, and building from source. macOS and Linux supported.
 ---
 
 # Installation
+
+The fastest way to install is on the [Getting Started](/guide/getting-started) page. This page covers all available methods.
 
 ## Install Script (Recommended)
 
