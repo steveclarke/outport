@@ -168,13 +168,22 @@ func printFlatServices(w io.Writer, cfg *config.Config, serviceNames []string, p
 	for _, svcName := range serviceNames {
 		printServiceLineDetailed(w, cfg, svcName, ports[svcName], hostnames, portStatus, httpsEnabled)
 		if svcAliases, ok := aliases[svcName]; ok {
-			aliasKeys := slices.Sorted(maps.Keys(svcAliases))
-			for _, key := range aliasKeys {
-				aliasHostname := svcAliases[key]
-				if u := urlutil.ServiceURL(aliasHostname, ports[svcName], httpsEnabled); u != "" {
-					lipgloss.Fprintln(w, "                                                "+ui.UrlStyle.Render(u))
-				}
-			}
+			printAliasLines(w, svcAliases, ports[svcName], httpsEnabled)
+		}
+	}
+}
+
+// printAliasLines renders alias URLs underneath a service line, aligned and labeled.
+func printAliasLines(w io.Writer, svcAliases map[string]string, port int, httpsEnabled bool) {
+	aliasKeys := slices.Sorted(maps.Keys(svcAliases))
+	for _, key := range aliasKeys {
+		aliasHostname := svcAliases[key]
+		if u := urlutil.ServiceURL(aliasHostname, port, httpsEnabled); u != "" {
+			line := fmt.Sprintf("    %s  %s",
+				ui.DimStyle.Render(fmt.Sprintf("%-38s", "alias: "+key)),
+				ui.UrlStyle.Render(u),
+			)
+			lipgloss.Fprintln(w, line)
 		}
 	}
 }

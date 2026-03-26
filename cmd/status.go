@@ -13,7 +13,6 @@ import (
 	"github.com/steveclarke/outport/internal/portcheck"
 	"github.com/steveclarke/outport/internal/registry"
 	"github.com/steveclarke/outport/internal/ui"
-	"github.com/steveclarke/outport/internal/urlutil"
 	"github.com/spf13/cobra"
 )
 
@@ -199,13 +198,7 @@ func printStatusStyled(cmd *cobra.Command, reg *registry.Registry, projects map[
 		for _, svcName := range svcNames {
 			printServiceLineCompact(w, renderCfg, svcName, alloc.Ports[svcName], alloc.Hostnames, portStatus, httpsEnabled)
 			if svcAliases, ok := alloc.Aliases[svcName]; ok {
-				aliasKeys := slices.Sorted(maps.Keys(svcAliases))
-				for _, key := range aliasKeys {
-					aliasHostname := svcAliases[key]
-					if u := urlutil.ServiceURL(aliasHostname, alloc.Ports[svcName], httpsEnabled); u != "" {
-						lipgloss.Fprintln(w, "                      "+ui.UrlStyle.Render(u))
-					}
-				}
+				printAliasLines(w, svcAliases, alloc.Ports[svcName], httpsEnabled)
 			}
 		}
 
