@@ -625,10 +625,6 @@ func (c *Config) validate() error {
 	if c.Open != nil {
 		seen := make(map[string]bool)
 		for _, name := range c.Open {
-			if seen[name] {
-				return fmt.Errorf("open: duplicate entry %q", name)
-			}
-			seen[name] = true
 			svc, ok := c.Services[name]
 			if !ok {
 				return fmt.Errorf("open: service %q does not exist in services", name)
@@ -636,6 +632,10 @@ func (c *Config) validate() error {
 			if svc.Hostname == "" {
 				return fmt.Errorf("open: service %q has no hostname", name)
 			}
+			if seen[name] {
+				return fmt.Errorf("open: duplicate entry %q", name)
+			}
+			seen[name] = true
 		}
 	}
 
