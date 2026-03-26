@@ -149,7 +149,7 @@ just run up       # Build and run with args
 - ~~**v3:** Local HTTPS with automatic certificates for `.test` domains~~
 - ~~**v4:** QR codes for mobile device access~~
 - ~~**v5:** Public URL sharing via Cloudflare Tunnel with multi-service orchestration~~
-- **Next:** Linux support
+- ~~**v6:** Linux support (systemd, systemd-resolved, distro CA trust)~~
 
 ## License
 

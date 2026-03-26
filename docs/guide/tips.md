@@ -92,7 +92,7 @@ After `brew upgrade outport`, bounce the daemon to pick up the new binary:
 outport system restart
 ```
 
-This re-writes the LaunchAgent plist with the new binary path and restarts the daemon.
+This re-writes the daemon service configuration with the new binary path and restarts the daemon.
 
 ### Ports changed unexpectedly
 
@@ -118,10 +118,14 @@ This removes entries where the project directory or `outport.yml` is missing.
 
 If `outport system start` fails with "port 80 is already in use", another server (nginx, Apache, another dev tool) is using that port. Stop it first, then retry.
 
-On macOS, find what's using the port:
+Find what's using the port:
 
 ```bash
+# macOS
 sudo lsof -iTCP:80 -sTCP:LISTEN
+
+# Linux
+sudo ss -tlnp 'sport = 80'
 ```
 
 ### Clean reinstall

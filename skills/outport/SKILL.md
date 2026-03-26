@@ -99,14 +99,16 @@ of `http://localhost:24920`.
 
 ### How it works
 
-`outport system start` installs three components (macOS, requires sudo for DNS step):
+`outport system start` installs three components (requires sudo for DNS and CA trust):
 
-1. **DNS resolver** — `/etc/resolver/test` points `*.test` queries to a
+1. **DNS resolver** — configures your OS to send `*.test` queries to a
    local DNS server on port 15353, which resolves all `*.test` names to
-   `127.0.0.1`.
-2. **Reverse proxy** — a LaunchAgent runs on ports 80 and 443, routes
+   `127.0.0.1`. On macOS this is `/etc/resolver/test`; on Linux it's a
+   systemd-resolved drop-in config.
+2. **Reverse proxy** — a daemon runs on ports 80 and 443, routes
    requests by `Host` header to the correct service port, and auto-updates
    when you run `outport up`. WebSocket connections are proxied transparently.
+   Managed by launchd on macOS, systemd on Linux.
 3. **Local CA** — generates a Certificate Authority for HTTPS. HTTP requests
    on port 80 are redirected to HTTPS via 307.
 

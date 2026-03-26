@@ -6,7 +6,7 @@ description: Install Outport, run setup, create your first outport.yml config, a
 
 ## Prerequisites
 
-- macOS (Linux support is planned)
+- macOS or Linux (systemd-based distros: Ubuntu, Fedora, Arch, etc.)
 - Outport installed — see [Installation](/guide/installation)
 
 ## Run Setup
@@ -19,7 +19,7 @@ outport setup
 
 Outport will ask whether to enable `.test` domains with HTTPS. This is recommended — say yes for the full experience (local DNS, reverse proxy, automatic HTTPS) or no to use just the port orchestration.
 
-If you choose yes, you'll be prompted for your password (to configure DNS) and may see a macOS keychain dialog (to trust the local certificate authority). This only happens once.
+If you choose yes, you'll be prompted for your password (to configure DNS and trust the local certificate authority). On macOS, you may also see a keychain dialog. This only happens once.
 
 ## Create Your Config
 

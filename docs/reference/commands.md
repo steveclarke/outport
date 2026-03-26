@@ -191,17 +191,17 @@ Stop the daemon.
 outport system stop
 ```
 
-Unloads the LaunchAgent to stop the DNS resolver and reverse proxy.
+Stops the daemon service, shutting down the DNS resolver and reverse proxy.
 
 ### `outport system restart`
 
-Re-write the plist and restart the daemon.
+Re-write the daemon service configuration and restart.
 
 ```bash
 outport system restart
 ```
 
-Useful after upgrading Outport to pick up the new binary path in the LaunchAgent plist.
+Useful after upgrading Outport to pick up the new binary path.
 
 ### `outport system status`
 
@@ -237,7 +237,7 @@ Remove the DNS resolver, daemon, and Certificate Authority.
 outport system uninstall
 ```
 
-Unloads the daemon, removes the LaunchAgent plist, removes the DNS resolver file, removes the CA from the macOS trust store, deletes the CA files, and removes cached certificates from `~/.cache/outport/certs/`.
+Stops the daemon, removes the service configuration, removes the DNS resolver config, removes the CA from the system trust store, deletes the CA files, and removes cached certificates from `~/.cache/outport/certs/`.
 
 | Flag | Description |
 |------|-------------|
@@ -253,7 +253,7 @@ outport doctor
 
 Runs diagnostic checks on all Outport infrastructure and project configuration. Reports pass/warn/fail for each check with actionable fix suggestions. Checks include:
 
-**System checks** (always run): DNS resolver file, resolver content, LaunchAgent plist, plist binary validity, daemon agent loaded, DNS resolution, HTTP proxy (port 80), HTTPS proxy (port 443), CA certificate and key existence, CA expiry, CA trust, registry validity, cloudflared availability.
+**System checks** (always run): DNS resolver config, resolver content, daemon service file, service binary validity, daemon status, DNS resolution, HTTP proxy (port 80), HTTPS proxy (port 443), CA certificate and key existence, CA expiry, CA trust, registry validity, cloudflared availability.
 
 **Project checks** (when `outport.yml` found): config file validation, project registration in the registry, per-service port status (running or not — both are informational, not failures).
 

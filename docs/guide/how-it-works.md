@@ -56,11 +56,11 @@ If your config has computed values — like a `DATABASE_URL` that references `${
 
 When your browser navigates to `myapp.test`, three things happen in quick succession:
 
-1. **DNS** — macOS has a resolver file that sends all `.test` domain lookups to Outport's daemon (running on port 15353). The daemon responds with `127.0.0.1` — every `.test` hostname points to your own machine.
+1. **DNS** — Your OS is configured to send all `.test` domain lookups to Outport's daemon (running on port 15353). On macOS this is a resolver file; on Linux it's a systemd-resolved drop-in config. The daemon responds with `127.0.0.1` — every `.test` hostname points to your own machine.
 
 2. **Routing** — Your browser connects to port 80 (HTTP) or 443 (HTTPS) on localhost. The daemon inspects the hostname from the request, looks it up in its route table, and proxies the request to the correct local port. If `myapp.test` maps to port 12345, your request lands on port 12345.
 
-3. **HTTPS** — For secure connections, the daemon has a local Certificate Authority that issues certificates on the fly. Your browser trusts these because `outport setup` added the CA to your system keychain. The result is real HTTPS with a padlock icon, all running locally.
+3. **HTTPS** — For secure connections, the daemon has a local Certificate Authority that issues certificates on the fly. Your browser trusts these because `outport setup` added the CA to your system trust store. The result is real HTTPS with a padlock icon, all running locally.
 
 This is why `.test` hostnames work without any changes to `/etc/hosts` and why HTTPS just works without self-signed certificate warnings.
 
@@ -72,4 +72,4 @@ This is why `.test` hostnames work without any changes to `/etc/hosts` and why H
 
 **Fenced block** — The `# --- begin/end outport.dev ---` section in your env files. Outport only writes inside this block. Your own variables outside it are never modified.
 
-**Daemon** — A background process managed by your operating system (launchd on macOS). It runs a DNS server and HTTP/HTTPS proxies that make `.test` domains work. You interact with it through `outport system` commands, but most of the time it runs silently. The daemon watches the registry and updates its routes automatically when you run `outport up` or `outport down`.
+**Daemon** — A background process managed by your operating system (launchd on macOS, systemd on Linux). It runs a DNS server and HTTP/HTTPS proxies that make `.test` domains work. You interact with it through `outport system` commands, but most of the time it runs silently. The daemon watches the registry and updates its routes automatically when you run `outport up` or `outport down`.
