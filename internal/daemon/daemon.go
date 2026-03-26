@@ -134,8 +134,9 @@ func New(cfg *DaemonConfig) (*Daemon, error) {
 	}
 
 	httpSrv := &http.Server{
-		Addr:    cfg.ProxyAddr,
-		Handler: httpHandler,
+		Addr:              cfg.ProxyAddr,
+		Handler:           httpHandler,
+		ReadHeaderTimeout: 10 * time.Second,
 	}
 
 	d := &Daemon{
@@ -147,8 +148,9 @@ func New(cfg *DaemonConfig) (*Daemon, error) {
 
 	if cfg.TLSConfig != nil {
 		d.tlsProxy = &http.Server{
-			Handler:   withForwardedProto(proxyHandler),
-			TLSConfig: cfg.TLSConfig,
+			Handler:           withForwardedProto(proxyHandler),
+			TLSConfig:         cfg.TLSConfig,
+			ReadHeaderTimeout: 10 * time.Second,
 		}
 	}
 

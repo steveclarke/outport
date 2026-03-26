@@ -3,6 +3,8 @@ setup:
     go install gotest.tools/gotestsum@latest
     go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
     go install github.com/goreleaser/goreleaser/v2@latest
+    go install github.com/securego/gosec/v2/cmd/gosec@v2.25.0
+    go install golang.org/x/vuln/cmd/govulncheck@latest
     npm install
 
 # Build the binary to dist/
@@ -56,9 +58,17 @@ which:
     @which outport
     @outport --version
 
-# Run linter (requires: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest)
+# Run linter
 lint:
     golangci-lint run
+
+# Run security scanner (source code)
+gosec:
+    gosec -exclude=G104,G204,G301,G304,G306 ./...
+
+# Run vulnerability check (dependencies)
+vulncheck:
+    govulncheck ./...
 
 # Clean build artifacts
 clean:

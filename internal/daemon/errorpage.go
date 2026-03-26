@@ -2,6 +2,7 @@ package daemon
 
 import (
 	"fmt"
+	"html"
 	"net/http"
 )
 
@@ -46,7 +47,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 </html>`
 
 func writeErrorPage(w http.ResponseWriter, status int, hostname, message, hint string) {
+	safeHost := html.EscapeString(hostname)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(status)
-	fmt.Fprintf(w, errorPageTemplate, hostname+" — Outport", hostname, message, hint)
+	fmt.Fprintf(w, errorPageTemplate, safeHost+" — Outport", safeHost, message, hint)
 }

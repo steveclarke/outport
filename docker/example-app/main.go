@@ -17,7 +17,7 @@ func main() {
 	})
 
 	fmt.Printf("Listening on :%s\n", port)
-	if err := http.ListenAndServe(":"+port, nil); err != nil {
+	if err := http.ListenAndServe(":"+port, nil); err != nil { // #nosec G114 -- example app, not production
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
