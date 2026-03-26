@@ -100,7 +100,7 @@ If the service appears to be bound to localhost only, a hint is shown suggesting
 | Flag | Description |
 |------|-------------|
 | `--tunnel` | Show tunnel URL instead of LAN URL |
-| `--interface` | Override auto-detected network interface (e.g., `en0`). Outport scans your network interfaces to find your LAN IP — if it picks the wrong one (e.g., VPN adapter instead of Wi-Fi), use this to specify the correct interface. |
+| `--interface` | Override auto-detected network interface (e.g., `en0`) for this invocation. Overrides the `[network] interface` global setting. Outport scans your network interfaces to find your LAN IP — if it picks the wrong one (e.g., VPN adapter instead of Wi-Fi), set `[network] interface` in global settings to fix it permanently, or use this flag for a one-off override. |
 | `--json` | Output URLs as JSON |
 
 ### `outport share`
