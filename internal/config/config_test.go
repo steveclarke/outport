@@ -1506,6 +1506,24 @@ services:
 	}
 }
 
+func TestLoad_OpenFieldEmptyIsNil(t *testing.T) {
+	dir := writeConfig(t, `name: myapp
+services:
+  web:
+    env_var: PORT
+    hostname: myapp
+open: []
+`)
+	cfg, err := Load(dir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	// Empty open list treated the same as absent — falls back to opening all services with hostnames
+	if len(cfg.Open) != 0 {
+		t.Errorf("Open = %v, want empty", cfg.Open)
+	}
+}
+
 func TestLoad_OpenUnknownServiceErrors(t *testing.T) {
 	dir := writeConfig(t, `name: myapp
 services:
