@@ -9,5 +9,8 @@
   "devDependencies": {
     "vitepress": "^1.6",
     "wrangler": "^4.74.0"
+  },
+  "dependencies": {
+    "posthog-js": "^1.363.6"
   }
 }
