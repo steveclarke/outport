@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/miekg/dns"
@@ -98,9 +99,9 @@ type Daemon struct {
 // New creates and wires together all daemon components without starting them.
 // It builds the proxy handler, dashboard handler, DNS server, and (optionally)
 // the HTTPS server, connecting them through the shared RouteTable. When TLS is
-// configured, the HTTP server redirects all requests to HTTPS; otherwise it
-// serves proxy traffic directly. Call Run on the returned Daemon to start
-// all servers.
+// configured, the HTTP server redirects most requests to HTTPS but proxies
+// tunnel traffic directly (to avoid redirect loops with cloudflared).
+// Call Run on the returned Daemon to start all servers.
 func New(cfg *DaemonConfig) (*Daemon, error) {
 	routes := &RouteTable{}
 	proxyHandler := NewProxy(routes)
@@ -128,7 +129,7 @@ func New(cfg *DaemonConfig) (*Daemon, error) {
 
 	var httpHandler http.Handler
 	if cfg.TLSConfig != nil {
-		httpHandler = http.HandlerFunc(redirectToHTTPS)
+		httpHandler = tunnelAwareRedirect(routes, proxyHandler)
 	} else {
 		httpHandler = proxyHandler
 	}
@@ -166,12 +167,25 @@ func withForwardedProto(h http.Handler) http.Handler {
 	})
 }
 
-// redirectToHTTPS sends a 307 Temporary Redirect from HTTP to the equivalent
-// HTTPS URL. This is used as the HTTP server's handler when TLS is enabled,
-// ensuring all browser traffic goes through the encrypted proxy.
-func redirectToHTTPS(w http.ResponseWriter, r *http.Request) {
-	target := "https://" + r.Host + r.RequestURI
-	http.Redirect(w, r, target, http.StatusTemporaryRedirect)
+// tunnelAwareRedirect returns an HTTP handler that proxies tunnel traffic
+// directly and redirects everything else to HTTPS. When cloudflared connects
+// to port 80, the request hostname is a *.trycloudflare.com address that maps
+// to a HostOverride route in the route table. Without this check, the blanket
+// HTTP→HTTPS redirect creates an infinite loop: cloudflared → port 80 → 307
+// → https://xxx.trycloudflare.com → Cloudflare edge → cloudflared → port 80.
+func tunnelAwareRedirect(routes *RouteTable, proxy *ProxyHandler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hostname := r.Host
+		if idx := strings.LastIndex(hostname, ":"); idx != -1 {
+			hostname = hostname[:idx]
+		}
+		if rt, ok := routes.Lookup(hostname); ok && rt.HostOverride != "" {
+			proxy.ServeHTTP(w, r)
+			return
+		}
+		target := "https://" + r.Host + r.RequestURI
+		http.Redirect(w, r, target, http.StatusTemporaryRedirect)
+	})
 }
 
 // Run starts all daemon servers concurrently and blocks until the context is

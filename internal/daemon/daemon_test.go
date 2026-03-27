@@ -249,6 +249,72 @@ func TestDaemonHTTPRedirect(t *testing.T) {
 	cancel()
 }
 
+func TestDaemonHTTPProxiesTunnelTrafficWithTLS(t *testing.T) {
+	// Test the HTTP handler directly (no d.Run) to avoid racing with the
+	// file watcher goroutine that also calls into the route table.
+	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Got-Host", r.Host)
+		_, _ = w.Write([]byte("tunneled"))
+	}))
+	defer backend.Close()
+	backendPort := backend.Listener.Addr().(*net.TCPAddr).Port
+
+	dir := t.TempDir()
+	regPath := filepath.Join(dir, "registry.json")
+	reg := &registry.Registry{Projects: make(map[string]registry.Allocation)}
+	reg.Set("myapp", "main", registry.Allocation{
+		ProjectDir: "/src/myapp",
+		Ports:      map[string]int{"web": backendPort},
+		Hostnames:  map[string]string{"web": "myapp.test"},
+	})
+	writeRegistryJSON(t, regPath, reg)
+
+	d, err := New(&DaemonConfig{
+		DNSAddr:      "127.0.0.1:0",
+		ProxyAddr:    "127.0.0.1:0",
+		TLSConfig:    &tls.Config{}, // non-nil enables HTTPS redirect
+		RegistryPath: regPath,
+	})
+	if err != nil {
+		t.Fatalf("new daemon: %v", err)
+	}
+
+	// Populate routes and add a tunnel HostOverride route
+	routes := BuildRoutes(reg)
+	d.routes.UpdateWithAllocations(routes, reg.Projects)
+	d.routes.MergeTunnelRoutes(map[string]route{
+		"abc123.trycloudflare.com": {Port: backendPort, HostOverride: "myapp.test"},
+	})
+
+	handler := d.proxy.Handler // the tunnelAwareRedirect handler
+
+	// Tunnel hostname on HTTP → should proxy, not redirect
+	w1 := httptest.NewRecorder()
+	req1 := httptest.NewRequest("GET", "/", nil)
+	req1.Host = "abc123.trycloudflare.com"
+	handler.ServeHTTP(w1, req1)
+
+	if w1.Code != http.StatusOK {
+		t.Errorf("tunnel request: status = %d, want 200", w1.Code)
+	}
+	if body := w1.Body.String(); body != "tunneled" {
+		t.Errorf("body = %q, want %q", body, "tunneled")
+	}
+
+	// Non-tunnel .test hostname on HTTP → should 307 redirect to HTTPS
+	w2 := httptest.NewRecorder()
+	req2 := httptest.NewRequest("GET", "/some/path", nil)
+	req2.Host = "myapp.test"
+	handler.ServeHTTP(w2, req2)
+
+	if w2.Code != http.StatusTemporaryRedirect {
+		t.Errorf(".test request: status = %d, want %d", w2.Code, http.StatusTemporaryRedirect)
+	}
+	if loc := w2.Header().Get("Location"); loc != "https://myapp.test/some/path" {
+		t.Errorf("Location = %q, want %q", loc, "https://myapp.test/some/path")
+	}
+}
+
 func TestDaemonHTTPProxyWithoutTLS(t *testing.T) {
 	dir := t.TempDir()
 	regPath := filepath.Join(dir, "registry.json")
