@@ -249,6 +249,101 @@ func TestDaemonHTTPRedirect(t *testing.T) {
 	cancel()
 }
 
+func TestDaemonHTTPProxiesTunnelTrafficWithTLS(t *testing.T) {
+	dir := t.TempDir()
+	regPath := filepath.Join(dir, "registry.json")
+	caCertPath := filepath.Join(dir, "ca-cert.pem")
+	caKeyPath := filepath.Join(dir, "ca-key.pem")
+	cacheDir := filepath.Join(dir, "certs")
+
+	if err := certmanager.GenerateCA(caCertPath, caKeyPath); err != nil {
+		t.Fatalf("GenerateCA: %v", err)
+	}
+	store, _ := certmanager.NewCertStore(caCertPath, caKeyPath, cacheDir)
+
+	// Backend that cloudflared would normally reach through the proxy
+	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Echo back the Host header so we can verify HostOverride rewrote it
+		w.Header().Set("X-Got-Host", r.Host)
+		_, _ = w.Write([]byte("tunneled"))
+	}))
+	defer backend.Close()
+	backendPort := backend.Listener.Addr().(*net.TCPAddr).Port
+
+	// Registry with a service
+	reg := &registry.Registry{Projects: make(map[string]registry.Allocation)}
+	reg.Set("myapp", "main", registry.Allocation{
+		ProjectDir: "/src/myapp",
+		Ports:      map[string]int{"web": backendPort},
+		Hostnames:  map[string]string{"web": "myapp.test"},
+	})
+	data, _ := json.MarshalIndent(reg, "", "  ")
+	if err := os.WriteFile(regPath, data, 0644); err != nil {
+		t.Fatalf("write registry: %v", err)
+	}
+
+	httpLn, _ := net.Listen("tcp", "127.0.0.1:0")
+	httpsLn, _ := net.Listen("tcp", "127.0.0.1:0")
+	dnsPC, _ := net.ListenPacket("udp", "127.0.0.1:0")
+	dnsAddr := dnsPC.LocalAddr().String()
+	dnsPC.Close()
+
+	d, _ := New(&DaemonConfig{
+		DNSAddr:       dnsAddr,
+		ProxyAddr:     httpLn.Addr().String(),
+		HTTPListener:  httpLn,
+		HTTPSListener: httpsLn,
+		TLSConfig:     &tls.Config{GetCertificate: store.GetCertificate},
+		RegistryPath:  regPath,
+	})
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() { _ = d.Run(ctx) }()
+	time.Sleep(100 * time.Millisecond)
+
+	// Add a tunnel route (simulates what happens when outport share writes state)
+	d.routes.MergeTunnelRoutes(map[string]route{
+		"abc123.trycloudflare.com": {Port: backendPort, HostOverride: "myapp.test"},
+	})
+
+	client := &http.Client{CheckRedirect: func(req *http.Request, via []*http.Request) error {
+		return http.ErrUseLastResponse
+	}}
+
+	// Request via tunnel hostname on HTTP port — should proxy, not redirect
+	req, _ := http.NewRequest("GET", "http://"+httpLn.Addr().String()+"/", nil)
+	req.Host = "abc123.trycloudflare.com"
+	resp, err := client.Do(req)
+	if err != nil {
+		t.Fatalf("GET tunnel: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("tunnel request: status = %d, want 200 (got redirect loop?)", resp.StatusCode)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	if string(body) != "tunneled" {
+		t.Errorf("body = %q, want %q", body, "tunneled")
+	}
+
+	// Non-tunnel .test hostname on HTTP port should still redirect to HTTPS
+	req2, _ := http.NewRequest("GET", "http://"+httpLn.Addr().String()+"/", nil)
+	req2.Host = "myapp.test"
+	resp2, err := client.Do(req2)
+	if err != nil {
+		t.Fatalf("GET .test: %v", err)
+	}
+	defer resp2.Body.Close()
+
+	if resp2.StatusCode != http.StatusTemporaryRedirect {
+		t.Errorf(".test request: status = %d, want %d", resp2.StatusCode, http.StatusTemporaryRedirect)
+	}
+
+	cancel()
+}
+
 func TestDaemonHTTPProxyWithoutTLS(t *testing.T) {
 	dir := t.TempDir()
 	regPath := filepath.Join(dir, "registry.json")
