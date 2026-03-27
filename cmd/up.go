@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"io"
 	"maps"
 	"os"
 	"slices"
@@ -20,6 +21,12 @@ import (
 )
 
 var forceFlag bool
+
+type portFallback struct {
+	service       string
+	preferredPort int
+	allocatedPort int
+}
 
 // isPortBusy checks if a port is in use on the system. Tests can override this
 // to avoid flaky failures when common ports (e.g., 5432) are bound locally.
@@ -72,6 +79,7 @@ func runUp(cmd *cobra.Command, args []string) error {
 
 	ports := make(map[string]int)
 	serviceNames := slices.Sorted(maps.Keys(cfg.Services))
+	var fallbacks []portFallback
 
 	for _, svcName := range serviceNames {
 		svc := cfg.Services[svcName]
@@ -91,6 +99,10 @@ func runUp(cmd *cobra.Command, args []string) error {
 				return fmt.Errorf("allocating port for %s: %w", svcName, err)
 			}
 			usedPorts[port] = true
+
+			if svc.PreferredPort != 0 && port != svc.PreferredPort {
+				fallbacks = append(fallbacks, portFallback{svcName, svc.PreferredPort, port})
+			}
 		}
 		ports[svcName] = port
 	}
@@ -155,6 +167,7 @@ func runUp(cmd *cobra.Command, args []string) error {
 	}
 
 	printExternalFilesWarning(cmd.OutOrStdout(), result.ExternalFiles)
+	printPreferredPortWarnings(cmd.OutOrStdout(), fallbacks)
 
 	w := cmd.OutOrStdout()
 	if !platform.IsAgentLoaded() {
@@ -194,7 +207,9 @@ func printUpJSON(cmd *cobra.Command, cfg *config.Config, instanceName string, po
 		EnvFiles:      envFiles,
 		ExternalFiles: toExternalFileJSON(externalFiles),
 	}
-	return writeJSON(cmd, out)
+	n := len(out.Services)
+	summary := fmt.Sprintf("%d %s allocated", n, pluralize(n, "service", "services"))
+	return writeJSON(cmd, out, summary)
 }
 
 func printUpStyled(cmd *cobra.Command, cfg *config.Config, instanceName string, serviceNames []string, ports map[string]int, hostnames map[string]string, aliases map[string]map[string]string, resolvedComputed map[string]map[string]string, envFiles []string, httpsEnabled bool) error {
@@ -220,3 +235,16 @@ func printUpStyled(cmd *cobra.Command, cfg *config.Config, instanceName string, 
 	return nil
 }
 
+// printPreferredPortWarnings prints a warning for each service whose preferred port
+// could not be allocated (because it was in use or claimed by another project).
+func printPreferredPortWarnings(w io.Writer, fallbacks []portFallback) {
+	if len(fallbacks) == 0 {
+		return
+	}
+	warnStyle := lipgloss.NewStyle().Foreground(ui.Yellow)
+	lipgloss.Fprintln(w)
+	for _, fb := range fallbacks {
+		lipgloss.Fprintln(w, warnStyle.Render(
+			fmt.Sprintf("⚠ %s: preferred port %d is unavailable, allocated %d instead", fb.service, fb.preferredPort, fb.allocatedPort)))
+	}
+}

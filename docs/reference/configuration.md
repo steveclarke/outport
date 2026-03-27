@@ -4,9 +4,10 @@ description: Complete outport.yml reference — services, env_var, hostname, pre
 
 # Configuration
 
-Outport has two configuration files:
+Outport has three configuration files:
 
 - **Project config** (`outport.yml`) — lives in each project directory, checked into version control. Declares your services, ports, hostnames, and computed values.
+- **Local overrides** (`outport.local.yml`) — optional per-machine overrides, not committed. Merges on top of `outport.yml` at load time.
 - **Global settings** (`~/.config/outport/config`) — machine-wide preferences like dashboard health check interval and DNS TTL. Optional — everything has sensible defaults.
 
 ## Project Config (`outport.yml`)
@@ -57,6 +58,33 @@ name: my-app
 #### `services` (required)
 
 A map of service names to their configuration. At least one service is required.
+
+#### `open`
+
+Declares which services `outport open` opens by default. When omitted, `outport open` opens all services with a `hostname`. When present, only the listed services are opened — in the order listed.
+
+```yaml
+name: myapp
+
+open:
+  - web
+  - frontend
+
+services:
+  web:
+    env_var: PORT
+    hostname: myapp
+  frontend:
+    env_var: VITE_PORT
+    hostname: app.myapp
+  admin:
+    env_var: ADMIN_PORT
+    hostname: admin.myapp    # not opened by default
+```
+
+Each entry must reference a service that exists and has a `hostname`. You can always open any service explicitly: `outport open admin`.
+
+Can be overridden in `outport.local.yml` — the local list replaces the base list entirely.
 
 #### `env_var` (required)
 
@@ -226,6 +254,45 @@ computed:
         value: "${rails.url:direct}/api/v1"
       - file: frontend/apps/portal/.env
         value: "${rails.url:direct}/portal/api/v1"
+```
+
+## Local Overrides (`outport.local.yml`)
+
+For per-machine config that shouldn't be committed to version control, create an `outport.local.yml` in the same directory as your `outport.yml`.
+
+The local file can override any field on services defined in the base config. Fields you specify replace the base values; fields you omit keep their original values.
+
+```yaml
+# outport.local.yml (not committed)
+services:
+  postgres:
+    preferred_port: 5432    # use system Postgres on this machine
+```
+
+### Rules
+
+- **Override only** — you can only override services that exist in `outport.yml`. Adding new services in the local file produces an error.
+- **Field-level merge** — each field you specify replaces the base value. Omitted fields are untouched.
+- **Aliases replace entirely** — if you override `aliases`, the entire alias map is replaced, not merged key-by-key.
+- **`open` replaces entirely** — if you override `open`, the entire list is replaced.
+- **Validation runs on the merged result** — hostname rules, env_var uniqueness, and all other validations apply after merging.
+- **No `name` override** — the project name always comes from `outport.yml`.
+
+### Common Uses
+
+| Scenario | Local Override |
+|----------|---------------|
+| Use system Postgres on port 5432 | `preferred_port: 5432` on the postgres service |
+| Write env to a different file on this machine | `env_file: custom/.env` on the service |
+| Use a different hostname for local testing | `hostname: dev.myapp` on the service |
+| Only open specific services on this machine | `open: [web]` at the top level |
+
+### `.gitignore`
+
+Add `outport.local.yml` to your project's `.gitignore`:
+
+```
+outport.local.yml
 ```
 
 ## Global Settings

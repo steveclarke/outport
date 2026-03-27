@@ -150,6 +150,13 @@ myapp [bkrm]   web → 28104   http://myapp-bkrm.test
 
 ## Config Reference
 
+### Project-Level Fields
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `name` | yes | Project identifier. Used for port allocation and hostname generation. |
+| `open` | no | List of service names that `outport open` opens by default. When omitted, opens all services with a hostname. |
+
 ### Service Fields
 
 | Field | Required | Description |

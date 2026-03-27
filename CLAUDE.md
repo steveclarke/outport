@@ -6,7 +6,10 @@ All tasks use the `justfile`:
 just build            # Compile to dist/outport
 just test             # Run all tests (verbose)
 just test-short       # Run tests (compact output)
+just test-e2e         # Run BATS end-to-end tests
 just lint             # Run golangci-lint
+just gosec            # Run gosec security scanner (source code)
+just vulncheck        # Run govulncheck (dependencies)
 just install          # Install to $GOPATH/bin
 just run <args>       # Build and run (e.g., just run up)
 just release-dry-run  # Test GoReleaser locally
@@ -27,7 +30,7 @@ Entry point: `main.go` → `cmd.Execute()` (Cobra CLI).
 - **allocator** — Port allocation via FNV-32a hash on `"{project}/{instance}/{service}"`. Port range: 10000–39999 (15353 reserved for daemon DNS). Collisions resolved by linear probing with wraparound.
 - **certmanager** — Local CA and per-hostname server certificate lifecycle. Caches to `~/.cache/outport/certs/`.
 - **registry** — Persistent JSON store at `~/.local/share/outport/registry.json`. Keys: `"{project}/{instance}"`. Atomic writes via temp file + rename.
-- **config** — Loads/validates `outport.yml`. `FindDir()` walks up to locate config.
+- **config** — Loads/validates `outport.yml` (with optional `outport.local.yml` overrides). `FindDir()` walks up to locate config.
 - **instance** — Resolves instance names. Validation: lowercase alphanumeric + hyphens.
 - **daemon** — DNS server (port 15353), HTTP proxy (port 80), TLS proxy (port 443, SNI-based). Watches registry for route rebuilds. Serves dashboard at `outport.test`.
 - **dashboard** — Embedded web dashboard (`go:embed`). JSON API, SSE live updates, health checker (configurable interval, only when clients connected).
@@ -38,12 +41,13 @@ Entry point: `main.go` → `cmd.Execute()` (Cobra CLI).
 - **tunnel** — Provider abstraction + concurrent manager with all-or-nothing semantics.
 - **tunnel/cloudflare** — Shells out to `cloudflared tunnel --url`, parses URL from stderr.
 - **settings** — Global user settings from `~/.config/outport/config` (INI format, `go-ini/ini`). `Load()` returns defaults for missing file/keys. Consumers receive values as parameters — internal packages never import this.
+- **ui** — Terminal color palette and text styles (lipgloss). `Init()` adapts to the terminal: respects `NO_COLOR` (strips all color, preserves bold), detects dark backgrounds (shifts grays brighter). Called once at CLI startup.
 
 ### CLI commands (`cmd/`)
 
 Commands are defined in `cmd/*.go` — read them for details. Key conventions:
 
-- All commands support `--json` for machine-readable output. Each command has paired `print*Styled()` and `print*JSON()` output functions.
+- All commands support `--json` for machine-readable output. Each command has paired `print*Styled()` and `print*JSON()` output functions. JSON output uses an envelope: `{"ok": true, "data": ..., "summary": "..."}` for success, `{"ok": false, "error": "...", "hint": "..."}` for errors. All JSON flows through `writeJSON()` / `writeJSONError()` in `cmd/cmdutil.go`.
 - **daemon** is a hidden command invoked by launchd, not by users.
 
 ## Key Design Decisions
@@ -52,7 +56,9 @@ Commands are defined in `cmd/*.go` — read them for details. Key conventions:
 - **Deterministic allocation** — Same inputs always produce the same port (idempotent `outport up`).
 - **Instance model** — The first checkout of a project is "main". Additional checkouts (worktrees, clones) get auto-generated 4-character codes. Instances can be renamed (`outport rename`) or promoted to main (`outport promote`). The registry is the source of truth for instance identity — directories are looked up by path.
 - **`.test` hostnames** — Services with a `hostname` get `.test` domain hostnames (e.g., `myapp.test`). Non-main instances get suffixed hostnames (e.g., `myapp-bxcf.test`). Hostnames are globally unique across all registered projects. Services can also define named `aliases` (a map of label → hostname) that register additional proxy routes to the same port — each alias follows the same validation rules as primary hostnames and gets the same instance suffix treatment for non-main instances.
+- **`open` list** — Optional top-level `open` field in `outport.yml` lists which services `outport open` opens by default. When absent, all services with hostnames are opened (original behavior). Validated: each entry must exist and have a hostname. Overridable in `outport.local.yml` (replaces entirely).
 - **Template expansion** — Computed values use bash-style parameter expansion. Service fields: `${service.port}`, `${service.hostname}`, `${service.url}`, `${service.url:direct}`, `${service.env_var}`, `${service.alias.NAME}` (alias hostname by label), `${service.alias_url.NAME}` (alias `https://` URL by label). Standalone variables: `${instance}` (empty for main, instance code for worktrees), `${project_name}` (project name from config). Operators: `${var:-default}` (use default if empty), `${var:+replacement}` (use replacement if non-empty). Example: `"${project_name}${instance:+-${instance}}"` → `myapp` for main, `myapp-xbjf` for worktrees.
+- **Local config overrides** — `outport.local.yml` (not committed) merges on top of `outport.yml` at load time. Only services already in the base config can be overridden — field-level merge where non-zero/non-empty local values win. Aliases and the `open` list replace entirely (not merged). Project name and computed values in the local file are ignored. Validation runs on the merged result.
 - **Fenced .env blocks** — Managed variables are written in a `# --- begin/end outport.dev ---` fenced section. User content outside the block is never touched. Vars claimed by Outport are removed from the user section and relocated into the block.
 - **External env file safety** — Env file paths outside the project directory require explicit developer approval. Paths are resolved through symlinks using `filepath.EvalSymlinks` before boundary checking. All write commands enforce this through `writeEnvFiles`/`removeEnvFiles` wrappers.
 - **Auto-restart on version mismatch** — Every CLI command (except `daemon`, `setup`, and `system` subcommands) checks the running daemon's version via `/api/status`. If they differ, the daemon is silently restarted. Best-effort — failures are silently ignored. Implementation in `cmd/version_check.go`.

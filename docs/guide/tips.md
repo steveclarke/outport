@@ -56,6 +56,19 @@ computed:
 
 This gives each instance a unique Docker Compose project name.
 
+### Per-machine config overrides
+
+Create `outport.local.yml` (gitignored) in the same directory as your `outport.yml` to override service fields per-machine. Useful when your setup differs from the team's defaults:
+
+```yaml
+# outport.local.yml
+services:
+  postgres:
+    preferred_port: 5432    # use system Postgres
+```
+
+See [Local Overrides](/reference/configuration#local-overrides-outport-local-yml) for full details.
+
 ### Adding Outport to a project setup script
 
 Make it optional so developers without Outport aren't blocked:

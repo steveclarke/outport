@@ -53,7 +53,7 @@ var reservedPorts = map[int]bool{
 func HashPort(project, instance, service string) int {
 	h := fnv.New32a()
 	h.Write([]byte(fmt.Sprintf("%s/%s/%s", project, instance, service)))
-	return int(h.Sum32()%uint32(portRange)) + MinPort
+	return int(h.Sum32()%uint32(portRange)) + MinPort // #nosec G115 -- portRange is a small constant, no overflow risk
 }
 
 // Allocate assigns a port for a service, handling collisions and reservations.

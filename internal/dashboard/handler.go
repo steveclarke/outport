@@ -227,7 +227,7 @@ func (h *Handler) handleQR(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "image/svg+xml")
 	w.Header().Set("Cache-Control", "public, max-age=86400")
-	fmt.Fprint(w, svg)
+	fmt.Fprint(w, svg) // #nosec G705 -- SVG is generated from numeric QR module coordinates, no user input in output
 }
 
 // handleSSE streams server-sent events to the client.

@@ -43,7 +43,7 @@ func runDaemon(cmd *cobra.Command, args []string) error {
 		DNSAddr:          "127.0.0.1:15353",
 		RegistryPath:     regPath,
 		Version:          version,
-		DNSTTL:           uint32(s.DNS.TTL),
+		DNSTTL:           uint32(s.DNS.TTL), // #nosec G115 -- TTL is a small config value, no overflow risk
 		HealthInterval:   s.Dashboard.HealthInterval,
 		NetworkInterface: s.Network.Interface,
 	}

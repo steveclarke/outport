@@ -32,3 +32,65 @@ jobs:
           go-version: stable
 
       - run: go test ./...
+
+  test-race:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version: stable
+
+      - run: go test -race ./...
+
+  test-e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version: stable
+
+      - name: Install BATS and helpers
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bats
+          sudo git clone --depth 1 https://github.com/bats-core/bats-support.git /usr/lib/bats-support
+          sudo git clone --depth 1 https://github.com/bats-core/bats-assert.git /usr/lib/bats-assert
+
+      - name: Build binary
+        run: |
+          mkdir -p dist
+          go build -ldflags "-X github.com/steveclarke/outport/cmd.version=test" -o dist/outport .
+
+      - name: Run E2E tests
+        run: bats e2e/
+
+  govulncheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version: stable
+
+      - run: go install golang.org/x/vuln/cmd/govulncheck@latest
+
+      - run: govulncheck ./...
+
+  gosec:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version: stable
+
+      - name: Run gosec
+        run: |
+          go install github.com/securego/gosec/v2/cmd/gosec@v2.25.0
+          gosec -exclude=G104,G204,G301,G304,G306 ./...

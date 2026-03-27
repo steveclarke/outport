@@ -17,6 +17,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -158,6 +159,10 @@ func ResolveComputed(computed map[string]ComputedValue, templateVars map[string]
 // walking up from the current working directory.
 const FileName = "outport.yml"
 
+// LocalFileName is the name of the optional per-machine override file.
+// It is not committed to version control and merges on top of FileName at load time.
+const LocalFileName = "outport.local.yml"
+
 // envFileField handles YAML that can be a string or []string.
 type envFileField []string
 
@@ -294,6 +299,7 @@ type rawComputedValue struct {
 // rawConfig is the YAML deserialization target.
 type rawConfig struct {
 	Name        string                      `yaml:"name"`
+	Open        []string                    `yaml:"open"`
 	RawServices map[string]rawService       `yaml:"services"`
 	RawComputed map[string]rawComputedValue `yaml:"computed"`
 }
@@ -309,6 +315,11 @@ type Config struct {
 	// as part of the hash key for deterministic port allocation ("{project}/{instance}/{service}")
 	// and must be present in any service hostnames. Required -- Load rejects configs without it.
 	Name string
+
+	// Open is an optional list of service names that `outport open` should open
+	// by default. When nil, all services with hostnames are opened. When non-nil,
+	// only the listed services are opened. Order determines browser tab order.
+	Open []string
 
 	// Services maps service names (e.g., "rails", "vite", "sidekiq") to their configuration.
 	// At least one service must be defined. Service names are the keys from the "services"
@@ -349,16 +360,19 @@ func FindDir(startDir string) (string, error) {
 // Load reads, parses, normalizes, and validates the outport.yml file in the given directory.
 // It returns a fully populated Config ready for use by the allocation package and CLI commands.
 //
-// The loading process has four stages:
+// The loading process has five stages:
 //  1. Read and parse the YAML file into raw deserialization types.
-//  2. Normalize the raw data: resolve flexible YAML syntax (e.g., string-or-list env_file
+//  2. Validate that the project name is present.
+//  3. Merge local overrides: if outport.local.yml exists in the same directory, merge its
+//     service fields into the raw config. Only services already defined in the base config
+//     can be overridden; the local file cannot change the project name or add new services.
+//  4. Normalize the raw data: resolve flexible YAML syntax (e.g., string-or-list env_file
 //     fields), apply defaults (services without env_file get [".env"]), and build the
 //     final Service and ComputedValue maps.
-//  3. Validate the config: ensure required fields are present (name, env_var), check that
+//  5. Validate the config: ensure required fields are present (name, env_var), check that
 //     hostnames follow naming rules and contain the project name, verify that computed
 //     value template references point to real services and valid fields, and detect
 //     env_var name collisions within the same env file.
-//  4. Return the validated Config.
 //
 // Returns a descriptive error if any stage fails, with messages designed to guide the
 // user toward a fix.
@@ -381,6 +395,10 @@ func Load(dir string) (*Config, error) {
 		return nil, fmt.Errorf("The 'name' field is missing in %s.", FileName)
 	}
 
+	if err := mergeLocal(dir, &raw); err != nil {
+		return nil, err
+	}
+
 	cfg := &Config{
 		Name:     raw.Name,
 		Services: make(map[string]Service),
@@ -400,6 +418,56 @@ func Load(dir string) (*Config, error) {
 	}
 
 	return cfg, nil
+}
+
+// mergeLocal reads outport.local.yml (if it exists) and merges its fields
+// into the base rawConfig. Only services already defined in the base config can be
+// overridden. The local file cannot change the project name, add new services,
+// or define computed values — only the services and open sections are merged.
+// When the local file declares an open list, it replaces the base open list entirely.
+func mergeLocal(dir string, base *rawConfig) error {
+	path := filepath.Join(dir, LocalFileName)
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil // no local overrides — that's fine
+		}
+		return fmt.Errorf("Could not read %s: %w.", path, err)
+	}
+
+	var local rawConfig
+	if err := yaml.Unmarshal(data, &local); err != nil {
+		return fmt.Errorf("Invalid YAML in %s: %w.", LocalFileName, err)
+	}
+
+	for name, localSvc := range local.RawServices {
+		baseSvc, exists := base.RawServices[name]
+		if !exists {
+			return fmt.Errorf("Service %q in %s does not exist in %s.", name, LocalFileName, FileName)
+		}
+		if localSvc.PreferredPort != 0 {
+			baseSvc.PreferredPort = localSvc.PreferredPort
+		}
+		if localSvc.EnvVar != "" {
+			baseSvc.EnvVar = localSvc.EnvVar
+		}
+		if localSvc.Hostname != "" {
+			baseSvc.Hostname = localSvc.Hostname
+		}
+		if localSvc.Aliases != nil {
+			baseSvc.Aliases = localSvc.Aliases
+		}
+		if len(localSvc.EnvFile) > 0 {
+			baseSvc.EnvFile = localSvc.EnvFile
+		}
+		base.RawServices[name] = baseSvc
+	}
+
+	if local.Open != nil {
+		base.Open = local.Open
+	}
+
+	return nil
 }
 
 func toService(rs rawService) Service {
@@ -437,6 +505,8 @@ func (c *Config) normalize(raw *rawConfig) error {
 		}
 		c.Computed[name] = dv
 	}
+
+	c.Open = raw.Open
 
 	return nil
 }
@@ -553,6 +623,24 @@ func (c *Config) validate() error {
 			if err := validateTemplateRefs(name, pfValue, c.Services); err != nil {
 				return err
 			}
+		}
+	}
+
+	// Validate open list
+	if len(c.Open) > 0 {
+		seen := make(map[string]bool)
+		for _, name := range c.Open {
+			svc, ok := c.Services[name]
+			if !ok {
+				return fmt.Errorf("open: service %q does not exist in services", name)
+			}
+			if svc.Hostname == "" {
+				return fmt.Errorf("open: service %q has no hostname", name)
+			}
+			if seen[name] {
+				return fmt.Errorf("open: duplicate entry %q", name)
+			}
+			seen[name] = true
 		}
 	}
 

@@ -159,7 +159,9 @@ func printStatusJSON(cmd *cobra.Command, reg *registry.Registry, projects map[st
 		})
 	}
 
-	return writeJSON(cmd, entries)
+	n := len(entries)
+	summary := fmt.Sprintf("%d %s", n, pluralize(n, "project", "projects"))
+	return writeJSON(cmd, entries, summary)
 }
 
 var currentMarker = lipgloss.NewStyle().Foreground(ui.Green).Bold(true)

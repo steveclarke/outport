@@ -286,7 +286,9 @@ func printShareJSON(cmd *cobra.Command, tunnels []*tunnel.Tunnel, cfg *config.Co
 	}
 	out.Computed = buildComputedMap(cfg.Computed, resolvedComputed)
 	out.ExternalFiles = toExternalFileJSON(externalFiles)
-	return writeJSON(cmd, out)
+	n := len(out.Tunnels)
+	summary := fmt.Sprintf("%d %s shared", n, pluralize(n, "tunnel", "tunnels"))
+	return writeJSON(cmd, out, summary)
 }
 
 type shareDisplayRow struct {
@@ -319,9 +321,3 @@ func printShareStyled(cmd *cobra.Command, rows []shareDisplayRow) {
 	lipgloss.Fprintln(w, ui.DimStyle.Render("Press Ctrl+C to stop sharing."))
 }
 
-func pluralize(n int, singular, plural string) string {
-	if n == 1 {
-		return singular
-	}
-	return plural
-}

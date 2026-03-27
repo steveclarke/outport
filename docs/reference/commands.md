@@ -77,11 +77,13 @@ outport status --computed  # include computed values
 Open HTTP services in the browser.
 
 ```bash
-outport open         # open all HTTP services
+outport open         # open default services (or all HTTP services)
 outport open web     # open a specific service
 ```
 
-Opens HTTP services (those with a `hostname`) in your default browser. Works best with `.test` domains set up (`outport system start`).
+Opens HTTP services in your default browser. By default, opens all services with a `hostname`. If the `open` field is set in `outport.yml`, only the listed services are opened. Specify a service name to open just that one, regardless of the `open` list.
+
+Works best with `.test` domains set up (`outport system start`).
 
 ### `outport qr`
 
@@ -249,6 +251,15 @@ Stops the daemon, removes the service configuration, removes the DNS resolver co
 
 ## Utility Commands
 
+### `outport version`
+
+Show version, commit hash, and build date.
+
+```bash
+outport version          # styled output
+outport version --json   # JSON envelope with version data
+```
+
 ### `outport completion`
 
 Generate shell completion scripts.
@@ -298,3 +309,29 @@ Exit code 0 if all checks pass or warn. Exit code 1 if any check fails.
 | Flag | Description |
 |------|-------------|
 | `--json` | Output results as JSON (includes `results` array and `passed` boolean) |
+
+## JSON Output Format
+
+All commands support `--json` for machine-readable output. Output is wrapped in a consistent envelope.
+
+**Success:**
+
+```json
+{
+  "ok": true,
+  "data": { ... },
+  "summary": "3 services allocated"
+}
+```
+
+**Error:**
+
+```json
+{
+  "ok": false,
+  "error": "No outport.yml found in /path or any parent directory.",
+  "hint": "Run: outport init"
+}
+```
+
+The `summary` field is a human-readable one-liner describing what happened. The `hint` field appears on common errors with a suggested next step. Both are omitted when empty.

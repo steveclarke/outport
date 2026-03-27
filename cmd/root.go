@@ -1,11 +1,17 @@
 package cmd
 
 import (
+	"errors"
+	"strings"
+
 	"github.com/spf13/cobra"
+	"github.com/steveclarke/outport/internal/ui"
 )
 
 var (
 	version  = "dev"
+	commit   = ""
+	date     = ""
 	jsonFlag bool
 	yesFlag  bool
 )
@@ -22,12 +28,37 @@ var rootCmd = &cobra.Command{
 }
 
 func Execute() error {
+	ui.Init()
 	cmd, err := rootCmd.ExecuteC()
-	if err != nil && IsFlagError(err) {
-		cmd.Println()
-		cmd.Println(cmd.UsageString())
+	if err != nil {
+		if IsFlagError(err) {
+			cmd.Println()
+			cmd.Println(cmd.UsageString())
+		}
+		// When --json is active, emit an error envelope to stdout so
+		// machine consumers always get structured output.
+		if jsonFlag && !errors.Is(err, ErrSilent) {
+			hint := ErrorHint(err)
+			writeJSONError(cmd.OutOrStdout(), err.Error(), hint)
+			return ErrSilent // suppress stderr duplicate from main.go
+		}
 	}
 	return err
+}
+
+// ErrorHint returns a contextual hint for common errors.
+func ErrorHint(err error) string {
+	msg := err.Error()
+	switch {
+	case strings.Contains(msg, "No outport.yml"):
+		return "Run: outport init"
+	case strings.Contains(msg, "not registered"):
+		return "Run: outport up"
+	case strings.Contains(msg, "No ports allocated"):
+		return "Run: outport up"
+	default:
+		return ""
+	}
 }
 
 func init() {

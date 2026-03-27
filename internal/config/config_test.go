@@ -1202,6 +1202,128 @@ computed:
 	}
 }
 
+// --- Local Config Overrides ---
+
+func writeLocalConfig(t *testing.T, dir string, content string) {
+	t.Helper()
+	if err := os.WriteFile(filepath.Join(dir, LocalFileName), []byte(content), 0644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestLoad_LocalOverridesPreferredPort(t *testing.T) {
+	dir := writeConfig(t, `name: myapp
+services:
+  postgres:
+    env_var: DB_PORT
+`)
+	writeLocalConfig(t, dir, `services:
+  postgres:
+    preferred_port: 5432
+`)
+	cfg, err := Load(dir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.Services["postgres"].PreferredPort != 5432 {
+		t.Errorf("postgres.PreferredPort = %d, want 5432", cfg.Services["postgres"].PreferredPort)
+	}
+	// env_var should still come from base config
+	if cfg.Services["postgres"].EnvVar != "DB_PORT" {
+		t.Errorf("postgres.EnvVar = %q, want DB_PORT", cfg.Services["postgres"].EnvVar)
+	}
+}
+
+func TestLoad_LocalOverridesEnvVar(t *testing.T) {
+	dir := writeConfig(t, `name: myapp
+services:
+  web:
+    env_var: PORT
+`)
+	writeLocalConfig(t, dir, `services:
+  web:
+    env_var: CUSTOM_PORT
+`)
+	cfg, err := Load(dir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.Services["web"].EnvVar != "CUSTOM_PORT" {
+		t.Errorf("web.EnvVar = %q, want CUSTOM_PORT", cfg.Services["web"].EnvVar)
+	}
+}
+
+func TestLoad_LocalOverridesHostname(t *testing.T) {
+	dir := writeConfig(t, `name: myapp
+services:
+  web:
+    env_var: PORT
+    hostname: myapp
+`)
+	writeLocalConfig(t, dir, `services:
+  web:
+    hostname: dev.myapp
+`)
+	cfg, err := Load(dir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.Services["web"].Hostname != "dev.myapp" {
+		t.Errorf("web.Hostname = %q, want dev.myapp", cfg.Services["web"].Hostname)
+	}
+	// env_var should still come from base config
+	if cfg.Services["web"].EnvVar != "PORT" {
+		t.Errorf("web.EnvVar = %q, want PORT", cfg.Services["web"].EnvVar)
+	}
+}
+
+func TestLoad_LocalOverridesEnvFile(t *testing.T) {
+	dir := writeConfig(t, `name: myapp
+services:
+  web:
+    env_var: PORT
+    env_file: .env
+`)
+	writeLocalConfig(t, dir, `services:
+  web:
+    env_file: backend/.env
+`)
+	cfg, err := Load(dir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(cfg.Services["web"].EnvFiles) != 1 || cfg.Services["web"].EnvFiles[0] != "backend/.env" {
+		t.Errorf("web.EnvFiles = %v, want [backend/.env]", cfg.Services["web"].EnvFiles)
+	}
+}
+
+func TestLoad_LocalOverridesAliases(t *testing.T) {
+	dir := writeConfig(t, `name: myapp
+services:
+  web:
+    env_var: PORT
+    hostname: myapp
+    aliases:
+      app: app.myapp
+`)
+	writeLocalConfig(t, dir, `services:
+  web:
+    aliases:
+      admin: admin.myapp
+`)
+	cfg, err := Load(dir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	// Local aliases replace base aliases entirely (map replacement, not merge)
+	if _, ok := cfg.Services["web"].Aliases["admin"]; !ok {
+		t.Error("expected admin alias from local override")
+	}
+	if _, ok := cfg.Services["web"].Aliases["app"]; ok {
+		t.Error("expected base alias 'app' to be replaced by local override")
+	}
+}
+
 func TestValidateTemplateRefAliasUnknownService(t *testing.T) {
 	dir := writeConfig(t, `name: approvethis
 services:
@@ -1222,3 +1344,317 @@ computed:
 	}
 }
 
+func TestLoad_LocalUnknownServiceErrors(t *testing.T) {
+	dir := writeConfig(t, `name: myapp
+services:
+  web:
+    env_var: PORT
+`)
+	writeLocalConfig(t, dir, `services:
+  storybook:
+    preferred_port: 6006
+`)
+	_, err := Load(dir)
+	if err == nil {
+		t.Fatal("expected error for unknown service in local config")
+	}
+	if !strings.Contains(err.Error(), "storybook") {
+		t.Errorf("error = %q, want to contain 'storybook'", err.Error())
+	}
+	if !strings.Contains(err.Error(), LocalFileName) {
+		t.Errorf("error = %q, want to contain %q", err.Error(), LocalFileName)
+	}
+}
+
+func TestLoad_LocalInvalidYAMLErrors(t *testing.T) {
+	dir := writeConfig(t, `name: myapp
+services:
+  web:
+    env_var: PORT
+`)
+	writeLocalConfig(t, dir, `{{{ not valid yaml`)
+	_, err := Load(dir)
+	if err == nil {
+		t.Fatal("expected error for invalid YAML in local config")
+	}
+	if !strings.Contains(err.Error(), LocalFileName) {
+		t.Errorf("error = %q, want to contain %q", err.Error(), LocalFileName)
+	}
+}
+
+func TestLoad_NoLocalFileIsValid(t *testing.T) {
+	dir := writeConfig(t, `name: myapp
+services:
+  web:
+    env_var: PORT
+`)
+	// No outport.local.yml — should work fine
+	cfg, err := Load(dir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.Services["web"].EnvVar != "PORT" {
+		t.Errorf("web.EnvVar = %q, want PORT", cfg.Services["web"].EnvVar)
+	}
+}
+
+func TestLoad_EmptyLocalFileIsValid(t *testing.T) {
+	dir := writeConfig(t, `name: myapp
+services:
+  web:
+    env_var: PORT
+`)
+	writeLocalConfig(t, dir, ``)
+	cfg, err := Load(dir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.Services["web"].EnvVar != "PORT" {
+		t.Errorf("web.EnvVar = %q, want PORT", cfg.Services["web"].EnvVar)
+	}
+}
+
+func TestLoad_LocalOverrideMergedThenValidated(t *testing.T) {
+	// Local override produces an invalid hostname — should fail validation
+	dir := writeConfig(t, `name: myapp
+services:
+  web:
+    env_var: PORT
+    hostname: myapp
+`)
+	writeLocalConfig(t, dir, `services:
+  web:
+    hostname: INVALID_HOST
+`)
+	_, err := Load(dir)
+	if err == nil {
+		t.Fatal("expected validation error for invalid hostname from local override")
+	}
+	if !strings.Contains(err.Error(), "invalid characters") {
+		t.Errorf("error = %q, want hostname validation error", err.Error())
+	}
+}
+
+func TestLoad_LocalOverridesSubsetOfServices(t *testing.T) {
+	dir := writeConfig(t, `name: myapp
+services:
+  web:
+    env_var: PORT
+  postgres:
+    env_var: DB_PORT
+  redis:
+    env_var: REDIS_PORT
+`)
+	// Only override postgres — other services unchanged
+	writeLocalConfig(t, dir, `services:
+  postgres:
+    preferred_port: 5432
+`)
+	cfg, err := Load(dir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.Services["postgres"].PreferredPort != 5432 {
+		t.Errorf("postgres.PreferredPort = %d, want 5432", cfg.Services["postgres"].PreferredPort)
+	}
+	if cfg.Services["web"].PreferredPort != 0 {
+		t.Errorf("web.PreferredPort = %d, want 0 (unchanged)", cfg.Services["web"].PreferredPort)
+	}
+	if cfg.Services["redis"].PreferredPort != 0 {
+		t.Errorf("redis.PreferredPort = %d, want 0 (unchanged)", cfg.Services["redis"].PreferredPort)
+	}
+}
+
+// --- Open field ---
+
+func TestLoad_OpenField(t *testing.T) {
+	dir := writeConfig(t, `name: myapp
+services:
+  web:
+    env_var: PORT
+    hostname: myapp
+  admin:
+    env_var: ADMIN_PORT
+    hostname: admin.myapp
+  postgres:
+    env_var: DB_PORT
+open:
+  - web
+`)
+	cfg, err := Load(dir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(cfg.Open) != 1 || cfg.Open[0] != "web" {
+		t.Errorf("Open = %v, want [web]", cfg.Open)
+	}
+}
+
+func TestLoad_OpenFieldAbsent(t *testing.T) {
+	dir := writeConfig(t, `name: myapp
+services:
+  web:
+    env_var: PORT
+    hostname: myapp
+`)
+	cfg, err := Load(dir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.Open != nil {
+		t.Errorf("Open = %v, want nil", cfg.Open)
+	}
+}
+
+func TestLoad_OpenFieldEmptyIsNil(t *testing.T) {
+	dir := writeConfig(t, `name: myapp
+services:
+  web:
+    env_var: PORT
+    hostname: myapp
+open: []
+`)
+	cfg, err := Load(dir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	// Empty open list treated the same as absent — falls back to opening all services with hostnames
+	if len(cfg.Open) != 0 {
+		t.Errorf("Open = %v, want empty", cfg.Open)
+	}
+}
+
+func TestLoad_OpenUnknownServiceErrors(t *testing.T) {
+	dir := writeConfig(t, `name: myapp
+services:
+  web:
+    env_var: PORT
+    hostname: myapp
+open:
+  - web
+  - missing
+`)
+	_, err := Load(dir)
+	if err == nil {
+		t.Fatal("expected error for unknown service in open, got nil")
+	}
+	if !strings.Contains(err.Error(), `"missing"`) {
+		t.Errorf("error = %q, want to contain '\"missing\"'", err.Error())
+	}
+}
+
+func TestLoad_OpenServiceWithoutHostnameErrors(t *testing.T) {
+	dir := writeConfig(t, `name: myapp
+services:
+  web:
+    env_var: PORT
+    hostname: myapp
+  postgres:
+    env_var: DB_PORT
+open:
+  - web
+  - postgres
+`)
+	_, err := Load(dir)
+	if err == nil {
+		t.Fatal("expected error for service without hostname in open, got nil")
+	}
+	if !strings.Contains(err.Error(), `"postgres"`) {
+		t.Errorf("error = %q, want to contain '\"postgres\"'", err.Error())
+	}
+	if !strings.Contains(err.Error(), "hostname") {
+		t.Errorf("error = %q, want to contain 'hostname'", err.Error())
+	}
+}
+
+func TestLoad_OpenDuplicateErrors(t *testing.T) {
+	dir := writeConfig(t, `name: myapp
+services:
+  web:
+    env_var: PORT
+    hostname: myapp
+open:
+  - web
+  - web
+`)
+	_, err := Load(dir)
+	if err == nil {
+		t.Fatal("expected error for duplicate in open, got nil")
+	}
+	if !strings.Contains(err.Error(), "duplicate") {
+		t.Errorf("error = %q, want to contain 'duplicate'", err.Error())
+	}
+}
+
+func TestLoad_LocalOverridesOpen(t *testing.T) {
+	dir := writeConfig(t, `name: myapp
+services:
+  web:
+    env_var: PORT
+    hostname: myapp
+  admin:
+    env_var: ADMIN_PORT
+    hostname: admin.myapp
+open:
+  - web
+  - admin
+`)
+	writeLocalConfig(t, dir, `open:
+  - admin
+`)
+	cfg, err := Load(dir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(cfg.Open) != 1 || cfg.Open[0] != "admin" {
+		t.Errorf("Open = %v, want [admin]", cfg.Open)
+	}
+}
+
+func TestLoad_LocalAddsOpenWhenBaseHasNone(t *testing.T) {
+	dir := writeConfig(t, `name: myapp
+services:
+  web:
+    env_var: PORT
+    hostname: myapp
+  admin:
+    env_var: ADMIN_PORT
+    hostname: admin.myapp
+`)
+	writeLocalConfig(t, dir, `open:
+  - web
+`)
+	cfg, err := Load(dir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(cfg.Open) != 1 || cfg.Open[0] != "web" {
+		t.Errorf("Open = %v, want [web]", cfg.Open)
+	}
+}
+
+func TestLoad_LocalWithoutOpenKeepsBase(t *testing.T) {
+	dir := writeConfig(t, `name: myapp
+services:
+  web:
+    env_var: PORT
+    hostname: myapp
+  admin:
+    env_var: ADMIN_PORT
+    hostname: admin.myapp
+open:
+  - web
+  - admin
+`)
+	writeLocalConfig(t, dir, `services:
+  web:
+    preferred_port: 3000
+`)
+	cfg, err := Load(dir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(cfg.Open) != 2 {
+		t.Errorf("Open = %v, want [web admin]", cfg.Open)
+	}
+}
