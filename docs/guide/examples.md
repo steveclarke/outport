@@ -4,6 +4,10 @@ description: Real-world outport.yml configurations for Rails apps, monorepos, Do
 
 # Examples
 
+::: tip Runnable example
+Want to see Outport in action before configuring your own project? Clone the [outport-example](https://github.com/steveclarke/outport-example) repo — four Node/Express services wired together with computed values, process-compose orchestration, and a Bruno API collection. Run `bin/dev` and everything starts.
+:::
+
 Real-world configurations showing how Outport handles common development setups.
 
 ## Simple App

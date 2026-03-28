@@ -140,5 +140,6 @@ This tunnels all HTTP services to public Cloudflare URLs and rewrites `.env` fil
 
 ## Next Steps
 
+- [Example repo](https://github.com/steveclarke/outport-example) — clone a complete multi-service setup and run it immediately
 - [Examples](/guide/examples) — real-world configs for monorepos, worktrees, and cross-project setups
 - [Configuration Reference](/reference/configuration) — full `outport.yml` schema and template syntax

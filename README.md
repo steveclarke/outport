@@ -54,7 +54,7 @@ myapp [main]
 That's it. Outport writes finished environment variables to `.env` — every framework that reads `.env` works with zero configuration. Monorepos with separate `.env` files per service work too — each service can target a different file.
 
 > [!NOTE]
-> See the [Getting Started guide](https://outport.dev/guide/getting-started) for a full walkthrough.
+> See the [Getting Started guide](https://outport.dev/guide/getting-started) for a full walkthrough, or clone the [example repo](https://github.com/steveclarke/outport-example) to see a complete multi-service setup you can run immediately.
 
 ## Features
 

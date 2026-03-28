@@ -253,3 +253,5 @@ After `outport up`, each instance gets its own socket (e.g., `/tmp/process-compo
 If your project has a `bin/dev` or `docker-compose.yml` or `Procfile` — you already have the knowledge needed for a `DEVSTACK.md`. Write it down in a format agents can follow.
 
 The pattern described on this page is a working implementation — process-compose health checks, Docker services, worktree support, and all the gotchas documented above. Use it as a starting point.
+
+For a complete, runnable example of this pattern, see the [outport-example](https://github.com/steveclarke/outport-example) repo — it includes `bin/dev`, `bin/setup`, `DEVSTACK.md`, `process-compose.yml`, and four services wired together with Outport.
