@@ -94,6 +94,10 @@ var (
 	HostnameStyle = lipgloss.NewStyle().
 			Foreground(Cyan)
 
+	// WarnStyle renders warning messages in yellow.
+	WarnStyle = lipgloss.NewStyle().
+			Foreground(Yellow)
+
 	// StatusUp is a pre-rendered green checkmark with "up" text, displayed
 	// by commands that show service health status (e.g., `outport status`).
 	StatusUp = lipgloss.NewStyle().Foreground(Green).Render("✓ up")
@@ -148,6 +152,7 @@ func initNoColor() {
 	DimStyle = lipgloss.NewStyle()
 	UrlStyle = lipgloss.NewStyle()
 	HostnameStyle = lipgloss.NewStyle()
+	WarnStyle = lipgloss.NewStyle()
 }
 
 // isTerminal reports whether f is connected to an interactive terminal.

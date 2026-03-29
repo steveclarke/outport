@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/steveclarke/outport/internal/certmanager"
+	"github.com/steveclarke/outport/internal/doctor"
 	"github.com/steveclarke/outport/internal/platform"
 	"github.com/steveclarke/outport/internal/portcheck"
 	"github.com/steveclarke/outport/internal/registry"
@@ -93,6 +94,25 @@ func runSystemStart(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	// On Linux, check that the system resolver chain can actually deliver
+	// .test queries to systemd-resolved. Warn if resolv.conf is overwritten
+	// (e.g. by Tailscale) or the DNS stub listener is disabled.
+	dnsWarnings := doctor.DNSChainWarnings()
+	if len(dnsWarnings) > 0 && !jsonFlag {
+		fmt.Fprintln(w)
+		warnLabel := ui.WarnStyle.Bold(true).Render("Warning:")
+		fmt.Fprintln(w, "  "+warnLabel+" .test DNS may not work in browsers/apps:")
+		for _, r := range dnsWarnings {
+			fmt.Fprintf(w, "    • %s\n", r.Message)
+			if r.Fix != "" {
+				fmt.Fprintf(w, "      %s %s\n", ui.Arrow, ui.DimStyle.Render(r.Fix))
+			}
+		}
+		fmt.Fprintln(w)
+		fmt.Fprintln(w, ui.DimStyle.Render("  Run 'outport doctor' for full diagnostics."))
+		fmt.Fprintln(w)
+	}
+
 	caCertPath, caKeyPath, err := certmanager.CAPaths()
 	if err != nil {
 		return err
@@ -121,7 +141,7 @@ func runSystemStart(cmd *cobra.Command, args []string) error {
 	}
 
 	if jsonFlag {
-		return printSystemStartJSON(cmd, caGenerated, caTrusted)
+		return printSystemStartJSON(cmd, caGenerated, caTrusted, dnsWarnings)
 	}
 
 	fmt.Fprintln(w)
@@ -192,15 +212,26 @@ func runSystemUninstall(cmd *cobra.Command, args []string) error {
 }
 
 
-type systemStartJSON struct {
-	CAGenerated bool `json:"ca_generated"`
-	CATrusted   bool `json:"ca_trusted"`
+type dnsWarningJSON struct {
+	Message string `json:"message"`
+	Fix     string `json:"fix,omitempty"`
 }
 
-func printSystemStartJSON(cmd *cobra.Command, caGenerated, caTrusted bool) error {
+type systemStartJSON struct {
+	CAGenerated bool             `json:"ca_generated"`
+	CATrusted   bool             `json:"ca_trusted"`
+	DNSWarnings []dnsWarningJSON `json:"dns_warnings,omitempty"`
+}
+
+func printSystemStartJSON(cmd *cobra.Command, caGenerated, caTrusted bool, dnsWarnings []doctor.Result) error {
+	var warnings []dnsWarningJSON
+	for _, r := range dnsWarnings {
+		warnings = append(warnings, dnsWarningJSON{Message: r.Message, Fix: r.Fix})
+	}
 	return writeJSON(cmd, systemStartJSON{
 		CAGenerated: caGenerated,
 		CATrusted:   caTrusted,
+		DNSWarnings: warnings,
 	}, "system started")
 }
 

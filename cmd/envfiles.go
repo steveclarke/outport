@@ -208,10 +208,9 @@ func printExternalFilesWarning(w io.Writer, external []envpath.EnvFilePath) {
 		return
 	}
 	lipgloss.Fprintln(w)
-	warnStyle := lipgloss.NewStyle().Foreground(ui.Yellow)
-	lipgloss.Fprintln(w, warnStyle.Render("⚠ Note: env files written outside the project directory:"))
+	lipgloss.Fprintln(w, ui.WarnStyle.Render("⚠ Note: env files written outside the project directory:"))
 	for _, f := range external {
-		lipgloss.Fprintln(w, warnStyle.Render(fmt.Sprintf("  %s  →  %s", f.ConfigPath, f.ResolvedPath)))
+		lipgloss.Fprintln(w, ui.WarnStyle.Render(fmt.Sprintf("  %s  →  %s", f.ConfigPath, f.ResolvedPath)))
 	}
 }
 

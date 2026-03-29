@@ -123,7 +123,7 @@ func printDoctorStyled(w io.Writer, results []doctor.Result) {
 		case doctor.Pass:
 			icon = lipgloss.NewStyle().Foreground(ui.Green).Render("✓")
 		case doctor.Warn:
-			icon = lipgloss.NewStyle().Foreground(ui.Yellow).Render("!")
+			icon = ui.WarnStyle.Render("!")
 		case doctor.Fail:
 			icon = lipgloss.NewStyle().Foreground(ui.Red).Render("✗")
 		}

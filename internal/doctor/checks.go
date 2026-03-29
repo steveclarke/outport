@@ -377,7 +377,7 @@ func SystemChecks() []Check {
 	caKeyPath, _ := certmanager.CAKeyPath()
 	registryPath, _ := registry.DefaultPath()
 
-	return []Check{
+	checks := []Check{
 		{
 			Name:     "DNS resolver",
 			Category: "DNS",
@@ -399,6 +399,14 @@ func SystemChecks() []Check {
 				return checkDNSResolving("127.0.0.1:15353")
 			},
 		},
+	}
+
+	// Linux-specific checks verify the full resolution chain through
+	// systemd-resolved (stub listener, resolv.conf routing, end-to-end).
+	// No-op on other platforms.
+	checks = append(checks, linuxDNSChecks()...)
+
+	checks = append(checks, []Check{
 		{
 			Name:     platform.ServiceDescription() + " file",
 			Category: "Daemon",
@@ -476,5 +484,7 @@ func SystemChecks() []Check {
 				return checkCloudflared()
 			},
 		},
-	}
+	}...)
+
+	return checks
 }

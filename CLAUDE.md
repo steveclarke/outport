@@ -35,7 +35,7 @@ Entry point: `main.go` → `cmd.Execute()` (Cobra CLI).
 - **daemon** — DNS server (port 15353), HTTP proxy (port 80), TLS proxy (port 443, SNI-based). Watches registry for route rebuilds. Serves dashboard at `outport.test`.
 - **dashboard** — Embedded web dashboard (`go:embed`). JSON API, SSE live updates, health checker (configurable interval, only when clients connected).
 - **platform** — OS-specific daemon lifecycle and trust. macOS: LaunchAgent plist, `/etc/resolver/test`, Keychain CA trust. Linux: systemd user service, systemd-resolved drop-in, distro-specific CA trust (`update-ca-certificates` / `update-ca-trust`), `setcap` for privileged ports.
-- **doctor** — Diagnostic checks returning pass/warn/fail with fix suggestions.
+- **doctor** — Diagnostic checks returning pass/warn/fail with fix suggestions. On Linux, includes system resolver chain checks (resolv.conf routing, DNS stub listener, end-to-end resolution) via build-tagged `dns_linux.go`/`dns_other.go`.
 - **envpath** — Env file path classification. Resolves symlinks before boundary checking.
 - **dotenv** — Fenced `.env` block writer. Also provides `RemoveBlock()` for cleanup.
 - **tunnel** — Provider abstraction + concurrent manager with all-or-nothing semantics.
