@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 
-	"charm.land/lipgloss/v2"
 	"github.com/steveclarke/outport/internal/certmanager"
 	"github.com/steveclarke/outport/internal/doctor"
 	"github.com/steveclarke/outport/internal/platform"
@@ -100,7 +99,7 @@ func runSystemStart(cmd *cobra.Command, args []string) error {
 	// (e.g. by Tailscale) or the DNS stub listener is disabled.
 	if warnings := doctor.DNSChainWarnings(); len(warnings) > 0 && !jsonFlag {
 		fmt.Fprintln(w)
-		warnLabel := lipgloss.NewStyle().Foreground(ui.Yellow).Bold(true).Render("Warning:")
+		warnLabel := ui.WarnStyle.Bold(true).Render("Warning:")
 		fmt.Fprintln(w, "  "+warnLabel+" .test DNS may not work in browsers/apps:")
 		for _, warning := range warnings {
 			fmt.Fprintf(w, "    • %s\n", warning)

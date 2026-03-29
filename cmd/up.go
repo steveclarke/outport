@@ -241,10 +241,9 @@ func printPreferredPortWarnings(w io.Writer, fallbacks []portFallback) {
 	if len(fallbacks) == 0 {
 		return
 	}
-	warnStyle := lipgloss.NewStyle().Foreground(ui.Yellow)
 	lipgloss.Fprintln(w)
 	for _, fb := range fallbacks {
-		lipgloss.Fprintln(w, warnStyle.Render(
+		lipgloss.Fprintln(w, ui.WarnStyle.Render(
 			fmt.Sprintf("⚠ %s: preferred port %d is unavailable, allocated %d instead", fb.service, fb.preferredPort, fb.allocatedPort)))
 	}
 }

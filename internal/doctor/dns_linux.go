@@ -4,6 +4,7 @@ package doctor
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"fmt"
 	"net"
@@ -11,42 +12,35 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
-
-	"github.com/miekg/dns"
 )
 
 const (
-	resolvConfPath    = "/etc/resolv.conf"
-	resolvedStubPath  = "/run/systemd/resolve/stub-resolv.conf"
-	resolvedConfDir   = "/etc/systemd/resolved.conf.d"
-	resolvedConfFile  = "/etc/systemd/resolved.conf"
-	stubListenerAddr  = "127.0.0.53"
+	resolvConfPath   = "/etc/resolv.conf"
+	resolvedStubPath = "/run/systemd/resolve/stub-resolv.conf"
+	resolvedConfDir  = "/etc/systemd/resolved.conf.d"
+	resolvedConfFile = "/etc/systemd/resolved.conf"
+	stubListenerAddr = "127.0.0.53"
+	stubListenerDNS  = stubListenerAddr + ":53"
 )
 
 // DNSChainWarnings runs the resolv.conf and stub listener checks and returns
-// warning messages for any failures. Used by system start to warn at setup time.
+// warning messages for any failures. Called by system start to surface DNS
+// chain issues at setup time rather than after the user debugs manually.
 // Returns nil if both checks pass.
 func DNSChainWarnings() []string {
 	var warnings []string
-
-	res := checkResolvConfRouting(resolvConfPath)
-	if res.Status == Fail {
-		msg := res.Message
-		if res.Fix != "" {
-			msg += "\n    → " + res.Fix
+	for _, res := range []*Result{
+		checkResolvConfRouting(resolvConfPath),
+		checkDNSStubListener(stubListenerDNS),
+	} {
+		if res.Status == Fail {
+			msg := res.Message
+			if res.Fix != "" {
+				msg += "\n      " + res.Fix
+			}
+			warnings = append(warnings, msg)
 		}
-		warnings = append(warnings, msg)
 	}
-
-	res = checkDNSStubListener(stubListenerAddr + ":53")
-	if res.Status == Fail {
-		msg := res.Message
-		if res.Fix != "" {
-			msg += "\n    → " + res.Fix
-		}
-		warnings = append(warnings, msg)
-	}
-
 	return warnings
 }
 
@@ -62,7 +56,7 @@ func linuxDNSChecks() []Check {
 		{
 			Name:     "DNS stub listener",
 			Category: "DNS",
-			Run:      func() *Result { return checkDNSStubListener(stubListenerAddr + ":53") },
+			Run:      func() *Result { return checkDNSStubListener(stubListenerDNS) },
 		},
 		{
 			Name:     "End-to-end DNS",
@@ -95,7 +89,7 @@ func checkResolvConfRouting(path string) *Result {
 	}
 
 	// It's broken — identify who manages it
-	manager := identifyResolvConfManager(path, data)
+	manager := identifyResolvConfManager(target, data)
 	msg := "resolv.conf does not route through systemd-resolved"
 	if manager != "" {
 		msg = fmt.Sprintf("resolv.conf is managed by %s, bypassing systemd-resolved", manager)
@@ -109,13 +103,7 @@ func checkResolvConfRouting(path string) *Result {
 func checkDNSStubListener(addr string) *Result {
 	name := "DNS stub listener"
 
-	c := new(dns.Client)
-	c.Timeout = 2 * time.Second
-
-	m := new(dns.Msg)
-	m.SetQuestion("localhost.", dns.TypeA)
-
-	_, _, err := c.Exchange(m, addr)
+	_, err := dnsProbe(addr, "localhost.")
 	if err == nil {
 		return &Result{Name: name, Status: Pass, Message: "systemd-resolved stub listener is reachable"}
 	}
@@ -174,7 +162,7 @@ func checkEndToEndDNS() *Result {
 // containsNameserver checks if the resolv.conf content has a nameserver line
 // matching the given address.
 func containsNameserver(data []byte, addr string) bool {
-	scanner := bufio.NewScanner(strings.NewReader(string(data)))
+	scanner := bufio.NewScanner(bytes.NewReader(data))
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
 		if strings.HasPrefix(line, "nameserver") {
@@ -187,21 +175,18 @@ func containsNameserver(data []byte, addr string) bool {
 	return false
 }
 
-// identifyResolvConfManager reads resolv.conf content and symlink target to
-// identify what tool is managing it.
-func identifyResolvConfManager(path string, content []byte) string {
-	// Check symlink target first
-	target, err := os.Readlink(path)
-	if err == nil {
-		switch {
-		case strings.Contains(target, "NetworkManager"):
-			return "NetworkManager"
-		case target == "/run/systemd/resolve/resolv.conf":
-			return "systemd-resolved (direct mode, not stub)"
-		}
+// identifyResolvConfManager identifies what tool is managing resolv.conf from
+// the symlink target and file content headers.
+func identifyResolvConfManager(symlinkTarget string, content []byte) string {
+	// Check symlink target
+	switch {
+	case strings.Contains(symlinkTarget, "NetworkManager"):
+		return "NetworkManager"
+	case symlinkTarget == "/run/systemd/resolve/resolv.conf":
+		return "systemd-resolved (direct mode, not stub)"
 	}
 
-	// Check file header comments
+	// Check file header comments (manager annotations appear in the first few lines)
 	header := string(content)
 	if len(header) > 1024 {
 		header = header[:1024]
@@ -223,12 +208,10 @@ func identifyResolvConfManager(path string, content []byte) string {
 // findStubListenerDisabled scans resolved configuration files for
 // DNSStubListener=no. Returns the path of the file where it was found, or "".
 func findStubListenerDisabled() string {
-	// Check the main config file
 	if hasStubListenerDisabled(resolvedConfFile) {
 		return resolvedConfFile
 	}
 
-	// Check drop-in directory
 	entries, err := os.ReadDir(resolvedConfDir)
 	if err != nil {
 		return ""
@@ -254,11 +237,10 @@ func hasStubListenerDisabled(path string) bool {
 	}
 
 	inResolveSection := false
-	scanner := bufio.NewScanner(strings.NewReader(string(data)))
+	scanner := bufio.NewScanner(bytes.NewReader(data))
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
 
-		// Track section headers
 		if strings.HasPrefix(line, "[") {
 			inResolveSection = strings.EqualFold(line, "[Resolve]")
 			continue

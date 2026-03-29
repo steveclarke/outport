@@ -27,6 +27,7 @@ func resetStyles() {
 	DimStyle = lipgloss.NewStyle().Foreground(LightGray)
 	UrlStyle = lipgloss.NewStyle().Foreground(Yellow)
 	HostnameStyle = lipgloss.NewStyle().Foreground(Cyan)
+	WarnStyle = lipgloss.NewStyle().Foreground(Yellow)
 	Arrow = DimStyle.Render("→")
 	StatusUp = lipgloss.NewStyle().Foreground(Green).Render("✓ up")
 	StatusDown = lipgloss.NewStyle().Foreground(Red).Render("✗ down")
