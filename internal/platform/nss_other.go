@@ -7,7 +7,7 @@ package platform
 func TrustBrowserCAs(_ string) []string { return nil }
 
 // UntrustBrowserCAs is a no-op on non-Linux platforms.
-func UntrustBrowserCAs() []string { return nil }
+func UntrustBrowserCAs() {}
 
 // HasCertutil returns false on non-Linux platforms.
 func HasCertutil() bool { return false }

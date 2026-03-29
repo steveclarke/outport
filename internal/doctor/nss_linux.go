@@ -4,6 +4,7 @@ package doctor
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/steveclarke/outport/internal/platform"
 )
@@ -85,8 +86,12 @@ func checkBrowserCATrust() *Result {
 }
 
 func joinNames(names []string) string {
-	if len(names) == 1 {
+	switch len(names) {
+	case 1:
 		return names[0]
+	case 2:
+		return names[0] + " and " + names[1]
+	default:
+		return strings.Join(names[:len(names)-1], ", ") + ", and " + names[len(names)-1]
 	}
-	return fmt.Sprintf("%s and %s", names[0], names[len(names)-1])
 }

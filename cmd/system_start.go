@@ -189,7 +189,7 @@ func runSystemUninstall(cmd *cobra.Command, args []string) error {
 			fmt.Fprintln(w, "Removing CA from trust store...")
 		}
 		_ = platform.UntrustCA(caCertPath)
-		_ = platform.UntrustBrowserCAs()
+		platform.UntrustBrowserCAs()
 		certmanager.DeleteCA(caCertPath, caKeyPath)
 		caRemoved = true
 	}

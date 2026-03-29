@@ -30,12 +30,12 @@ func TrustBrowserCAs(certPath string) []string {
 }
 
 // UntrustBrowserCAs removes the CA from Chrome and Firefox NSS databases.
-// Best-effort — returns warning strings for failures.
-func UntrustBrowserCAs() []string {
+// Best-effort — silently ignores failures.
+func UntrustBrowserCAs() {
 	if !HasCertutil() {
-		return nil
+		return
 	}
-	return untrustNSS()
+	untrustNSS()
 }
 
 // HasCertutil reports whether the certutil binary is on PATH.
@@ -145,18 +145,14 @@ func trustNSS(certPath string) []string {
 }
 
 // untrustNSS removes the CA from all discovered NSS databases.
-func untrustNSS() []string {
-	dbs := FindNSSDatabases()
-	var warnings []string
-	for _, db := range dbs {
-		cmd := exec.Command("certutil", "-D",
+func untrustNSS() {
+	for _, db := range FindNSSDatabases() {
+		// Ignore errors — cert may not be present in this DB
+		_ = exec.Command("certutil", "-D",
 			"-d", "sql:"+db.Path,
 			"-n", nssNickname,
-		)
-		// Ignore errors — cert may not be present in this DB
-		_ = cmd.Run()
+		).Run()
 	}
-	return warnings
 }
 
 // syncHomebrewCerts re-merges system certs into Homebrew's cert bundle.
@@ -167,6 +163,9 @@ func syncHomebrewCerts() {
 	if err != nil {
 		return
 	}
-	cmd := exec.Command(brewPath, "postinstall", "ca-certificates")
-	_ = cmd.Run()
+	// Only run if ca-certificates is actually installed as a Homebrew formula
+	if exec.Command(brewPath, "list", "--formula", "ca-certificates").Run() != nil {
+		return
+	}
+	_ = exec.Command(brewPath, "postinstall", "ca-certificates").Run()
 }

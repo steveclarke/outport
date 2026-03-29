@@ -4,6 +4,23 @@ package doctor
 
 import "testing"
 
+func TestJoinNames(t *testing.T) {
+	tests := []struct {
+		names []string
+		want  string
+	}{
+		{[]string{"Chrome"}, "Chrome"},
+		{[]string{"Chrome", "Firefox"}, "Chrome and Firefox"},
+		{[]string{"Chrome", "Firefox", "Snap Firefox"}, "Chrome, Firefox, and Snap Firefox"},
+		{[]string{"A", "B", "C", "D"}, "A, B, C, and D"},
+	}
+	for _, tt := range tests {
+		if got := joinNames(tt.names); got != tt.want {
+			t.Errorf("joinNames(%v) = %q, want %q", tt.names, got, tt.want)
+		}
+	}
+}
+
 func TestLinuxBrowserTrustChecks(t *testing.T) {
 	checks := linuxBrowserTrustChecks()
 	if len(checks) != 2 {
