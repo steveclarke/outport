@@ -136,6 +136,13 @@ func runSystemStart(cmd *cobra.Command, args []string) error {
 	}
 	caTrusted = true
 
+	// Best-effort: add CA to browser NSS databases and Homebrew cert bundle
+	if browserWarnings := platform.TrustBrowserCAs(caCertPath); len(browserWarnings) > 0 && !jsonFlag {
+		for _, warn := range browserWarnings {
+			fmt.Fprintf(w, "  %s %s\n", ui.WarnStyle.Render("!"), warn)
+		}
+	}
+
 	if err := platform.LoadAgent(); err != nil {
 		return err
 	}
@@ -182,6 +189,7 @@ func runSystemUninstall(cmd *cobra.Command, args []string) error {
 			fmt.Fprintln(w, "Removing CA from trust store...")
 		}
 		_ = platform.UntrustCA(caCertPath)
+		_ = platform.UntrustBrowserCAs()
 		certmanager.DeleteCA(caCertPath, caKeyPath)
 		caRemoved = true
 	}
