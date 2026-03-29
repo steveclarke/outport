@@ -243,7 +243,7 @@ Remove the DNS resolver, daemon, and Certificate Authority.
 outport system uninstall
 ```
 
-Stops the daemon, removes the service configuration, removes the DNS resolver config, removes the CA from the system trust store, deletes the CA files, and removes cached certificates from `~/.cache/outport/certs/`.
+Stops the daemon, removes the service configuration, removes the DNS resolver config, removes the CA from the system trust store and browser databases, deletes the CA files, and removes cached certificates from `~/.cache/outport/certs/`.
 
 | Flag | Description |
 |------|-------------|
@@ -295,6 +295,7 @@ Runs diagnostic checks on all Outport infrastructure and project configuration. 
 - CA certificate and key existence
 - CA expiry
 - CA trust
+- Browser certificate trust (Linux: certutil, Chrome/Firefox NSS databases)
 - Registry validity
 - Cloudflared availability
 

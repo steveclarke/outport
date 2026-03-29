@@ -60,7 +60,7 @@ When your browser navigates to `myapp.test`, three things happen in quick succes
 
 2. **Routing** — Your browser connects to port 80 (HTTP) or 443 (HTTPS) on localhost. The daemon inspects the hostname from the request, looks it up in its route table, and proxies the request to the correct local port. If `myapp.test` maps to port 12345, your request lands on port 12345.
 
-3. **HTTPS** — For secure connections, the daemon has a local Certificate Authority that issues certificates on the fly. Your browser trusts these because `outport setup` added the CA to your system trust store. The result is real HTTPS with a padlock icon, all running locally.
+3. **HTTPS** — For secure connections, the daemon has a local Certificate Authority that issues certificates on the fly. Your browser trusts these because `outport setup` added the CA to your system trust store (and on Linux, to browser-specific certificate databases). The result is real HTTPS with a padlock icon, all running locally.
 
 This is why `.test` hostnames work without any changes to `/etc/hosts` and why HTTPS just works without self-signed certificate warnings.
 
