@@ -470,6 +470,13 @@ func SystemChecks() []Check {
 				return checkCATrusted(caCertPath)
 			},
 		},
+	}...)
+
+	// Linux-specific checks verify browser NSS database trust (Chrome, Firefox).
+	// No-op on other platforms.
+	checks = append(checks, linuxBrowserTrustChecks()...)
+
+	checks = append(checks, []Check{
 		{
 			Name:     "Registry valid",
 			Category: "Registry",

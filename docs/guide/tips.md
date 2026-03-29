@@ -176,17 +176,28 @@ Tailscale auto-detects systemd-resolved when the stub symlink is in place, so bo
 
 ### Linux: browser certificate warnings
 
-On Linux, `outport setup` adds the CA to the system trust store via `update-ca-certificates` (or your distro's equivalent). Chrome should pick this up after a full restart (close all windows, including background processes). If Chrome still shows a warning, try:
+On Linux, `outport setup` automatically adds the CA to:
+
+1. **System trust store** — via `update-ca-certificates` (or distro equivalent)
+2. **Chrome/Chromium NSS database** — at `~/.pki/nssdb`
+3. **Firefox profile databases** — each `~/.mozilla/firefox/*/cert9.db`
+4. **Homebrew cert bundle** — via `brew postinstall ca-certificates` (if Homebrew is installed)
+
+This requires `certutil` from the `libnss3-tools` package. If it's not installed, `outport setup` will warn you:
 
 ```bash
-# Check if the CA is in Chrome's NSS database
-certutil -d sql:$HOME/.pki/nssdb -L | grep -i outport
+sudo apt install libnss3-tools    # Debian/Ubuntu
+sudo dnf install nss-tools        # Fedora/RHEL
+sudo pacman -S nss                # Arch
 ```
 
-Firefox uses its own certificate store and ignores system CAs by default. Either:
+After installing certutil, run `outport system restart` to add the CA to your browsers.
 
-- Open `about:config` and set `security.enterprise_roots.enabled` to `true` (recommended — makes Firefox trust system CAs)
-- Or import the CA manually: Settings → Privacy & Security → Certificates → View Certificates → Import → select `~/.local/share/outport/ca-cert.pem`
+**Browsers need a full restart** after setup — close all windows (including background processes) and reopen.
+
+Run `outport doctor` to check if the CA is trusted in your browsers — it shows exactly which databases are covered.
+
+**If Firefox still shows a warning**, you can also set `security.enterprise_roots.enabled` to `true` in `about:config` as a fallback. On Fedora and Arch, Firefox trusts system CAs automatically via p11-kit.
 
 ### Port 80 or 443 already in use
 
