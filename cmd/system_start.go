@@ -97,12 +97,16 @@ func runSystemStart(cmd *cobra.Command, args []string) error {
 	// On Linux, check that the system resolver chain can actually deliver
 	// .test queries to systemd-resolved. Warn if resolv.conf is overwritten
 	// (e.g. by Tailscale) or the DNS stub listener is disabled.
-	if warnings := doctor.DNSChainWarnings(); len(warnings) > 0 && !jsonFlag {
+	dnsWarnings := doctor.DNSChainWarnings()
+	if len(dnsWarnings) > 0 && !jsonFlag {
 		fmt.Fprintln(w)
 		warnLabel := ui.WarnStyle.Bold(true).Render("Warning:")
 		fmt.Fprintln(w, "  "+warnLabel+" .test DNS may not work in browsers/apps:")
-		for _, warning := range warnings {
-			fmt.Fprintf(w, "    • %s\n", warning)
+		for _, r := range dnsWarnings {
+			fmt.Fprintf(w, "    • %s\n", r.Message)
+			if r.Fix != "" {
+				fmt.Fprintf(w, "      %s %s\n", ui.Arrow, ui.DimStyle.Render(r.Fix))
+			}
 		}
 		fmt.Fprintln(w)
 		fmt.Fprintln(w, ui.DimStyle.Render("  Run 'outport doctor' for full diagnostics."))
@@ -137,7 +141,7 @@ func runSystemStart(cmd *cobra.Command, args []string) error {
 	}
 
 	if jsonFlag {
-		return printSystemStartJSON(cmd, caGenerated, caTrusted)
+		return printSystemStartJSON(cmd, caGenerated, caTrusted, dnsWarnings)
 	}
 
 	fmt.Fprintln(w)
@@ -208,15 +212,26 @@ func runSystemUninstall(cmd *cobra.Command, args []string) error {
 }
 
 
-type systemStartJSON struct {
-	CAGenerated bool `json:"ca_generated"`
-	CATrusted   bool `json:"ca_trusted"`
+type dnsWarningJSON struct {
+	Message string `json:"message"`
+	Fix     string `json:"fix,omitempty"`
 }
 
-func printSystemStartJSON(cmd *cobra.Command, caGenerated, caTrusted bool) error {
+type systemStartJSON struct {
+	CAGenerated bool             `json:"ca_generated"`
+	CATrusted   bool             `json:"ca_trusted"`
+	DNSWarnings []dnsWarningJSON `json:"dns_warnings,omitempty"`
+}
+
+func printSystemStartJSON(cmd *cobra.Command, caGenerated, caTrusted bool, dnsWarnings []doctor.Result) error {
+	var warnings []dnsWarningJSON
+	for _, r := range dnsWarnings {
+		warnings = append(warnings, dnsWarningJSON{Message: r.Message, Fix: r.Fix})
+	}
 	return writeJSON(cmd, systemStartJSON{
 		CAGenerated: caGenerated,
 		CATrusted:   caTrusted,
+		DNSWarnings: warnings,
 	}, "system started")
 }
 

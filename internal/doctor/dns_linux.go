@@ -12,6 +12,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"gopkg.in/ini.v1"
 )
 
 const (
@@ -24,21 +26,16 @@ const (
 )
 
 // DNSChainWarnings runs the resolv.conf and stub listener checks and returns
-// warning messages for any failures. Called by system start to surface DNS
-// chain issues at setup time rather than after the user debugs manually.
-// Returns nil if both checks pass.
-func DNSChainWarnings() []string {
-	var warnings []string
+// failed results. Called by system start to surface DNS chain issues at setup
+// time rather than after the user debugs manually. Returns nil if both pass.
+func DNSChainWarnings() []Result {
+	var warnings []Result
 	for _, res := range []*Result{
 		checkResolvConfRouting(resolvConfPath),
 		checkDNSStubListener(stubListenerDNS),
 	} {
 		if res.Status == Fail {
-			msg := res.Message
-			if res.Fix != "" {
-				msg += "\n      " + res.Fix
-			}
-			warnings = append(warnings, msg)
+			warnings = append(warnings, *res)
 		}
 	}
 	return warnings
@@ -231,33 +228,13 @@ func findStubListenerDisabled() string {
 // hasStubListenerDisabled checks if a resolved.conf file contains
 // DNSStubListener=no in a [Resolve] section.
 func hasStubListenerDisabled(path string) bool {
-	data, err := os.ReadFile(path)
+	cfg, err := ini.Load(path)
 	if err != nil {
 		return false
 	}
-
-	inResolveSection := false
-	scanner := bufio.NewScanner(bytes.NewReader(data))
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-
-		if strings.HasPrefix(line, "[") {
-			inResolveSection = strings.EqualFold(line, "[Resolve]")
-			continue
-		}
-
-		if !inResolveSection || strings.HasPrefix(line, "#") || strings.HasPrefix(line, ";") {
-			continue
-		}
-
-		key, val, ok := strings.Cut(line, "=")
-		if !ok {
-			continue
-		}
-		if strings.EqualFold(strings.TrimSpace(key), "DNSStubListener") &&
-			strings.EqualFold(strings.TrimSpace(val), "no") {
-			return true
-		}
+	key, err := cfg.Section("Resolve").GetKey("DNSStubListener")
+	if err != nil {
+		return false
 	}
-	return false
+	return strings.EqualFold(key.String(), "no")
 }
