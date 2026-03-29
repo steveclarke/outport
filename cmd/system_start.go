@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"os"
 
+	"charm.land/lipgloss/v2"
 	"github.com/steveclarke/outport/internal/certmanager"
+	"github.com/steveclarke/outport/internal/doctor"
 	"github.com/steveclarke/outport/internal/platform"
 	"github.com/steveclarke/outport/internal/portcheck"
 	"github.com/steveclarke/outport/internal/registry"
@@ -91,6 +93,21 @@ func runSystemStart(cmd *cobra.Command, args []string) error {
 	}
 	if err := platform.WriteResolverFile(); err != nil {
 		return err
+	}
+
+	// On Linux, check that the system resolver chain can actually deliver
+	// .test queries to systemd-resolved. Warn if resolv.conf is overwritten
+	// (e.g. by Tailscale) or the DNS stub listener is disabled.
+	if warnings := doctor.DNSChainWarnings(); len(warnings) > 0 && !jsonFlag {
+		fmt.Fprintln(w)
+		warnLabel := lipgloss.NewStyle().Foreground(ui.Yellow).Bold(true).Render("Warning:")
+		fmt.Fprintln(w, "  "+warnLabel+" .test DNS may not work in browsers/apps:")
+		for _, warning := range warnings {
+			fmt.Fprintf(w, "    • %s\n", warning)
+		}
+		fmt.Fprintln(w)
+		fmt.Fprintln(w, ui.DimStyle.Render("  Run 'outport doctor' for full diagnostics."))
+		fmt.Fprintln(w)
 	}
 
 	caCertPath, caKeyPath, err := certmanager.CAPaths()

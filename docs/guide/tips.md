@@ -147,6 +147,47 @@ This removes entries where the project directory or `outport.yml` is missing.
 
 Everything is reversible: `outport system uninstall` removes all of it cleanly. Outport never modifies `/etc/hosts`, never touches your existing certificates, and the local CA is only trusted on your machine.
 
+### Linux: .test domains don't resolve
+
+On Linux, Outport routes `.test` queries through [systemd-resolved](https://www.freedesktop.org/software/systemd/man/systemd-resolved.service.html). If `.test` URLs work in `resolvectl query` but not in your browser or `curl`, the system resolver chain is broken. Run `outport doctor` — it checks the full chain and tells you exactly what's wrong.
+
+The two most common causes:
+
+**DNS stub listener is disabled.** Some tools (Pi-hole, earlier DNS troubleshooting) disable systemd-resolved's stub listener by dropping a `DNSStubListener=no` config file into `/etc/systemd/resolved.conf.d/`. Without the stub, applications can't reach systemd-resolved:
+
+```bash
+# Find and remove the file disabling the stub listener
+ls /etc/systemd/resolved.conf.d/
+# Look for a file containing DNSStubListener=no, then:
+sudo rm /etc/systemd/resolved.conf.d/<that-file>.conf
+sudo systemctl restart systemd-resolved
+```
+
+**resolv.conf is overwritten.** Tools like Tailscale can overwrite `/etc/resolv.conf` to point to their own DNS, bypassing systemd-resolved. The fix is to restore the systemd-resolved stub symlink and restart the tool that overwrote it:
+
+```bash
+sudo systemctl stop tailscaled                   # or whichever tool manages resolv.conf
+sudo ln -sf /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf
+sudo systemctl restart systemd-resolved
+sudo systemctl start tailscaled
+```
+
+Tailscale auto-detects systemd-resolved when the stub symlink is in place, so both Tailscale's MagicDNS and Outport's `.test` routing coexist — systemd-resolved routes queries by domain specificity (`~test` beats Tailscale's catch-all `~.`).
+
+### Linux: browser certificate warnings
+
+On Linux, `outport setup` adds the CA to the system trust store via `update-ca-certificates` (or your distro's equivalent). Chrome should pick this up after a full restart (close all windows, including background processes). If Chrome still shows a warning, try:
+
+```bash
+# Check if the CA is in Chrome's NSS database
+certutil -d sql:$HOME/.pki/nssdb -L | grep -i outport
+```
+
+Firefox uses its own certificate store and ignores system CAs by default. Either:
+
+- Open `about:config` and set `security.enterprise_roots.enabled` to `true` (recommended — makes Firefox trust system CAs)
+- Or import the CA manually: Settings → Privacy & Security → Certificates → View Certificates → Import → select `~/.local/share/outport/ca-cert.pem`
+
 ### Port 80 or 443 already in use
 
 If `outport system start` fails with "port 80 is already in use", another server (nginx, Apache, another dev tool) is using that port. Stop it first, then retry.
