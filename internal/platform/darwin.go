@@ -296,3 +296,8 @@ func EnsurePrivilegedPorts(binaryPath string) error {
 func ServiceDescription() string {
 	return "LaunchAgent"
 }
+
+// ResolverDescription returns a human-readable name for the DNS resolver config.
+func ResolverDescription() string {
+	return ResolverPath
+}

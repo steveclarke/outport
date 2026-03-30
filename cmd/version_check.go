@@ -39,7 +39,7 @@ func maybeRestartDaemon(cmd *cobra.Command) {
 	fmt.Fprintf(os.Stderr, "Daemon updated to %s.\n", version)
 }
 
-// restartDaemon re-writes the plist and restarts the LaunchAgent.
+// restartDaemon re-writes the service config and restarts the daemon.
 // Used by both the explicit "system restart" command and the automatic
 // version-mismatch restart.
 func restartDaemon() error {

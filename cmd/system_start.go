@@ -24,7 +24,7 @@ var systemStartCmd = &cobra.Command{
 var systemUninstallCmd = &cobra.Command{
 	Use:   "uninstall",
 	Short: "Remove outport system components",
-	Long:  "Unloads the daemon, removes the LaunchAgent, DNS resolver, CA certificate, and cached server certs.",
+	Long:  "Unloads the daemon, removes the DNS resolver config, CA certificate, and cached server certs.",
 	Args:  NoArgs,
 	RunE:  runSystemUninstall,
 }
@@ -169,12 +169,12 @@ func runSystemUninstall(cmd *cobra.Command, args []string) error {
 	_ = platform.UnloadAgent()
 
 	if !jsonFlag {
-		fmt.Fprintln(w, "Removing LaunchAgent...")
+		fmt.Fprintf(w, "Removing %s...\n", platform.ServiceDescription())
 	}
 	_ = platform.RemovePlist()
 
 	if !jsonFlag {
-		fmt.Fprintln(w, "Removing /etc/resolver/test (sudo may prompt for your password)...")
+		fmt.Fprintf(w, "Removing %s (sudo may prompt for your password)...\n", platform.ResolverDescription())
 	}
 	if err := platform.RemoveResolverFile(); err != nil {
 		return err
