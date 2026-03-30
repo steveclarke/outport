@@ -21,8 +21,12 @@ func TestFindNSSDatabases(t *testing.T) {
 
 	t.Run("chrome nssdb", func(t *testing.T) {
 		dir := filepath.Join(home, ".pki", "nssdb")
-		os.MkdirAll(dir, 0755)
-		os.WriteFile(filepath.Join(dir, "cert9.db"), []byte("x"), 0644)
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, "cert9.db"), []byte("x"), 0644); err != nil {
+			t.Fatal(err)
+		}
 
 		dbs := FindNSSDatabases()
 		found := false
@@ -41,8 +45,12 @@ func TestFindNSSDatabases(t *testing.T) {
 
 	t.Run("firefox profiles", func(t *testing.T) {
 		profileDir := filepath.Join(home, ".mozilla", "firefox", "abc123.default")
-		os.MkdirAll(profileDir, 0755)
-		os.WriteFile(filepath.Join(profileDir, "cert9.db"), []byte("x"), 0644)
+		if err := os.MkdirAll(profileDir, 0755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(profileDir, "cert9.db"), []byte("x"), 0644); err != nil {
+			t.Fatal(err)
+		}
 
 		dbs := FindNSSDatabases()
 		found := false
@@ -61,8 +69,12 @@ func TestFindNSSDatabases(t *testing.T) {
 
 	t.Run("snap chromium", func(t *testing.T) {
 		dir := filepath.Join(home, "snap", "chromium", "current", ".pki", "nssdb")
-		os.MkdirAll(dir, 0755)
-		os.WriteFile(filepath.Join(dir, "cert9.db"), []byte("x"), 0644)
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, "cert9.db"), []byte("x"), 0644); err != nil {
+			t.Fatal(err)
+		}
 
 		dbs := FindNSSDatabases()
 		found := false
@@ -78,7 +90,9 @@ func TestFindNSSDatabases(t *testing.T) {
 
 	t.Run("skips dirs without cert9.db", func(t *testing.T) {
 		profileDir := filepath.Join(home, ".mozilla", "firefox", "empty.profile")
-		os.MkdirAll(profileDir, 0755)
+		if err := os.MkdirAll(profileDir, 0755); err != nil {
+			t.Fatal(err)
+		}
 		// No cert9.db
 
 		dbs := FindNSSDatabases()
@@ -97,7 +111,9 @@ func TestHasNSSDB(t *testing.T) {
 		t.Error("expected false for empty directory")
 	}
 
-	os.WriteFile(filepath.Join(dir, "cert9.db"), []byte("x"), 0644)
+	if err := os.WriteFile(filepath.Join(dir, "cert9.db"), []byte("x"), 0644); err != nil {
+		t.Fatal(err)
+	}
 	if !hasNSSDB(dir) {
 		t.Error("expected true for directory with cert9.db")
 	}
