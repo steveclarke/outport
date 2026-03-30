@@ -162,10 +162,10 @@ name: myapp
 services:
   rails:
     env_var: PORT
-    hostname: myapp
+    hostname: myapp.test
   frontend:
     env_var: NUXT_PORT
-    hostname: myapp-frontend
+    hostname: myapp-frontend.test
   postgres:
     env_var: DATABASE_PORT
 computed:

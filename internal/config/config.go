@@ -206,8 +206,8 @@ type Service struct {
 	Hostname string `yaml:"hostname"`
 
 	// Aliases is an optional map of named additional hostnames for this service.
-	// Keys are short labels (e.g., "app", "admin") and values are hostname stems
-	// (e.g., "app.myproject", "admin.myproject"). Requires Hostname to be set.
+	// Keys are short labels (e.g., "app", "admin") and values are .test hostnames
+	// (e.g., "app.myproject.test", "admin.myproject.test"). Requires Hostname to be set.
 	// Each alias hostname must follow the same rules as the primary hostname.
 	Aliases map[string]string `yaml:"aliases"`
 
