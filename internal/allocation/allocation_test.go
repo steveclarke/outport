@@ -162,8 +162,8 @@ func TestComputeAliases_Main(t *testing.T) {
 		Name: "approvethis",
 		Services: map[string]config.Service{
 			"web": {
-				Hostname: "approvethis",
-				Aliases:  map[string]string{"app": "app.approvethis", "admin": "admin.approvethis"},
+				Hostname: "approvethis.test",
+				Aliases:  map[string]string{"app": "app.approvethis.test", "admin": "admin.approvethis.test"},
 			},
 			"db": {EnvVar: "PGPORT"}, // no hostname or aliases
 		},
@@ -187,8 +187,8 @@ func TestComputeAliases_NonMainInstance(t *testing.T) {
 		Name: "approvethis",
 		Services: map[string]config.Service{
 			"web": {
-				Hostname: "approvethis",
-				Aliases:  map[string]string{"app": "app.approvethis"},
+				Hostname: "approvethis.test",
+				Aliases:  map[string]string{"app": "app.approvethis.test"},
 			},
 		},
 	}
@@ -204,7 +204,7 @@ func TestComputeAliases_NoAliases(t *testing.T) {
 	cfg := &config.Config{
 		Name: "myapp",
 		Services: map[string]config.Service{
-			"web": {Hostname: "myapp"},
+			"web": {Hostname: "myapp.test"},
 		},
 	}
 
@@ -239,8 +239,8 @@ func TestBuildTemplateVars_Aliases(t *testing.T) {
 		Services: map[string]config.Service{
 			"web": {
 				EnvVar:   "PORT",
-				Hostname: "approvethis",
-				Aliases:  map[string]string{"app": "app.approvethis"},
+				Hostname: "approvethis.test",
+				Aliases:  map[string]string{"app": "app.approvethis.test"},
 			},
 		},
 	}
@@ -266,8 +266,8 @@ func TestBuildTemplateVars_AliasesWithTunnel(t *testing.T) {
 		Services: map[string]config.Service{
 			"web": {
 				EnvVar:   "PORT",
-				Hostname: "approvethis",
-				Aliases:  map[string]string{"app": "app.approvethis"},
+				Hostname: "approvethis.test",
+				Aliases:  map[string]string{"app": "app.approvethis.test"},
 			},
 		},
 	}

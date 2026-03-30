@@ -403,7 +403,7 @@ func TestLoad_WithHostname(t *testing.T) {
 services:
   web:
     env_var: PORT
-    hostname: myapp.localhost
+    hostname: myapp.test
   postgres:
     env_var: DB_PORT
 `)
@@ -411,8 +411,8 @@ services:
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if cfg.Services["web"].Hostname != "myapp.localhost" {
-		t.Errorf("web.Hostname = %q, want myapp.localhost", cfg.Services["web"].Hostname)
+	if cfg.Services["web"].Hostname != "myapp.test" {
+		t.Errorf("web.Hostname = %q, want myapp.test", cfg.Services["web"].Hostname)
 	}
 	if cfg.Services["postgres"].Hostname != "" {
 		t.Errorf("postgres.Hostname = %q, want empty", cfg.Services["postgres"].Hostname)
@@ -698,13 +698,13 @@ func TestHostnameValidCharacters(t *testing.T) {
 		hostname string
 		wantErr  bool
 	}{
-		{"myapp", false},
-		{"portal.myapp", false},
-		{"myapp-web", false},
-		{"my_app", true},    // underscores invalid in DNS
-		{"MY_APP", true},    // uppercase invalid
-		{"my app", true},    // spaces invalid
-		{"othername", true}, // must contain project name "myapp"
+		{"myapp.test", false},
+		{"portal.myapp.test", false},
+		{"myapp-web.test", false},
+		{"my_app.test", true},    // underscores invalid in DNS
+		{"MY_APP.test", true},    // uppercase invalid
+		{"my app.test", true},    // spaces invalid
+		{"othername.test", true}, // must contain project name "myapp"
 	}
 	for _, tt := range tests {
 		yaml := fmt.Sprintf(`
@@ -722,6 +722,58 @@ services:
 		if (err != nil) != tt.wantErr {
 			t.Errorf("hostname %q: err=%v, wantErr=%v", tt.hostname, err, tt.wantErr)
 		}
+	}
+}
+
+func TestHostnameRequiresTestSuffix(t *testing.T) {
+	tests := []struct {
+		hostname string
+		errMsg   string
+	}{
+		{"myapp", `must end with ".test"`},
+		{"portal.myapp", `must end with ".test"`},
+	}
+	for _, tt := range tests {
+		yaml := fmt.Sprintf(`
+name: myapp
+services:
+  web:
+    env_var: PORT
+    hostname: %s
+`, tt.hostname)
+		dir := t.TempDir()
+		if err := os.WriteFile(filepath.Join(dir, "outport.yml"), []byte(yaml), 0644); err != nil {
+			t.Fatal(err)
+		}
+		_, err := Load(dir)
+		if err == nil {
+			t.Errorf("hostname %q: expected error, got nil", tt.hostname)
+		} else if !strings.Contains(err.Error(), tt.errMsg) {
+			t.Errorf("hostname %q: error %q should contain %q", tt.hostname, err.Error(), tt.errMsg)
+		}
+	}
+}
+
+func TestAliasHostnameRequiresTestSuffix(t *testing.T) {
+	yaml := `
+name: myapp
+services:
+  web:
+    env_var: PORT
+    hostname: myapp.test
+    aliases:
+      app: app.myapp
+`
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "outport.yml"), []byte(yaml), 0644); err != nil {
+		t.Fatal(err)
+	}
+	_, err := Load(dir)
+	if err == nil {
+		t.Fatal("expected error for alias without .test suffix")
+	}
+	if !strings.Contains(err.Error(), `must end with ".test"`) {
+		t.Errorf("error %q should mention .test suffix requirement", err.Error())
 	}
 }
 
@@ -754,7 +806,7 @@ name: myapp
 services:
   rails:
     env_var: PORT
-    hostname: myapp
+    hostname: myapp.test
 computed:
   API_URL:
     value: "${rails.url:direct}/api"
@@ -788,7 +840,7 @@ name: myapp
 services:
   rails:
     env_var: PORT
-    hostname: myapp
+    hostname: myapp.test
 computed:
   BAD:
     value: "${rails.url:bogus}"
@@ -810,7 +862,7 @@ name: myapp
 services:
   rails:
     env_var: PORT
-    hostname: myapp
+    hostname: myapp.test
 computed:
   SITE_URL:
     value: "${rails.url}"
@@ -929,10 +981,10 @@ func TestLoad_ServiceAliases(t *testing.T) {
 services:
   web:
     env_var: PORT
-    hostname: approvethis
+    hostname: approvethis.test
     aliases:
-      app: app.approvethis
-      admin: admin.approvethis
+      app: app.approvethis.test
+      admin: admin.approvethis.test
 `)
 	cfg, err := Load(dir)
 	if err != nil {
@@ -942,11 +994,11 @@ services:
 	if len(web.Aliases) != 2 {
 		t.Fatalf("aliases count = %d, want 2", len(web.Aliases))
 	}
-	if web.Aliases["app"] != "app.approvethis" {
-		t.Errorf("alias app = %q, want %q", web.Aliases["app"], "app.approvethis")
+	if web.Aliases["app"] != "app.approvethis.test" {
+		t.Errorf("alias app = %q, want %q", web.Aliases["app"], "app.approvethis.test")
 	}
-	if web.Aliases["admin"] != "admin.approvethis" {
-		t.Errorf("alias admin = %q, want %q", web.Aliases["admin"], "admin.approvethis")
+	if web.Aliases["admin"] != "admin.approvethis.test" {
+		t.Errorf("alias admin = %q, want %q", web.Aliases["admin"], "admin.approvethis.test")
 	}
 }
 
@@ -973,7 +1025,7 @@ func TestLoad_NoAliases(t *testing.T) {
 services:
   web:
     env_var: PORT
-    hostname: myapp
+    hostname: myapp.test
 `)
 	cfg, err := Load(dir)
 	if err != nil {
@@ -1004,9 +1056,9 @@ name: approvethis
 services:
   web:
     env_var: PORT
-    hostname: approvethis
+    hostname: approvethis.test
     aliases:
-      %s: app.approvethis
+      %s: app.approvethis.test
 `, tt.key)
 			dir := writeConfig(t, yaml)
 			_, err := Load(dir)
@@ -1023,10 +1075,9 @@ func TestValidateAliasHostnameRules(t *testing.T) {
 		hostname string
 		wantErr  bool
 	}{
-		{"valid subdomain", "app.approvethis", false},
-		{"valid with test suffix", "app.approvethis.test", false},
-		{"invalid chars", "app_approvethis", true},
-		{"missing project name", "app.other", true},
+		{"valid subdomain", "app.approvethis.test", false},
+		{"invalid chars", "app_approvethis.test", true},
+		{"missing project name", "app.other.test", true},
 		{"reserved outport.test", "outport.test", true},
 	}
 	for _, tt := range tests {
@@ -1036,7 +1087,7 @@ name: approvethis
 services:
   web:
     env_var: PORT
-    hostname: approvethis
+    hostname: approvethis.test
     aliases:
       app: %s
 `, tt.hostname)
@@ -1055,9 +1106,9 @@ name: approvethis
 services:
   web:
     env_var: PORT
-    hostname: approvethis
+    hostname: approvethis.test
     aliases:
-      dupe: approvethis
+      dupe: approvethis.test
 `)
 	_, err := Load(dir)
 	if err == nil {
@@ -1074,10 +1125,10 @@ name: approvethis
 services:
   web:
     env_var: PORT
-    hostname: approvethis
+    hostname: approvethis.test
     aliases:
-      app: app.approvethis
-      dupe: app.approvethis
+      app: app.approvethis.test
+      dupe: app.approvethis.test
 `)
 	_, err := Load(dir)
 	if err == nil {
@@ -1092,7 +1143,7 @@ services:
   web:
     env_var: PORT
     aliases:
-      app: app.approvethis
+      app: app.approvethis.test
 `)
 	_, err := Load(dir)
 	if err == nil {
@@ -1106,12 +1157,12 @@ name: approvethis
 services:
   web:
     env_var: PORT
-    hostname: approvethis
+    hostname: approvethis.test
     aliases:
-      app: api.approvethis
+      app: api.approvethis.test
   api:
     env_var: API_PORT
-    hostname: api.approvethis
+    hostname: api.approvethis.test
 `)
 	_, err := Load(dir)
 	if err == nil {
@@ -1125,14 +1176,14 @@ name: approvethis
 services:
   web:
     env_var: PORT
-    hostname: approvethis
+    hostname: approvethis.test
     aliases:
-      app: app.approvethis
+      app: app.approvethis.test
   api:
     env_var: API_PORT
-    hostname: api.approvethis
+    hostname: api.approvethis.test
     aliases:
-      dupe: app.approvethis
+      dupe: app.approvethis.test
 `)
 	_, err := Load(dir)
 	if err == nil {
@@ -1147,9 +1198,9 @@ func TestValidateTemplateRefAlias(t *testing.T) {
 services:
   web:
     env_var: PORT
-    hostname: approvethis
+    hostname: approvethis.test
     aliases:
-      app: app.approvethis
+      app: app.approvethis.test
 computed:
   APP_URL:
     value: "${web.alias_url.app}"
@@ -1166,9 +1217,9 @@ func TestValidateTemplateRefAliasHostname(t *testing.T) {
 services:
   web:
     env_var: PORT
-    hostname: approvethis
+    hostname: approvethis.test
     aliases:
-      app: app.approvethis
+      app: app.approvethis.test
 computed:
   APP_HOSTNAME:
     value: "${web.alias.app}"
@@ -1185,9 +1236,9 @@ func TestValidateTemplateRefAliasUnknown(t *testing.T) {
 services:
   web:
     env_var: PORT
-    hostname: approvethis
+    hostname: approvethis.test
     aliases:
-      app: app.approvethis
+      app: app.approvethis.test
 computed:
   BAD:
     value: "${web.alias.missing}"
@@ -1258,18 +1309,18 @@ func TestLoad_LocalOverridesHostname(t *testing.T) {
 services:
   web:
     env_var: PORT
-    hostname: myapp
+    hostname: myapp.test
 `)
 	writeLocalConfig(t, dir, `services:
   web:
-    hostname: dev.myapp
+    hostname: dev.myapp.test
 `)
 	cfg, err := Load(dir)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if cfg.Services["web"].Hostname != "dev.myapp" {
-		t.Errorf("web.Hostname = %q, want dev.myapp", cfg.Services["web"].Hostname)
+	if cfg.Services["web"].Hostname != "dev.myapp.test" {
+		t.Errorf("web.Hostname = %q, want dev.myapp.test", cfg.Services["web"].Hostname)
 	}
 	// env_var should still come from base config
 	if cfg.Services["web"].EnvVar != "PORT" {
@@ -1302,14 +1353,14 @@ func TestLoad_LocalOverridesAliases(t *testing.T) {
 services:
   web:
     env_var: PORT
-    hostname: myapp
+    hostname: myapp.test
     aliases:
-      app: app.myapp
+      app: app.myapp.test
 `)
 	writeLocalConfig(t, dir, `services:
   web:
     aliases:
-      admin: admin.myapp
+      admin: admin.myapp.test
 `)
 	cfg, err := Load(dir)
 	if err != nil {
@@ -1329,7 +1380,7 @@ func TestValidateTemplateRefAliasUnknownService(t *testing.T) {
 services:
   web:
     env_var: PORT
-    hostname: approvethis
+    hostname: approvethis.test
 computed:
   BAD:
     value: "${unknown.alias.app}"
@@ -1420,11 +1471,11 @@ func TestLoad_LocalOverrideMergedThenValidated(t *testing.T) {
 services:
   web:
     env_var: PORT
-    hostname: myapp
+    hostname: myapp.test
 `)
 	writeLocalConfig(t, dir, `services:
   web:
-    hostname: INVALID_HOST
+    hostname: INVALID_HOST.test
 `)
 	_, err := Load(dir)
 	if err == nil {
@@ -1472,10 +1523,10 @@ func TestLoad_OpenField(t *testing.T) {
 services:
   web:
     env_var: PORT
-    hostname: myapp
+    hostname: myapp.test
   admin:
     env_var: ADMIN_PORT
-    hostname: admin.myapp
+    hostname: admin.myapp.test
   postgres:
     env_var: DB_PORT
 open:
@@ -1495,7 +1546,7 @@ func TestLoad_OpenFieldAbsent(t *testing.T) {
 services:
   web:
     env_var: PORT
-    hostname: myapp
+    hostname: myapp.test
 `)
 	cfg, err := Load(dir)
 	if err != nil {
@@ -1511,7 +1562,7 @@ func TestLoad_OpenFieldEmptyIsNil(t *testing.T) {
 services:
   web:
     env_var: PORT
-    hostname: myapp
+    hostname: myapp.test
 open: []
 `)
 	cfg, err := Load(dir)
@@ -1529,7 +1580,7 @@ func TestLoad_OpenUnknownServiceErrors(t *testing.T) {
 services:
   web:
     env_var: PORT
-    hostname: myapp
+    hostname: myapp.test
 open:
   - web
   - missing
@@ -1548,7 +1599,7 @@ func TestLoad_OpenServiceWithoutHostnameErrors(t *testing.T) {
 services:
   web:
     env_var: PORT
-    hostname: myapp
+    hostname: myapp.test
   postgres:
     env_var: DB_PORT
 open:
@@ -1572,7 +1623,7 @@ func TestLoad_OpenDuplicateErrors(t *testing.T) {
 services:
   web:
     env_var: PORT
-    hostname: myapp
+    hostname: myapp.test
 open:
   - web
   - web
@@ -1591,10 +1642,10 @@ func TestLoad_LocalOverridesOpen(t *testing.T) {
 services:
   web:
     env_var: PORT
-    hostname: myapp
+    hostname: myapp.test
   admin:
     env_var: ADMIN_PORT
-    hostname: admin.myapp
+    hostname: admin.myapp.test
 open:
   - web
   - admin
@@ -1616,10 +1667,10 @@ func TestLoad_LocalAddsOpenWhenBaseHasNone(t *testing.T) {
 services:
   web:
     env_var: PORT
-    hostname: myapp
+    hostname: myapp.test
   admin:
     env_var: ADMIN_PORT
-    hostname: admin.myapp
+    hostname: admin.myapp.test
 `)
 	writeLocalConfig(t, dir, `open:
   - web
@@ -1638,10 +1689,10 @@ func TestLoad_LocalWithoutOpenKeepsBase(t *testing.T) {
 services:
   web:
     env_var: PORT
-    hostname: myapp
+    hostname: myapp.test
   admin:
     env_var: ADMIN_PORT
-    hostname: admin.myapp
+    hostname: admin.myapp.test
 open:
   - web
   - admin

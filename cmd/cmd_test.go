@@ -910,7 +910,7 @@ services:
   web:
     preferred_port: 3000
     env_var: PORT
-    hostname: testapp
+    hostname: testapp.test
   postgres:
     preferred_port: 5432
     env_var: DATABASE_PORT
@@ -1215,10 +1215,10 @@ const testConfigWithMultipleHostnames = `name: myapp
 services:
   web:
     env_var: PORT
-    hostname: myapp
+    hostname: myapp.test
   api:
     env_var: API_PORT
-    hostname: api.myapp
+    hostname: api.myapp.test
   postgres:
     env_var: PGPORT
 computed:
@@ -1314,7 +1314,7 @@ func TestUp_HostnameUniquenessConflict(t *testing.T) {
 services:
   web:
     env_var: PORT
-    hostname: myapp
+    hostname: myapp.test
 `), 0644)
 	_ = os.Mkdir(filepath.Join(dir1, ".git"), 0755)
 
@@ -1328,7 +1328,7 @@ services:
 services:
   web:
     env_var: PORT
-    hostname: myapp2
+    hostname: myapp2.test
 `), 0644)
 	_ = os.Mkdir(filepath.Join(dir2, ".git"), 0755)
 
@@ -1342,7 +1342,7 @@ services:
 services:
   web:
     env_var: PORT
-    hostname: myapp.otherapp
+    hostname: myapp.otherapp.test
 `), 0644)
 	_ = os.Mkdir(filepath.Join(dir3, ".git"), 0755)
 
@@ -1352,7 +1352,7 @@ services:
 services:
   web:
     env_var: PORT
-    hostname: clash
+    hostname: clash.test
 `), 0644)
 
 	// Apply this project — should succeed (unique hostname)
@@ -1367,7 +1367,7 @@ services:
 services:
   web:
     env_var: PORT
-    hostname: myapp.fakeapp
+    hostname: myapp.fakeapp.test
 `
 	_ = os.WriteFile(filepath.Join(dir4, "outport.yml"), []byte(configWithConflict), 0644)
 	_ = os.Mkdir(filepath.Join(dir4, ".git"), 0755)
@@ -1394,7 +1394,7 @@ services:
 services:
   web:
     env_var: PORT
-    hostname: collider
+    hostname: collider.test
 `), 0644)
 	_ = os.Mkdir(filepath.Join(dir5, ".git"), 0755)
 
@@ -1419,11 +1419,11 @@ services:
   web:
     env_var: PORT
     preferred_port: 3000
-    hostname: myapp
+    hostname: myapp.test
   api:
     env_var: API_PORT
     preferred_port: 4000
-    hostname: api.myapp
+    hostname: api.myapp.test
 
 computed:
   WEB_URL:

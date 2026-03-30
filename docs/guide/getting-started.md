@@ -56,7 +56,7 @@ name: myapp
 services:
   web:
     env_var: PORT
-    hostname: myapp
+    hostname: myapp.test
   postgres:
     env_var: DB_PORT
   redis:
