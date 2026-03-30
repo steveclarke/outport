@@ -557,6 +557,9 @@ func (c *Config) validate() error {
 
 	for name, svc := range c.Services {
 		if svc.Hostname != "" {
+			if !strings.HasSuffix(svc.Hostname, ".test") {
+				return fmt.Errorf("service %q: hostname %q must end with \".test\" (use %q)", name, svc.Hostname, svc.Hostname+".test")
+			}
 			if svc.Hostname == "outport.test" {
 				return fmt.Errorf("service %q: hostname %q is reserved for the Outport dashboard", name, svc.Hostname)
 			}
@@ -576,6 +579,9 @@ func (c *Config) validate() error {
 		for key, aliasHostname := range svc.Aliases {
 			if !aliasKeyRe.MatchString(key) {
 				return fmt.Errorf("service %q: alias key %q is invalid (must be lowercase alphanumeric with hyphens)", name, key)
+			}
+			if !strings.HasSuffix(aliasHostname, ".test") {
+				return fmt.Errorf("service %q: alias %q hostname %q must end with \".test\" (use %q)", name, key, aliasHostname, aliasHostname+".test")
 			}
 			if aliasHostname == "outport.test" {
 				return fmt.Errorf("service %q: alias %q hostname %q is reserved for the Outport dashboard", name, key, aliasHostname)

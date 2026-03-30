@@ -725,6 +725,68 @@ services:
 	}
 }
 
+func TestHostnameRequiresTestSuffix(t *testing.T) {
+	tests := []struct {
+		hostname string
+		wantErr  bool
+		errMsg   string
+	}{
+		{"myapp.test", false, ""},
+		{"portal.myapp.test", false, ""},
+		{"myapp", true, `must end with ".test"`},
+		{"portal.myapp", true, `must end with ".test"`},
+	}
+	for _, tt := range tests {
+		yaml := fmt.Sprintf(`
+name: myapp
+services:
+  web:
+    env_var: PORT
+    hostname: %s
+`, tt.hostname)
+		dir := t.TempDir()
+		if err := os.WriteFile(filepath.Join(dir, "outport.yml"), []byte(yaml), 0644); err != nil {
+			t.Fatal(err)
+		}
+		_, err := Load(dir)
+		if (err != nil) != tt.wantErr {
+			t.Errorf("hostname %q: err=%v, wantErr=%v", tt.hostname, err, tt.wantErr)
+		}
+		if tt.wantErr && err != nil && !strings.Contains(err.Error(), tt.errMsg) {
+			t.Errorf("hostname %q: error %q should contain %q", tt.hostname, err.Error(), tt.errMsg)
+		}
+	}
+}
+
+func TestAliasHostnameRequiresTestSuffix(t *testing.T) {
+	tests := []struct {
+		alias   string
+		wantErr bool
+	}{
+		{"app.myapp.test", false},
+		{"app.myapp", true},
+	}
+	for _, tt := range tests {
+		yaml := fmt.Sprintf(`
+name: myapp
+services:
+  web:
+    env_var: PORT
+    hostname: myapp.test
+    aliases:
+      app: %s
+`, tt.alias)
+		dir := t.TempDir()
+		if err := os.WriteFile(filepath.Join(dir, "outport.yml"), []byte(yaml), 0644); err != nil {
+			t.Fatal(err)
+		}
+		_, err := Load(dir)
+		if (err != nil) != tt.wantErr {
+			t.Errorf("alias %q: err=%v, wantErr=%v", tt.alias, err, tt.wantErr)
+		}
+	}
+}
+
 func TestValidateRejectsReservedOutportHostname(t *testing.T) {
 	yaml := `
 name: outport
