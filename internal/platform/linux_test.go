@@ -153,3 +153,10 @@ func TestServiceDescription(t *testing.T) {
 		t.Errorf("ServiceDescription() = %q, want %q", desc, "systemd service")
 	}
 }
+
+func TestResolverDescription(t *testing.T) {
+	desc := ResolverDescription()
+	if desc != "systemd-resolved config" {
+		t.Errorf("ResolverDescription() = %q, want %q", desc, "systemd-resolved config")
+	}
+}

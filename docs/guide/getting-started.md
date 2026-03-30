@@ -123,7 +123,7 @@ Open [https://outport.test](https://outport.test) in your browser for a live das
 ```bash
 outport system stop        # Stop the daemon
 outport system start       # Start the daemon
-outport system restart     # Re-write plist and restart the daemon
+outport system restart     # Re-write daemon config and restart
 outport system status      # Show all registered projects
 outport system uninstall   # Remove DNS, CA, and daemon entirely
 ```

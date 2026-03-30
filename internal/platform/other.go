@@ -28,3 +28,4 @@ func UntrustCA(_ string) error          { return errUnsupported }
 func IsCATrusted(_ string) bool         { return false }
 func EnsurePrivilegedPorts(_ string) error { return errUnsupported }
 func ServiceDescription() string            { return "service" }
+func ResolverDescription() string           { return "resolver config" }

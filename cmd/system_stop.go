@@ -13,7 +13,7 @@ import (
 var systemStopCmd = &cobra.Command{
 	Use:   "stop",
 	Short: "Stop the outport system",
-	Long:  "Unloads the LaunchAgent to stop the DNS resolver and HTTP proxy daemon.",
+	Long:  "Stops the DNS resolver and HTTP proxy daemon.",
 	Args:  NoArgs,
 	RunE:  runSystemStop,
 }
@@ -21,7 +21,7 @@ var systemStopCmd = &cobra.Command{
 var systemRestartCmd = &cobra.Command{
 	Use:   "restart",
 	Short: "Restart the outport system",
-	Long:  "Re-writes the LaunchAgent configuration and restarts the daemon. Use after upgrading outport.",
+	Long:  "Re-writes the daemon configuration and restarts it. Use after upgrading outport.",
 	Args:  NoArgs,
 	RunE:  runSystemRestart,
 }
