@@ -30,7 +30,7 @@ name: myapp
 services:
   web:
     env_var: PORT
-    hostname: myapp
+    hostname: myapp.test
   postgres:
     env_var: DB_PORT
   redis:
@@ -73,13 +73,13 @@ open:
 services:
   web:
     env_var: PORT
-    hostname: myapp
+    hostname: myapp.test
   frontend:
     env_var: VITE_PORT
-    hostname: app.myapp
+    hostname: app.myapp.test
   admin:
     env_var: ADMIN_PORT
-    hostname: admin.myapp    # not opened by default
+    hostname: admin.myapp.test    # not opened by default
 ```
 
 Each entry must reference a service that exists and has a `hostname`. You can always open any service explicitly: `outport open admin`.
@@ -98,19 +98,19 @@ services:
 
 #### `hostname`
 
-The `.test` hostname for this service. Implies HTTP — services with a hostname work with `outport open` and get a `.test` domain.
+The `.test` hostname for this service. Must end with `.test`. Implies HTTP — services with a hostname work with `outport open` and get a `.test` domain.
 
-The hostname must contain the project name somewhere in it. For a project named `myapp`, valid hostnames include `myapp`, `api-myapp`, `myapp-admin`. This keeps each project's hostnames within its own namespace.
+The hostname stem (the part before `.test`) must contain the project name somewhere in it. For a project named `myapp`, valid hostnames include `myapp.test`, `api-myapp.test`, `myapp-admin.test`. This keeps each project's hostnames within its own namespace.
 
 ```yaml
 # project name: myapp
 services:
   web:
     env_var: PORT
-    hostname: myapp          # → myapp.test
+    hostname: myapp.test
   api:
     env_var: API_PORT
-    hostname: api-myapp      # → api-myapp.test
+    hostname: api-myapp.test
 ```
 
 All `.test` hostnames get HTTPS automatically when the local CA is installed — no per-service configuration needed.
@@ -126,10 +126,10 @@ Named alternative hostnames for a service. Each alias registers an additional pr
 services:
   web:
     env_var: PORT
-    hostname: approvethis
+    hostname: approvethis.test
     aliases:
-      app: app.approvethis
-      admin: admin.approvethis
+      app: app.approvethis.test
+      admin: admin.approvethis.test
 ```
 
 This exposes `approvethis.test`, `app.approvethis.test`, and `admin.approvethis.test` — all proxied to the same port. For non-main instances, all aliases are suffixed with the instance code just like the primary hostname.
@@ -284,7 +284,7 @@ services:
 |----------|---------------|
 | Use system Postgres on port 5432 | `preferred_port: 5432` on the postgres service |
 | Write env to a different file on this machine | `env_file: custom/.env` on the service |
-| Use a different hostname for local testing | `hostname: dev.myapp` on the service |
+| Use a different hostname for local testing | `hostname: dev.myapp.test` on the service |
 | Only open specific services on this machine | `open: [web]` at the top level |
 
 ### `.gitignore`
