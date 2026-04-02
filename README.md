@@ -4,6 +4,12 @@
   </a>
 </p>
 
+<p align="center">
+  <a href="https://outport.dev">Docs</a> ·
+  <a href="https://github.com/steveclarke/outport/discussions">Discussions</a> ·
+  <a href="https://discord.gg/R4SyEskf">Discord</a>
+</p>
+
 # Outport
 
 **Port orchestration for multi-project development.**

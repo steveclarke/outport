@@ -227,6 +227,7 @@ CORS_ORIGINS=<span class="success">https://myapp-frontend.test</span>
   font-family: var(--vp-font-family-base);
   color: var(--vp-c-text-1);
   line-height: 1.6;
+  overflow-x: hidden;
 }
 
 /* HERO */
@@ -351,6 +352,7 @@ CORS_ORIGINS=<span class="success">https://myapp-frontend.test</span>
   overflow: hidden;
   text-align: left;
   box-shadow: 0 20px 60px var(--outport-shadow), 0 4px 16px var(--outport-shadow-soft);
+  min-width: 0;
 }
 .terminal-bar {
   display: flex;
@@ -370,6 +372,7 @@ CORS_ORIGINS=<span class="success">https://myapp-frontend.test</span>
   line-height: 1.7;
   color: #a9b1d6;
   overflow-x: auto;
+  max-width: 100%;
 }
 .terminal-body .prompt { color: #7aa2f7; }
 .terminal-body .cmd { color: #c0caf5; }
@@ -383,6 +386,7 @@ CORS_ORIGINS=<span class="success">https://myapp-frontend.test</span>
   gap: 1.25rem;
   max-width: 1100px;
   margin: 0 auto;
+  overflow: hidden;
 }
 .terminal-wrapper {
   flex: 1;
@@ -553,6 +557,7 @@ CORS_ORIGINS=<span class="success">https://myapp-frontend.test</span>
   font-family: var(--vp-font-family-mono);
   white-space: pre;
   overflow-x: auto;
+  max-width: 100%;
 }
 .step-code .prompt { color: #7aa2f7; }
 .step-code .cmd { color: #c0caf5; }
@@ -649,6 +654,9 @@ CORS_ORIGINS=<span class="success">https://myapp-frontend.test</span>
   font-family: var(--vp-font-family-mono);
   font-size: 0.9rem;
   box-shadow: 0 4px 16px var(--outport-shadow-soft);
+  max-width: 100%;
+  overflow-x: auto;
+  box-sizing: border-box;
 }
 .install-cmd .dollar { color: #7aa2f7; }
 .install-note {
@@ -661,11 +669,47 @@ CORS_ORIGINS=<span class="success">https://myapp-frontend.test</span>
 
 /* Responsive */
 @media (max-width: 768px) {
-  .hero h1 { font-size: 2.25rem; }
-  .feature-card { flex: 0 1 100%; }
-  .hero-ctas { flex-direction: column; align-items: center; }
-  .terminal-pair { flex-direction: column; }
-  .example-pair { flex-direction: column; }
-  .pain-points { justify-content: center; }
+  .hero { padding: 2.5rem 1rem 2rem; }
+  .hero h1 { font-size: 1.75rem; }
+  .hero .subtitle { font-size: 0.95rem; margin-bottom: 1.5rem; max-width: 100%; }
+  .pain-points { justify-content: center; gap: 0.4rem; margin-bottom: 1.5rem; }
+  .pain-points li { font-size: 0.7rem; padding: 0.25rem 0.6rem; }
+  .hero-ctas { flex-direction: column; align-items: center; gap: 0.75rem; margin-bottom: 2rem; }
+  .btn-primary, .btn-secondary { width: 100%; max-width: 280px; text-align: center; padding: 0.65rem 1.5rem; }
+  .story-link { margin-bottom: 1.5rem; }
+  .terminal-pair { flex-direction: column; gap: 1rem; }
+  .terminal { border-radius: 8px; }
+  .terminal-body { font-size: 0.55rem; padding: 0.75rem 0.75rem; overflow-x: auto; line-height: 1.6; }
+  .terminal-bar { padding: 8px 12px; }
+  .terminal-dot { width: 8px; height: 8px; }
+  .features { padding: 2.5rem 1rem; }
+  .features-heading h2 { font-size: 1.5rem; }
+  .feature-grid { gap: 0.75rem; }
+  .feature-card { flex: 0 1 100%; padding: 1.25rem; }
+  .feature-card h3 { font-size: 1rem; }
+  .feature-card p { font-size: 0.85rem; }
+  .dashboard-section { padding: 2.5rem 1rem; }
+  .dashboard-section h2 { font-size: 1.5rem; }
+  .dashboard-frame { border-radius: 8px; }
+  .example { padding: 2.5rem 1rem; }
+  .example h2 { font-size: 1.5rem; }
+  .example-caption { font-size: 0.9rem; }
+  .example-pair { flex-direction: column; gap: 1rem; }
+  .step-code { font-size: 0.55rem; padding: 0.6rem 0.75rem; }
+  .install { padding: 2.5rem 1rem; }
+  .install h2 { font-size: 1.5rem; }
+  .install-cmd { font-size: 0.7rem; padding: 0.75rem 1rem; }
+  .hero-callout { font-size: 0.85rem; }
+  .adoption-note p { font-size: 0.85rem; }
+  .site-footer { padding: 1.5rem 1rem; font-size: 0.75rem; }
+}
+
+@media (max-width: 380px) {
+  .hero h1 { font-size: 1.5rem; }
+  .hero .subtitle { font-size: 0.9rem; }
+  .terminal-body { font-size: 0.5rem; padding: 0.5rem 0.6rem; }
+  .step-code { font-size: 0.5rem; padding: 0.5rem 0.6rem; }
+  .pain-points li { font-size: 0.6rem; padding: 0.2rem 0.5rem; }
+  .install-cmd { font-size: 0.65rem; }
 }
 </style>

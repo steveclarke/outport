@@ -67,6 +67,7 @@ export default defineConfig({
 
     socialLinks: [
       { icon: 'github', link: 'https://github.com/steveclarke/outport' },
+      { icon: 'discord', link: 'https://discord.gg/R4SyEskf' },
     ],
 
     search: {

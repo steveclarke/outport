@@ -78,11 +78,30 @@ h1, h2, h3, h4, h5, h6,
   letter-spacing: -0.01em;
 }
 
+/* Alpha badge next to logo in nav */
+.VPNavBarTitle .title::after {
+  content: 'ALPHA';
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  font-family: 'Barlow', ui-sans-serif, system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 0.6rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--outport-accent);
+  border: 1.5px solid var(--outport-accent);
+  border-radius: 4px;
+  vertical-align: middle;
+  line-height: 1;
+  position: relative;
+  top: -1px;
+}
+
 /* Show social links in nav instead of hiding behind three-dot menu.
    VitePress hides social links below 1280px and shows a three-dot overflow
-   menu instead. We don't need that — our nav is simple enough to always
-   show everything inline. The doubled selectors increase specificity to
-   override VitePress's scoped styles without using !important. */
+   menu instead. On desktop our nav fits inline. On mobile, revert to
+   VitePress defaults so items collapse into the hamburger/extra menu. */
 .VPNavBarSocialLinks.VPNavBarSocialLinks {
   display: flex;
   align-items: center;
@@ -92,6 +111,11 @@ h1, h2, h3, h4, h5, h6,
 }
 .VPNavBarExtra.VPNavBarExtra {
   display: none;
+}
+@media (max-width: 768px) {
+  .VPNavBarSocialLinks.VPNavBarSocialLinks { display: none; }
+  .VPNavBarAppearance.VPNavBarAppearance { display: none; }
+  .VPNavBarExtra.VPNavBarExtra { display: flex; }
 }
 
 /* Prevent search from filling entire nav */
