@@ -188,7 +188,7 @@ func runKillOrphans(cmd *cobra.Command) error {
 		}
 
 		// Brief wait then check if it survived
-		time.Sleep(200 * time.Millisecond)
+		time.Sleep(3 * time.Second)
 		if processAlive(p.PID) {
 			entry.Killed = false
 			failed = append(failed, entry)
@@ -240,7 +240,7 @@ func killWithConfirmation(cmd *cobra.Command, candidate killCandidate, proc port
 	}
 
 	// Brief wait then check if process survived
-	time.Sleep(200 * time.Millisecond)
+	time.Sleep(3 * time.Second)
 	alive := processAlive(candidate.pid)
 
 	if jsonFlag {
