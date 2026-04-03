@@ -2,6 +2,7 @@ package portinfo
 
 import (
 	"context"
+	"math"
 	"strings"
 	"time"
 
@@ -87,7 +88,10 @@ type processDetails struct {
 func lookupProcess(ctx context.Context, pid int) *processDetails {
 	d := &processDetails{}
 
-	p, err := process.NewProcessWithContext(ctx, int32(pid))
+	if pid < 0 || pid > math.MaxInt32 {
+		return d
+	}
+	p, err := process.NewProcessWithContext(ctx, int32(pid)) //nolint:gosec // bounded above
 	if err != nil {
 		return d
 	}
@@ -101,8 +105,8 @@ func lookupProcess(ctx context.Context, pid int) *processDetails {
 	if cmdline, err := p.CmdlineWithContext(ctx); err == nil {
 		d.cmdline = cmdline
 	}
-	if mem, err := p.MemoryInfoWithContext(ctx); err == nil && mem != nil {
-		d.rss = int64(mem.RSS)
+	if mem, err := p.MemoryInfoWithContext(ctx); err == nil && mem != nil && mem.RSS <= uint64(math.MaxInt64) {
+		d.rss = int64(mem.RSS) // #nosec G115 -- bounded by MaxInt64 check
 	}
 	if createTime, err := p.CreateTimeWithContext(ctx); err == nil {
 		d.elapsed = time.Since(time.UnixMilli(createTime))
