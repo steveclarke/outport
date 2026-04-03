@@ -467,6 +467,9 @@ func buildPortRow(service string, port int, up bool, proc portinfo.ProcessInfo, 
 	if up {
 		pid = fmt.Sprintf("%d", proc.PID)
 		process = truncate(proc.Command, 30)
+		if process == "" {
+			process = proc.Name // fallback to lsof process name
+		}
 		memory = formatMemory(proc.RSS)
 		uptime = formatUptime(time.Duration(proc.UptimeSeconds()) * time.Second)
 	}

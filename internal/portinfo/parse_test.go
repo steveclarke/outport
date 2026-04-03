@@ -118,6 +118,14 @@ func TestParsePsOutput(t *testing.T) {
 			want:  map[int]psEntry{},
 		},
 		{
+			name: "EU locale lstart format",
+			input: `73959 73958 S  279200 Tue 31 Mar 22:38:00 2026 /Applications/Docker.app/Contents/MacOS/com.docker.backend services
+`,
+			want: map[int]psEntry{
+				73959: {PID: 73959, PPID: 73958, State: "S", RSS: 279200, Command: "/Applications/Docker.app/Contents/MacOS/com.docker.backend services"},
+			},
+		},
+		{
 			name: "malformed line skipped",
 			input: `not valid ps output
 48291     1 S  142560 Thu Mar 27 09:15:00 2026 node server.js

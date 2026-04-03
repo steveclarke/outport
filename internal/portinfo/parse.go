@@ -1,6 +1,7 @@
 package portinfo
 
 import (
+	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
@@ -104,9 +105,11 @@ func parsePsOutput(output string) map[int]psEntry {
 			continue
 		}
 
-		// lstart is 5 tokens: "Thu Mar 27 09:15:00 2026"
+		// lstart is 5 tokens but format varies by locale:
+		//   US:  "Thu Mar 27 09:15:00 2026"  (Mon Jan _2 15:04:05 2006)
+		//   EU:  "Tue 31 Mar 22:38:00 2026"  (Mon _2 Jan 15:04:05 2006)
 		lstartStr := strings.Join(fields[4:9], " ")
-		startTime, err := time.ParseInLocation("Mon Jan _2 15:04:05 2006", lstartStr, time.Local)
+		startTime, err := parseLstart(lstartStr)
 		if err != nil {
 			continue
 		}
@@ -124,6 +127,22 @@ func parsePsOutput(output string) map[int]psEntry {
 	}
 
 	return entries
+}
+
+// lstartFormats lists the known ps lstart formats across locales.
+var lstartFormats = []string{
+	"Mon Jan _2 15:04:05 2006", // US: "Thu Mar 27 09:15:00 2026"
+	"Mon _2 Jan 15:04:05 2006", // EU: "Tue 31 Mar 22:38:00 2026"
+}
+
+// parseLstart tries each known lstart format and returns the first that succeeds.
+func parseLstart(s string) (time.Time, error) {
+	for _, layout := range lstartFormats {
+		if t, err := time.ParseInLocation(layout, s, time.Local); err == nil {
+			return t, nil
+		}
+	}
+	return time.Time{}, fmt.Errorf("unrecognized lstart format: %q", s)
 }
 
 // parseLsofCwd parses output from "lsof -a -d cwd -p ...".
