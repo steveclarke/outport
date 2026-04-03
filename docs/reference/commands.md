@@ -72,6 +72,40 @@ outport status --computed  # include computed values
 | `--computed` | Show computed values |
 | `--json` | Output results as JSON |
 
+### `outport ports`
+
+Show ports with live process information — PID, command, memory usage, uptime, and framework detection. Inside a project directory, shows the current project's ports. Outside, shows all registered projects' ports.
+
+```bash
+outport ports              # current project (or all projects if outside a project dir)
+outport ports --all        # full machine scan — every listening TCP port
+outport ports --down       # include ports with no running process
+```
+
+By default, only ports with a running process are shown. Use `--down` to include idle ports.
+
+| Flag | Description |
+|------|-------------|
+| `--all` | Scan all listening ports on the machine, including non-Outport ones |
+| `--down` | Include ports with no running process |
+| `--json` | Output results as JSON |
+
+### `outport ports kill`
+
+Kill the process listening on a port. Target can be a service name (when inside a project directory) or a port number. Prompts for confirmation before killing.
+
+```bash
+outport ports kill web         # kill by service name
+outport ports kill 3000        # kill by port number
+outport ports kill --orphans   # kill all orphaned dev processes
+```
+
+| Flag | Description |
+|------|-------------|
+| `--orphans` | Kill all orphaned dev processes (ppid=1) instead of a specific target |
+| `--force` | Skip the confirmation prompt |
+| `--json` | Output results as JSON (requires `--force`) |
+
 ### `outport open`
 
 Open HTTP services in the browser.
