@@ -1,3 +1,17 @@
+<script setup>
+import { ref } from 'vue'
+
+const copyTooltip = ref('Click to copy')
+
+function copyInstall() {
+  const text = 'brew install steveclarke/tap/outport\noutport setup'
+  navigator.clipboard.writeText(text).then(() => {
+    copyTooltip.value = 'Copied!'
+    setTimeout(() => { copyTooltip.value = 'Click to copy' }, 2000)
+  })
+}
+</script>
+
 <template>
   <div class="home-layout">
     <!-- HERO -->
@@ -204,7 +218,7 @@ CORS_ORIGINS=<span class="success">https://myapp-frontend.test</span>
     <!-- INSTALL -->
     <section class="install">
       <h2>Try it</h2>
-      <div class="install-cmd">
+      <div class="install-cmd" @click="copyInstall" :title="copyTooltip" style="cursor: pointer;">
         <div><span class="dollar">$</span> brew install steveclarke/tap/outport</div>
         <div><span class="dollar">$</span> outport setup</div>
       </div>

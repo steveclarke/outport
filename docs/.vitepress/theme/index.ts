@@ -2,6 +2,7 @@ import DefaultTheme from 'vitepress/theme'
 import Layout from './Layout.vue'
 import './custom.css'
 import posthog from 'posthog-js'
+import { setupAnalytics } from './analytics'
 
 export default {
   extends: DefaultTheme,
@@ -12,6 +13,7 @@ export default {
         api_host: 'https://us.i.posthog.com',
         person_profiles: 'identified_only',
       })
+      setupAnalytics()
     }
   },
 }
