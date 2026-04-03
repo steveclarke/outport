@@ -122,10 +122,11 @@ func TestPortsProject_JSON(t *testing.T) {
 	// First register the project
 	executeCmd(t, "up")
 
-	// Now run ports --json
+	// Run ports --json --down (need --down since fake lister returns no processes)
 	jsonFlag = true
-	t.Cleanup(func() { jsonFlag = false })
-	output := executeCmd(t, "ports", "--json")
+	portsDownFlag = true
+	t.Cleanup(func() { jsonFlag = false; portsDownFlag = false })
+	output := executeCmd(t, "ports", "--json", "--down")
 
 	var result portsProjectJSON
 	unwrapJSON(t, output, &result)
@@ -162,16 +163,18 @@ func TestPortsAll_JSON(t *testing.T) {
 
 	jsonFlag = true
 	portsAllFlag = true
+	portsDownFlag = true
 	t.Cleanup(func() {
 		jsonFlag = false
 		portsAllFlag = false
+		portsDownFlag = false
 	})
-	output := executeCmd(t, "ports", "--all", "--json")
+	output := executeCmd(t, "ports", "--all", "--json", "--down")
 
 	var result portsAllJSON
 	unwrapJSON(t, output, &result)
 
-	// With fake lister returning nothing, all managed ports should be down
+	// With fake lister + --down, all managed ports appear but are down
 	for _, entry := range result.Managed {
 		if entry.Up {
 			t.Errorf("managed port %d should be down with fake lister", entry.Port)

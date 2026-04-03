@@ -18,6 +18,7 @@ import (
 )
 
 var portsAllFlag bool
+var portsDownFlag bool
 
 // portLister is the process lister used by the ports command. Tests can replace it.
 var portLister portinfo.Lister = portinfo.SystemLister{}
@@ -33,6 +34,7 @@ var portsCmd = &cobra.Command{
 
 func init() {
 	portsCmd.Flags().BoolVar(&portsAllFlag, "all", false, "scan all listening ports on the machine")
+	portsCmd.Flags().BoolVar(&portsDownFlag, "down", false, "include ports with no running process")
 	rootCmd.AddCommand(portsCmd)
 }
 
@@ -88,7 +90,15 @@ func printPortsProjectStyled(cmd *cobra.Command, cfg *config.Config, instanceNam
 	for _, svcName := range serviceNames {
 		port := alloc.Ports[svcName]
 		proc, up := byPort[port]
+		if !up && !portsDownFlag {
+			continue
+		}
 		rows = append(rows, buildPortRow(svcName, port, up, proc, alloc.Hostnames[svcName], httpsEnabled))
+	}
+
+	if len(rows) == 0 {
+		fmt.Fprintln(w, ui.DimStyle.Render("No ports are running. Use --down to show all allocated ports."))
+		return nil
 	}
 
 	t := portsTable([]string{"PORT", "SERVICE", "STATE", "PID", "PROCESS", "MEMORY", "UPTIME", "URL"}, rows)
@@ -104,6 +114,10 @@ func printPortsProjectJSON(cmd *cobra.Command, cfg *config.Config, instanceName 
 
 	for _, svcName := range serviceNames {
 		port := alloc.Ports[svcName]
+		up := byPort[port].PID > 0
+		if !up && !portsDownFlag {
+			continue
+		}
 		hostname := ""
 		if h, ok := alloc.Hostnames[svcName]; ok {
 			hostname = h
@@ -116,7 +130,7 @@ func printPortsProjectJSON(cmd *cobra.Command, cfg *config.Config, instanceName 
 			RegistryKey: key,
 			Hostname:    hostname,
 			URL:         urlutil.ServiceURL(hostname, port, httpsEnabled),
-			Up:          byPort[port].PID > 0,
+			Up:          up,
 		}
 		if proc, ok := byPort[port]; ok {
 			entry.Process = toPortProcessJSON(proc)
@@ -181,9 +195,17 @@ func printPortsAllOutportStyled(cmd *cobra.Command, reg *registry.Registry, proj
 		for _, svcName := range svcNames {
 			port := alloc.Ports[svcName]
 			proc, up := byPort[port]
+			if !up && !portsDownFlag {
+				continue
+			}
 			label := formatProjectKey(key) + "/" + svcName
 			rows = append(rows, buildPortRow(label, port, up, proc, alloc.Hostnames[svcName], httpsEnabled))
 		}
+	}
+
+	if len(rows) == 0 {
+		fmt.Fprintln(w, ui.DimStyle.Render("No ports are running. Use --down to show all allocated ports."))
+		return nil
 	}
 
 	t := portsTable([]string{"PORT", "SERVICE", "STATE", "PID", "PROCESS", "MEMORY", "UPTIME", "URL"}, rows)
@@ -205,6 +227,10 @@ func printPortsAllOutportJSON(cmd *cobra.Command, reg *registry.Registry, projec
 		svcNames := slices.Sorted(maps.Keys(alloc.Ports))
 		for _, svcName := range svcNames {
 			port := alloc.Ports[svcName]
+			up := byPort[port].PID > 0
+			if !up && !portsDownFlag {
+				continue
+			}
 			hostname := ""
 			if h, ok := alloc.Hostnames[svcName]; ok {
 				hostname = h
@@ -219,7 +245,7 @@ func printPortsAllOutportJSON(cmd *cobra.Command, reg *registry.Registry, projec
 				RegistryKey: key,
 				Hostname:    hostname,
 				URL:         urlutil.ServiceURL(hostname, port, httpsEnabled),
-				Up:          byPort[port].PID > 0,
+				Up:          up,
 			}
 			if proc, ok := byPort[port]; ok {
 				entry.Process = toPortProcessJSON(proc)
@@ -315,11 +341,16 @@ func printPortsAllStyled(cmd *cobra.Command, managed []managedPort, other []port
 		var rows [][]string
 		for _, m := range managed {
 			proc, up := byPort[m.port]
+			if !up && !portsDownFlag {
+				continue
+			}
 			label := formatProjectKey(m.key) + "/" + m.service
 			rows = append(rows, buildPortRow(label, m.port, up, proc, m.hostname, httpsEnabled))
 		}
-		t := portsTable([]string{"PORT", "SERVICE", "STATE", "PID", "PROCESS", "MEMORY", "UPTIME", "URL"}, rows)
-		lipgloss.Fprintln(w, t)
+		if len(rows) > 0 {
+			t := portsTable([]string{"PORT", "SERVICE", "STATE", "PID", "PROCESS", "MEMORY", "UPTIME", "URL"}, rows)
+			lipgloss.Fprintln(w, t)
+		}
 	}
 
 	if len(other) > 0 {
@@ -361,13 +392,17 @@ func printPortsAllStyled(cmd *cobra.Command, managed []managedPort, other []port
 func printPortsAllJSON(cmd *cobra.Command, managed []managedPort, other []portinfo.ProcessInfo, byPort map[int]portinfo.ProcessInfo, httpsEnabled bool) error {
 	var managedEntries []portEntryJSON
 	for _, m := range managed {
+		up := byPort[m.port].PID > 0
+		if !up && !portsDownFlag {
+			continue
+		}
 		entry := portEntryJSON{
 			Port:        m.port,
 			Service:     m.service,
 			RegistryKey: m.key,
 			Hostname:    m.hostname,
 			URL:         urlutil.ServiceURL(m.hostname, m.port, httpsEnabled),
-			Up:          byPort[m.port].PID > 0,
+			Up:          up,
 		}
 		if proc, ok := byPort[m.port]; ok {
 			entry.Process = toPortProcessJSON(proc)
