@@ -36,6 +36,7 @@ Entry point: `main.go` → `cmd.Execute()` (Cobra CLI).
 - **dashboard** — Embedded web dashboard (`go:embed`). JSON API, SSE live updates, health checker (configurable interval, only when clients connected).
 - **platform** — OS-specific daemon lifecycle and trust. macOS: LaunchAgent plist, `/etc/resolver/test`, Keychain CA trust. Linux: systemd user service, systemd-resolved drop-in, distro-specific CA trust (`update-ca-certificates` / `update-ca-trust`), browser NSS trust via `certutil` (Chrome `~/.pki/nssdb`, Firefox profiles), Homebrew cert sync, `setcap` for privileged ports.
 - **doctor** — Diagnostic checks returning pass/warn/fail with fix suggestions. On Linux, includes system resolver chain checks (resolv.conf routing, DNS stub listener, end-to-end resolution) via build-tagged `dns_linux.go`/`dns_other.go`.
+- **portinfo** — System-level port scanning and process inspection. Shells out to `lsof`/`ps` to discover listening TCP ports, identify processes, detect frameworks, and flag orphaned/zombie dev processes. `Scanner` interface enables test injection.
 - **envpath** — Env file path classification. Resolves symlinks before boundary checking.
 - **dotenv** — Fenced `.env` block writer. Also provides `RemoveBlock()` for cleanup.
 - **tunnel** — Provider abstraction + concurrent manager with all-or-nothing semantics.
