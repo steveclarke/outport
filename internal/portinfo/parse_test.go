@@ -175,6 +175,15 @@ ruby    51002 steve  cwd    DIR    1,4      320 5678 /Users/steve/src/railsapp
 			input: "",
 			want:  map[int]string{},
 		},
+		{
+			name: "path with spaces",
+			input: `COMMAND   PID  USER   FD   TYPE DEVICE SIZE/OFF NODE NAME
+node    48291 steve  cwd    DIR    1,4      640 1234 /Users/steve/my project/app
+`,
+			want: map[int]string{
+				48291: "/Users/steve/my project/app",
+			},
+		},
 	}
 
 	for _, tt := range tests {

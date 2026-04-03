@@ -106,7 +106,7 @@ func parsePsOutput(output string) map[int]psEntry {
 
 		// lstart is 5 tokens: "Thu Mar 27 09:15:00 2026"
 		lstartStr := strings.Join(fields[4:9], " ")
-		startTime, err := time.Parse("Mon Jan _2 15:04:05 2006", lstartStr)
+		startTime, err := time.ParseInLocation("Mon Jan _2 15:04:05 2006", lstartStr, time.Local)
 		if err != nil {
 			continue
 		}
@@ -147,8 +147,8 @@ func parseLsofCwd(output string) map[int]string {
 			continue
 		}
 
-		// NAME is the last field — the working directory path
-		cwds[pid] = fields[len(fields)-1]
+		// NAME field starts at index 8 — join to handle paths with spaces
+		cwds[pid] = strings.Join(fields[8:], " ")
 	}
 
 	return cwds

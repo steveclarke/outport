@@ -2,6 +2,7 @@
 package portinfo
 
 import (
+	"os"
 	"testing"
 )
 
@@ -139,5 +140,12 @@ func TestKill_RefuseProtectedPIDs(t *testing.T) {
 				t.Errorf("Kill(%d) should return error", tt.pid)
 			}
 		})
+	}
+}
+
+func TestKill_RefuseOwnProcess(t *testing.T) {
+	err := Kill(os.Getpid())
+	if err == nil {
+		t.Error("Kill(own PID) should return error")
 	}
 }
