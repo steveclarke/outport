@@ -4,6 +4,7 @@ import (
 	"context"
 	"math"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/shirou/gopsutil/v4/net"
@@ -43,13 +44,27 @@ func (s SystemLister) ListProcesses() ([]ProcessInfo, error) {
 		listening = append(listening, pp)
 	}
 
-	// Look up process details for each unique PID
-	pidCache := make(map[int]*processDetails)
+	// Collect unique PIDs for lookup
+	uniquePIDs := make(map[int]bool)
 	for _, pp := range listening {
-		if _, ok := pidCache[pp.pid]; !ok {
-			pidCache[pp.pid] = lookupProcess(ctx, pp.pid)
-		}
+		uniquePIDs[pp.pid] = true
 	}
+
+	// Look up process details concurrently
+	pidCache := make(map[int]*processDetails, len(uniquePIDs))
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+	for pid := range uniquePIDs {
+		wg.Add(1)
+		go func(pid int) {
+			defer wg.Done()
+			details := lookupProcess(ctx, pid)
+			mu.Lock()
+			pidCache[pid] = details
+			mu.Unlock()
+		}(pid)
+	}
+	wg.Wait()
 
 	// Build results
 	var results []ProcessInfo

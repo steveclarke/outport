@@ -101,7 +101,7 @@ func printPortsProjectStyled(cmd *cobra.Command, cfg *config.Config, instanceNam
 		return nil
 	}
 
-	t := portsTable([]string{"PORT", "SERVICE", "STATE", "PID", "PROCESS", "MEMORY", "UPTIME", "URL"}, rows)
+	t := portsTable(managedHeaders, rows)
 	lipgloss.Fprintln(w, t)
 
 	return nil
@@ -118,12 +118,7 @@ func printPortsProjectJSON(cmd *cobra.Command, cfg *config.Config, instanceName 
 		if !up && !portsDownFlag {
 			continue
 		}
-		hostname := ""
-		if h, ok := alloc.Hostnames[svcName]; ok {
-			hostname = h
-		} else if svc, ok := cfg.Services[svcName]; ok {
-			hostname = svc.Hostname
-		}
+		hostname := allocHostname(alloc, cfg, svcName)
 		entry := portEntryJSON{
 			Port:        port,
 			Service:     svcName,
@@ -208,7 +203,7 @@ func printPortsAllOutportStyled(cmd *cobra.Command, reg *registry.Registry, proj
 		return nil
 	}
 
-	t := portsTable([]string{"PORT", "SERVICE", "STATE", "PID", "PROCESS", "MEMORY", "UPTIME", "URL"}, rows)
+	t := portsTable(managedHeaders, rows)
 	lipgloss.Fprintln(w, t)
 
 	return nil
@@ -231,14 +226,7 @@ func printPortsAllOutportJSON(cmd *cobra.Command, reg *registry.Registry, projec
 			if !up && !portsDownFlag {
 				continue
 			}
-			hostname := ""
-			if h, ok := alloc.Hostnames[svcName]; ok {
-				hostname = h
-			} else if cfg != nil {
-				if svc, ok := cfg.Services[svcName]; ok {
-					hostname = svc.Hostname
-				}
-			}
+			hostname := allocHostname(alloc, cfg, svcName)
 			entry := portEntryJSON{
 				Port:        port,
 				Service:     svcName,
@@ -300,18 +288,10 @@ func runPortsAll(cmd *cobra.Command) error {
 		svcNames := slices.Sorted(maps.Keys(alloc.Ports))
 		for _, svcName := range svcNames {
 			port := alloc.Ports[svcName]
-			hostname := ""
-			if h, ok := alloc.Hostnames[svcName]; ok {
-				hostname = h
-			} else if cfg != nil {
-				if svc, ok := cfg.Services[svcName]; ok {
-					hostname = svc.Hostname
-				}
-			}
 			managed = append(managed, managedPort{
 				key:      key,
 				service:  svcName,
-				hostname: hostname,
+				hostname: allocHostname(alloc, cfg, svcName),
 				port:     port,
 			})
 			managedPorts[port] = true
@@ -348,7 +328,7 @@ func printPortsAllStyled(cmd *cobra.Command, managed []managedPort, other []port
 			rows = append(rows, buildPortRow(label, m.port, up, proc, m.hostname, httpsEnabled))
 		}
 		if len(rows) > 0 {
-			t := portsTable([]string{"PORT", "SERVICE", "STATE", "PID", "PROCESS", "MEMORY", "UPTIME", "URL"}, rows)
+			t := portsTable(managedHeaders, rows)
 			lipgloss.Fprintln(w, t)
 		}
 	}
@@ -373,7 +353,7 @@ func printPortsAllStyled(cmd *cobra.Command, managed []managedPort, other []port
 				fmt.Sprintf("%d", proc.PID),
 				truncate(proc.Command, 30),
 				formatMemory(proc.RSS),
-				formatUptime(time.Duration(proc.UptimeSeconds()) * time.Second),
+				formatUptime(proc.Elapsed),
 				proc.Project,
 			})
 		}
@@ -455,6 +435,23 @@ func indexByPort(procs []portinfo.ProcessInfo) map[int]portinfo.ProcessInfo {
 	return m
 }
 
+// managedHeaders is the column header for Outport-managed port tables.
+var managedHeaders = []string{"PORT", "SERVICE", "STATE", "PID", "PROCESS", "MEMORY", "UPTIME", "URL"}
+
+// allocHostname returns the hostname for a service from an allocation,
+// falling back to the config if the allocation doesn't have one.
+func allocHostname(alloc registry.Allocation, cfg *config.Config, svcName string) string {
+	if h, ok := alloc.Hostnames[svcName]; ok {
+		return h
+	}
+	if cfg != nil {
+		if svc, ok := cfg.Services[svcName]; ok {
+			return svc.Hostname
+		}
+	}
+	return ""
+}
+
 // portsTable builds a styled lipgloss table for port listings.
 func portsTable(headers []string, rows [][]string) *table.Table {
 	headerStyle := lipgloss.NewStyle().Foreground(ui.Purple).Bold(true).Padding(0, 1)
@@ -506,7 +503,7 @@ func buildPortRow(service string, port int, up bool, proc portinfo.ProcessInfo, 
 			process = proc.Name // fallback to lsof process name
 		}
 		memory = formatMemory(proc.RSS)
-		uptime = formatUptime(time.Duration(proc.UptimeSeconds()) * time.Second)
+		uptime = formatUptime(proc.Elapsed)
 	}
 
 	urlStr := urlutil.ServiceURL(hostname, port, httpsEnabled)
@@ -532,9 +529,9 @@ func stateCell(up, isOrphan, isZombie bool) string {
 		return ui.WarnStyle.Render("⚠ zombie")
 	}
 	if up {
-		return lipgloss.NewStyle().Foreground(ui.Green).Render("✓ up")
+		return ui.StatusUp
 	}
-	return lipgloss.NewStyle().Foreground(ui.Red).Render("✗ down")
+	return ui.StatusDown
 }
 
 // formatMemory formats bytes into a human-readable string.
