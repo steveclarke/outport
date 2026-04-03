@@ -77,9 +77,9 @@ services:
 	}
 
 	checks := ProjectChecks(dir, cfg, nil, regPath)
-	// Should have: config valid + project registered + port check for web
-	if len(checks) != 3 {
-		t.Fatalf("expected 3 checks, got %d", len(checks))
+	// Should have: config valid + project registered + port check for web + orphan check
+	if len(checks) != 4 {
+		t.Fatalf("expected 4 checks, got %d", len(checks))
 	}
 
 	// Registration should pass
