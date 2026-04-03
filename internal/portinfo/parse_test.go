@@ -4,6 +4,7 @@ import (
 	"testing"
 )
 
+
 func TestParseLsofListening(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -87,6 +88,104 @@ node      48291  steve   22u  IPv4 0x1234567890      0t0  TCP 127.0.0.1:13542 (L
 			for i := range got {
 				if got[i] != tt.want[i] {
 					t.Errorf("entry[%d] = %+v, want %+v", i, got[i], tt.want[i])
+				}
+			}
+		})
+	}
+}
+
+func TestParsePsOutput(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  map[int]psEntry
+	}{
+		{
+			name: "typical output",
+			input: `48291     1 S  142560 Thu Mar 27 09:15:00 2026 node .next/standalone/server.js
+51002  1042 S   98304 Wed Mar 26 14:30:00 2026 ruby bin/rails server -p 3000
+  412     1 Ss  25600 Mon Mar 24 08:00:00 2026 /usr/lib/postgresql/14/bin/postgres -D /var/lib/postgresql/14/main
+`,
+			want: map[int]psEntry{
+				48291: {PID: 48291, PPID: 1, State: "S", RSS: 142560, Command: "node .next/standalone/server.js"},
+				51002: {PID: 51002, PPID: 1042, State: "S", RSS: 98304, Command: "ruby bin/rails server -p 3000"},
+				412:   {PID: 412, PPID: 1, State: "Ss", RSS: 25600, Command: "/usr/lib/postgresql/14/bin/postgres -D /var/lib/postgresql/14/main"},
+			},
+		},
+		{
+			name:  "empty output",
+			input: "",
+			want:  map[int]psEntry{},
+		},
+		{
+			name: "malformed line skipped",
+			input: `not valid ps output
+48291     1 S  142560 Thu Mar 27 09:15:00 2026 node server.js
+`,
+			want: map[int]psEntry{
+				48291: {PID: 48291, PPID: 1, State: "S", RSS: 142560, Command: "node server.js"},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := parsePsOutput(tt.input)
+			if len(got) != len(tt.want) {
+				t.Fatalf("got %d entries, want %d", len(got), len(tt.want))
+			}
+			for pid, wantEntry := range tt.want {
+				gotEntry, ok := got[pid]
+				if !ok {
+					t.Errorf("missing PID %d", pid)
+					continue
+				}
+				if gotEntry.PID != wantEntry.PID || gotEntry.PPID != wantEntry.PPID ||
+					gotEntry.State != wantEntry.State || gotEntry.RSS != wantEntry.RSS ||
+					gotEntry.Command != wantEntry.Command {
+					t.Errorf("PID %d: got %+v, want %+v", pid, gotEntry, wantEntry)
+				}
+				if gotEntry.StartTime.IsZero() {
+					t.Errorf("PID %d: StartTime is zero", pid)
+				}
+			}
+		})
+	}
+}
+
+func TestParseLsofCwd(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  map[int]string
+	}{
+		{
+			name: "typical output",
+			input: `COMMAND   PID  USER   FD   TYPE DEVICE SIZE/OFF NODE NAME
+node    48291 steve  cwd    DIR    1,4      640 1234 /Users/steve/src/myapp
+ruby    51002 steve  cwd    DIR    1,4      320 5678 /Users/steve/src/railsapp
+`,
+			want: map[int]string{
+				48291: "/Users/steve/src/myapp",
+				51002: "/Users/steve/src/railsapp",
+			},
+		},
+		{
+			name:  "empty output",
+			input: "",
+			want:  map[int]string{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := parseLsofCwd(tt.input)
+			if len(got) != len(tt.want) {
+				t.Fatalf("got %d entries, want %d", len(got), len(tt.want))
+			}
+			for pid, wantCwd := range tt.want {
+				if got[pid] != wantCwd {
+					t.Errorf("PID %d: got %q, want %q", pid, got[pid], wantCwd)
 				}
 			}
 		})
