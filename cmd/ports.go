@@ -2,12 +2,12 @@ package cmd
 
 import (
 	"fmt"
-	"io"
 	"maps"
 	"slices"
 	"time"
 
 	"charm.land/lipgloss/v2"
+	"charm.land/lipgloss/v2/table"
 	"github.com/spf13/cobra"
 	"github.com/steveclarke/outport/internal/certmanager"
 	"github.com/steveclarke/outport/internal/config"
@@ -83,18 +83,16 @@ func printPortsProjectStyled(cmd *cobra.Command, cfg *config.Config, instanceNam
 	w := cmd.OutOrStdout()
 	printHeader(w, cfg.Name, instanceName)
 
+	var rows [][]string
 	serviceNames := slices.Sorted(maps.Keys(alloc.Ports))
 	for _, svcName := range serviceNames {
 		port := alloc.Ports[svcName]
-		portStatus := map[int]bool{port: byPort[port].PID > 0}
-		printServiceLineDetailed(w, cfg, svcName, port, alloc.Hostnames, portStatus, httpsEnabled)
-		if proc, ok := byPort[port]; ok {
-			printProcessLine(w, proc)
-		}
-		if svcAliases, ok := alloc.Aliases[svcName]; ok {
-			printAliasLines(w, svcAliases, port, httpsEnabled)
-		}
+		proc, up := byPort[port]
+		rows = append(rows, buildPortRow(svcName, port, up, proc, alloc.Hostnames[svcName], httpsEnabled))
 	}
+
+	t := portsTable([]string{"PORT", "SERVICE", "STATE", "PID", "PROCESS", "MEMORY", "UPTIME", "URL"}, rows)
+	lipgloss.Fprintln(w, t)
 
 	return nil
 }
@@ -174,52 +172,22 @@ func runPortsAllOutport(cmd *cobra.Command) error {
 
 func printPortsAllOutportStyled(cmd *cobra.Command, reg *registry.Registry, projects map[string]registry.Allocation, byPort map[int]portinfo.ProcessInfo, httpsEnabled bool) error {
 	w := cmd.OutOrStdout()
-	currentKey := currentProjectKey(reg)
+
+	var rows [][]string
 	keys := slices.Sorted(maps.Keys(projects))
-
-	for i, key := range keys {
+	for _, key := range keys {
 		alloc := projects[key]
-		cfg := loadProjectConfig(alloc.ProjectDir)
-
-		stale, staleReason := isStale(alloc.ProjectDir)
-
-		marker := ""
-		if key == currentKey {
-			marker = currentMarker.Render(" ●")
-		}
-		if stale {
-			marker += " " + ui.DimStyle.Render(staleReason)
-		}
-		displayName := formatProjectKey(key)
-		header := ui.ProjectStyle.Render(displayName) + " " + ui.DimStyle.Render(alloc.ProjectDir) + marker
-		lipgloss.Fprintln(w, header)
-
-		renderCfg := cfg
-		if renderCfg == nil {
-			renderCfg = &config.Config{Services: make(map[string]config.Service)}
-		}
-
 		svcNames := slices.Sorted(maps.Keys(alloc.Ports))
 		for _, svcName := range svcNames {
 			port := alloc.Ports[svcName]
-			portStatus := map[int]bool{port: byPort[port].PID > 0}
-			printServiceLineCompact(w, renderCfg, svcName, port, alloc.Hostnames, portStatus, httpsEnabled)
-			if proc, ok := byPort[port]; ok {
-				printProcessLine(w, proc)
-			}
-			if svcAliases, ok := alloc.Aliases[svcName]; ok {
-				printAliasLines(w, svcAliases, port, httpsEnabled)
-			}
-		}
-
-		if stale {
-			fmt.Fprintf(w, "  %s\n", ui.DimStyle.Render("(stale — run 'outport system prune' to remove)"))
-		}
-
-		if i < len(keys)-1 {
-			lipgloss.Fprintln(w)
+			proc, up := byPort[port]
+			label := formatProjectKey(key) + "/" + svcName
+			rows = append(rows, buildPortRow(label, port, up, proc, alloc.Hostnames[svcName], httpsEnabled))
 		}
 	}
+
+	t := portsTable([]string{"PORT", "SERVICE", "STATE", "PID", "PROCESS", "MEMORY", "UPTIME", "URL"}, rows)
+	lipgloss.Fprintln(w, t)
 
 	return nil
 }
@@ -343,31 +311,15 @@ func printPortsAllStyled(cmd *cobra.Command, managed []managedPort, other []port
 
 	if len(managed) > 0 {
 		lipgloss.Fprintln(w, ui.ProjectStyle.Render("Outport managed"))
-		lipgloss.Fprintln(w)
 
+		var rows [][]string
 		for _, m := range managed {
-			up := byPort[m.port].PID > 0
-			status := "  " + ui.StatusDown
-			if up {
-				status = "  " + ui.StatusUp
-			}
-			urlSuffix := ""
-			if u := urlutil.ServiceURL(m.hostname, m.port, httpsEnabled); u != "" {
-				urlSuffix = "  " + ui.UrlStyle.Render(u)
-			}
-			line := fmt.Sprintf("  %s  %s  %s %-5s%s%s",
-				ui.ServiceStyle.Render(fmt.Sprintf("%-16s", m.service)),
-				ui.DimStyle.Render(fmt.Sprintf("%-20s", formatProjectKey(m.key))),
-				ui.Arrow,
-				ui.PortStyle.Render(fmt.Sprintf("%d", m.port)),
-				status,
-				urlSuffix,
-			)
-			lipgloss.Fprintln(w, line)
-			if proc, ok := byPort[m.port]; ok {
-				printProcessLine(w, proc)
-			}
+			proc, up := byPort[m.port]
+			label := formatProjectKey(m.key) + "/" + m.service
+			rows = append(rows, buildPortRow(label, m.port, up, proc, m.hostname, httpsEnabled))
 		}
+		t := portsTable([]string{"PORT", "SERVICE", "STATE", "PID", "PROCESS", "MEMORY", "UPTIME", "URL"}, rows)
+		lipgloss.Fprintln(w, t)
 	}
 
 	if len(other) > 0 {
@@ -375,17 +327,28 @@ func printPortsAllStyled(cmd *cobra.Command, managed []managedPort, other []port
 			lipgloss.Fprintln(w)
 		}
 		lipgloss.Fprintln(w, ui.ProjectStyle.Render("Other"))
-		lipgloss.Fprintln(w)
 
+		var rows [][]string
 		for _, proc := range other {
-			line := fmt.Sprintf("  %s  %s %-5s",
-				ui.ServiceStyle.Render(fmt.Sprintf("%-16s", proc.Name)),
-				ui.Arrow,
-				ui.PortStyle.Render(fmt.Sprintf("%d", proc.Port)),
-			)
-			lipgloss.Fprintln(w, line)
-			printProcessLine(w, proc)
+			framework := proc.Name
+			if proc.Framework != "" {
+				framework += " (" + proc.Framework + ")"
+			}
+			state := stateCell(true, proc.IsOrphan, proc.IsZombie)
+			rows = append(rows, []string{
+				fmt.Sprintf("%d", proc.Port),
+				framework,
+				state,
+				fmt.Sprintf("%d", proc.PID),
+				truncate(proc.Command, 30),
+				formatMemory(proc.RSS),
+				formatUptime(time.Duration(proc.UptimeSeconds()) * time.Second),
+				proc.Project,
+			})
 		}
+		headers := []string{"PORT", "PROCESS", "STATE", "PID", "COMMAND", "MEMORY", "UPTIME", "PROJECT"}
+		t := portsTable(headers, rows)
+		lipgloss.Fprintln(w, t)
 	}
 
 	if len(managed) == 0 && len(other) == 0 {
@@ -457,40 +420,83 @@ func indexByPort(procs []portinfo.ProcessInfo) map[int]portinfo.ProcessInfo {
 	return m
 }
 
-// printProcessLine renders a compact process detail line underneath a service.
-func printProcessLine(w io.Writer, proc portinfo.ProcessInfo) {
-	uptime := formatUptime(time.Duration(proc.UptimeSeconds()) * time.Second)
-	mem := formatMemory(proc.RSS)
+// portsTable builds a styled lipgloss table for port listings.
+func portsTable(headers []string, rows [][]string) *table.Table {
+	headerStyle := lipgloss.NewStyle().Foreground(ui.Purple).Bold(true).Padding(0, 1)
+	cellStyle := lipgloss.NewStyle().Padding(0, 1)
+	dimCellStyle := cellStyle.Foreground(ui.LightGray)
 
-	parts := fmt.Sprintf("PID %d", proc.PID)
-	if proc.Name != "" {
-		parts += " · " + proc.Name
-	}
-	if proc.Command != "" && proc.Command != proc.Name {
-		parts += " (" + truncate(proc.Command, 40) + ")"
-	}
-	if mem != "" {
-		parts += " · " + mem
-	}
-	if uptime != "" {
-		parts += " · " + uptime
+	t := table.New().
+		Border(lipgloss.HiddenBorder()).
+		StyleFunc(func(row, col int) lipgloss.Style {
+			if row == table.HeaderRow {
+				return headerStyle
+			}
+			// PORT column — bold yellow
+			if col == 0 {
+				return cellStyle.Foreground(ui.Yellow).Bold(true)
+			}
+			// SERVICE/PROCESS column
+			if col == 1 {
+				return cellStyle.Foreground(ui.Cyan)
+			}
+			// STATE column
+			if col == 2 {
+				return cellStyle
+			}
+			// URL/PROJECT column (last)
+			if col == len(headers)-1 {
+				return cellStyle.Foreground(ui.Yellow)
+			}
+			return dimCellStyle
+		}).
+		Headers(headers...).
+		Rows(rows...)
+
+	return t
+}
+
+// buildPortRow creates a table row for a managed port entry.
+func buildPortRow(service string, port int, up bool, proc portinfo.ProcessInfo, hostname string, httpsEnabled bool) []string {
+	state := stateCell(up, proc.IsOrphan, proc.IsZombie)
+
+	pid := ""
+	process := ""
+	memory := ""
+	uptime := ""
+	if up {
+		pid = fmt.Sprintf("%d", proc.PID)
+		process = truncate(proc.Command, 30)
+		memory = formatMemory(proc.RSS)
+		uptime = formatUptime(time.Duration(proc.UptimeSeconds()) * time.Second)
 	}
 
-	var warnings []string
-	if proc.IsOrphan {
-		warnings = append(warnings, "orphan")
-	}
-	if proc.IsZombie {
-		warnings = append(warnings, "zombie")
-	}
+	urlStr := urlutil.ServiceURL(hostname, port, httpsEnabled)
 
-	line := "      " + ui.DimStyle.Render(parts)
-	if len(warnings) > 0 {
-		for _, w := range warnings {
-			line += "  " + ui.WarnStyle.Render("⚠ "+w)
-		}
+	return []string{
+		fmt.Sprintf("%d", port),
+		service,
+		state,
+		pid,
+		process,
+		memory,
+		uptime,
+		urlStr,
 	}
-	lipgloss.Fprintln(w, line)
+}
+
+// stateCell returns a styled up/down/warning string for the STATE column.
+func stateCell(up, isOrphan, isZombie bool) string {
+	if isOrphan {
+		return ui.WarnStyle.Render("⚠ orphan")
+	}
+	if isZombie {
+		return ui.WarnStyle.Render("⚠ zombie")
+	}
+	if up {
+		return lipgloss.NewStyle().Foreground(ui.Green).Render("✓ up")
+	}
+	return lipgloss.NewStyle().Foreground(ui.Red).Render("✗ down")
 }
 
 // formatMemory formats bytes into a human-readable string.
