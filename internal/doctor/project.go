@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"maps"
 	"slices"
+	"strings"
 
 	"github.com/steveclarke/outport/internal/config"
 	"github.com/steveclarke/outport/internal/portcheck"
+	"github.com/steveclarke/outport/internal/portinfo"
 	"github.com/steveclarke/outport/internal/registry"
 )
 
@@ -84,6 +86,45 @@ func ProjectChecks(dir string, cfg *config.Config, configErr error, regPath stri
 				},
 			})
 		}
+
+		// Orphan check — scan managed ports for orphaned/zombie processes
+		allPorts := make([]int, 0, len(alloc.Ports))
+		for _, port := range alloc.Ports {
+			allPorts = append(allPorts, port)
+		}
+		checks = append(checks, Check{
+			Name:     "Orphaned processes",
+			Category: category,
+			Run: func() *Result {
+				processes, err := portinfo.ScanPorts(allPorts, portinfo.SystemScanner{})
+				if err != nil {
+					return &Result{
+						Name:    "Orphaned processes",
+						Status:  Warn,
+						Message: fmt.Sprintf("could not scan ports: %v", err),
+					}
+				}
+				var orphanPorts []string
+				for _, p := range processes {
+					if p.IsOrphan || p.IsZombie {
+						orphanPorts = append(orphanPorts, fmt.Sprintf("%d (%s)", p.Port, p.Name))
+					}
+				}
+				if len(orphanPorts) > 0 {
+					return &Result{
+						Name:    "Orphaned processes",
+						Status:  Warn,
+						Message: fmt.Sprintf("orphaned processes on: %s", strings.Join(orphanPorts, ", ")),
+						Fix:     "Run: outport ports kill --orphans",
+					}
+				}
+				return &Result{
+					Name:    "Orphaned processes",
+					Status:  Pass,
+					Message: "no orphaned processes on managed ports",
+				}
+			},
+		})
 	}
 
 	return checks
