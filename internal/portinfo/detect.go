@@ -7,8 +7,26 @@ import (
 	"strings"
 )
 
-// maxWalkDepth limits how far up the directory tree we look for project markers.
-const maxWalkDepth = 15
+const (
+	// maxWalkDepth limits how far up the directory tree we look for project markers.
+	maxWalkDepth = 15
+	// maxFileSize is the largest project marker file we'll read (1 MB).
+	// Protects against accidentally reading a huge file from an unknown CWD.
+	maxFileSize = 1 << 20
+)
+
+// safeReadFile reads a file only if it's under maxFileSize. Returns nil on any error.
+func safeReadFile(path string) []byte {
+	info, err := os.Stat(path)
+	if err != nil || info.Size() > maxFileSize {
+		return nil
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil
+	}
+	return data
+}
 
 // projectMarkers maps filenames to framework detection functions.
 var projectMarkers = []struct {
@@ -55,8 +73,8 @@ func detectFramework(cwd string) (string, string) {
 
 // detectNodeFramework reads package.json and checks dependencies for known frameworks.
 func detectNodeFramework(dir string) string {
-	data, err := os.ReadFile(filepath.Join(dir, "package.json"))
-	if err != nil {
+	data := safeReadFile(filepath.Join(dir, "package.json"))
+	if data == nil {
 		return "Node.js"
 	}
 
@@ -100,8 +118,8 @@ func detectNodeFramework(dir string) string {
 
 // detectRubyFramework reads Gemfile and checks for known frameworks.
 func detectRubyFramework(dir string) string {
-	data, err := os.ReadFile(filepath.Join(dir, "Gemfile"))
-	if err != nil {
+	data := safeReadFile(filepath.Join(dir, "Gemfile"))
+	if data == nil {
 		return "Ruby"
 	}
 	content := string(data)
@@ -132,7 +150,11 @@ var devProcessNames = map[string]bool{
 	"dotnet":   true,
 }
 
-// isOrphanProcess returns true when a process is likely an orphaned dev process.
+// isOrphanProcess returns true when a process is likely an orphaned dev process:
+// ppid=1 (reparented to init/launchd) AND a known dev runtime name.
+// This heuristic has false positives for intentionally daemonized processes
+// (e.g., PM2-managed node) and may miss orphans on Linux where systemd --user
+// reparents to a non-PID-1 process.
 func isOrphanProcess(ppid int, processName string) bool {
 	if ppid != 1 {
 		return false

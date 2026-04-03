@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"os"
 	"strconv"
 	"strings"
 	"syscall"
@@ -162,7 +161,7 @@ func runKillOrphans(cmd *cobra.Command) error {
 			})
 		}
 		fmt.Fprintf(w, "\nKill all? [y/N] ")
-		if !confirmYes(os.Stdin) {
+		if !confirmYes(cmd.InOrStdin()) {
 			fmt.Fprintln(w, "Aborted.")
 			return nil
 		}
@@ -221,7 +220,7 @@ func killWithConfirmation(cmd *cobra.Command, candidate killCandidate, proc port
 	if !killForceFlag {
 		printKillCandidate(w, candidate)
 		fmt.Fprintf(w, "\nKill this process? [y/N] ")
-		if !confirmYes(os.Stdin) {
+		if !confirmYes(cmd.InOrStdin()) {
 			fmt.Fprintln(w, "Aborted.")
 			return nil
 		}

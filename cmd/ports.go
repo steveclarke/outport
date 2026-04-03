@@ -316,8 +316,6 @@ func printPortsAllStyled(cmd *cobra.Command, managed []managedPort, other []port
 	w := cmd.OutOrStdout()
 
 	if len(managed) > 0 {
-		lipgloss.Fprintln(w, ui.ProjectStyle.Render("Outport managed"))
-
 		var rows [][]string
 		for _, m := range managed {
 			proc, up := byPort[m.port]
@@ -328,6 +326,7 @@ func printPortsAllStyled(cmd *cobra.Command, managed []managedPort, other []port
 			rows = append(rows, buildPortRow(label, m.port, up, proc, m.hostname, httpsEnabled))
 		}
 		if len(rows) > 0 {
+			lipgloss.Fprintln(w, ui.ProjectStyle.Render("Outport managed"))
 			t := portsTable(managedHeaders, rows)
 			lipgloss.Fprintln(w, t)
 		}
@@ -363,7 +362,7 @@ func printPortsAllStyled(cmd *cobra.Command, managed []managedPort, other []port
 	}
 
 	if len(managed) == 0 && len(other) == 0 {
-		fmt.Fprintln(w, "No listening ports found.")
+		fmt.Fprintln(w, ui.DimStyle.Render("No listening ports found."))
 	}
 
 	return nil
@@ -427,6 +426,7 @@ func printPortsAllJSON(cmd *cobra.Command, managed []managedPort, other []portin
 // --- Helper functions ---
 
 // indexByPort builds a lookup map from port number to ProcessInfo.
+// If multiple processes share a port (e.g., parent/child fork), keeps the first.
 func indexByPort(procs []portinfo.ProcessInfo) map[int]portinfo.ProcessInfo {
 	m := make(map[int]portinfo.ProcessInfo, len(procs))
 	for _, p := range procs {
@@ -604,8 +604,8 @@ type portProcessJSON struct {
 	CWD           string `json:"cwd,omitempty"`
 	Project       string `json:"project,omitempty"`
 	Framework     string `json:"framework,omitempty"`
-	IsOrphan      bool   `json:"is_orphan"`
-	IsZombie      bool   `json:"is_zombie"`
+	IsOrphan      bool   `json:"is_orphan,omitempty"`
+	IsZombie      bool   `json:"is_zombie,omitempty"`
 }
 
 type portEntryJSON struct {
