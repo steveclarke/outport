@@ -19,8 +19,8 @@ import (
 
 var portsAllFlag bool
 
-// portScanner is the scanner used by the ports command. Tests can replace it.
-var portScanner portinfo.Scanner = portinfo.SystemScanner{}
+// portLister is the process lister used by the ports command. Tests can replace it.
+var portLister portinfo.Lister = portinfo.SystemLister{}
 
 var portsCmd = &cobra.Command{
 	Use:     "ports",
@@ -65,7 +65,7 @@ func runPortsProject(cmd *cobra.Command, ctx *projectContext) error {
 		allPorts = append(allPorts, port)
 	}
 
-	procs, err := portinfo.ScanPorts(allPorts, portScanner)
+	procs, err := portinfo.ScanPorts(allPorts, portLister)
 	if err != nil {
 		return fmt.Errorf("scanning ports: %w", err)
 	}
@@ -156,7 +156,7 @@ func runPortsAllOutport(cmd *cobra.Command) error {
 		}
 	}
 
-	procs, err := portinfo.ScanPorts(allPorts, portScanner)
+	procs, err := portinfo.ScanPorts(allPorts, portLister)
 	if err != nil {
 		return fmt.Errorf("scanning ports: %w", err)
 	}
@@ -254,7 +254,7 @@ func runPortsAll(cmd *cobra.Command) error {
 		return err
 	}
 
-	procs, err := portinfo.Scan(portScanner)
+	procs, err := portinfo.Scan(portLister)
 	if err != nil {
 		return fmt.Errorf("scanning ports: %w", err)
 	}

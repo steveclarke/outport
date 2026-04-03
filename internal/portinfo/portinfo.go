@@ -1,9 +1,8 @@
 // Package portinfo provides system-level port scanning and process inspection.
-// It shells out to lsof and ps to discover listening TCP ports, identify the
-// processes behind them, and detect orphaned or zombie dev processes.
+// It uses gopsutil to discover listening TCP ports, identify the processes behind
+// them, and detect orphaned or zombie dev processes — no shelling out to lsof/ps.
 //
-// The Scanner interface abstracts the system calls so tests can inject canned
-// output without hitting the real system.
+// The Lister interface abstracts process discovery so tests can inject fake data.
 package portinfo
 
 import (
@@ -31,115 +30,70 @@ type ProcessInfo struct {
 	IsZombie  bool          `json:"is_zombie"`
 }
 
-// UptimeSeconds returns the process uptime as an integer for JSON output.
+// UptimeSeconds returns the process uptime in seconds for JSON output.
 func (p ProcessInfo) UptimeSeconds() int64 {
 	return int64(p.Elapsed.Seconds())
 }
 
-// Scanner abstracts the system commands used for port discovery.
-type Scanner interface {
-	ListeningPorts() (string, error)
-	ProcessInfo(pids []int) (string, error)
-	WorkingDirs(pids []int) (string, error)
+// Lister abstracts the system calls for discovering listening processes.
+// The real implementation (SystemLister) uses gopsutil; tests inject a fake.
+type Lister interface {
+	// ListProcesses returns info for all processes listening on TCP ports.
+	ListProcesses() ([]ProcessInfo, error)
 }
 
 // Scan discovers all listening TCP ports and returns enriched process info.
-func Scan(scanner Scanner) ([]ProcessInfo, error) {
-	return scan(scanner, nil)
+func Scan(lister Lister) ([]ProcessInfo, error) {
+	procs, err := lister.ListProcesses()
+	if err != nil {
+		return nil, err
+	}
+
+	for i := range procs {
+		enrichProcess(&procs[i])
+	}
+
+	sort.Slice(procs, func(i, j int) bool {
+		return procs[i].Port < procs[j].Port
+	})
+
+	return procs, nil
 }
 
-// ScanPorts scans only the specified ports.
-func ScanPorts(ports []int, scanner Scanner) ([]ProcessInfo, error) {
+// ScanPorts returns info only for processes listening on the specified ports.
+func ScanPorts(ports []int, lister Lister) ([]ProcessInfo, error) {
 	filter := make(map[int]bool, len(ports))
 	for _, p := range ports {
 		filter[p] = true
 	}
-	return scan(scanner, filter)
-}
 
-func scan(scanner Scanner, portFilter map[int]bool) ([]ProcessInfo, error) {
-	lsofOutput, err := scanner.ListeningPorts()
+	procs, err := lister.ListProcesses()
 	if err != nil {
-		return nil, fmt.Errorf("listing ports: %w", err)
+		return nil, err
 	}
 
-	entries, err := parseLsofListening(lsofOutput)
-	if err != nil {
-		return nil, fmt.Errorf("parsing lsof: %w", err)
-	}
-
-	// Filter to requested ports if specified
-	if portFilter != nil {
-		var filtered []lsofEntry
-		for _, e := range entries {
-			if portFilter[e.Port] {
-				filtered = append(filtered, e)
-			}
+	var filtered []ProcessInfo
+	for _, p := range procs {
+		if filter[p.Port] {
+			enrichProcess(&p)
+			filtered = append(filtered, p)
 		}
-		entries = filtered
 	}
 
-	if len(entries) == 0 {
-		return nil, nil
-	}
-
-	// Collect unique PIDs
-	pidSet := make(map[int]bool)
-	for _, e := range entries {
-		pidSet[e.PID] = true
-	}
-	pids := make([]int, 0, len(pidSet))
-	for pid := range pidSet {
-		pids = append(pids, pid)
-	}
-
-	// Batch: get process details
-	psOutput, err := scanner.ProcessInfo(pids)
-	if err != nil {
-		return nil, fmt.Errorf("getting process info: %w", err)
-	}
-	psEntries := parsePsOutput(psOutput)
-
-	// Batch: get working directories (non-fatal if it fails)
-	cwdOutput, err := scanner.WorkingDirs(pids)
-	if err != nil {
-		cwdOutput = ""
-	}
-	cwds := parseLsofCwd(cwdOutput)
-
-	// Build results
-	results := make([]ProcessInfo, 0, len(entries))
-	for _, entry := range entries {
-		info := ProcessInfo{
-			PID:  entry.PID,
-			Name: entry.ProcessName,
-			Port: entry.Port,
-		}
-
-		if ps, ok := psEntries[entry.PID]; ok {
-			info.PPID = ps.PPID
-			info.State = ps.State
-			info.RSS = ps.RSS * 1024 // ps reports KB, we store bytes
-			info.Elapsed = ps.Elapsed
-			info.Command = ps.Command
-			info.IsOrphan = isOrphanProcess(ps.PPID, entry.ProcessName)
-			info.IsZombie = isZombieProcess(ps.State)
-		}
-
-		if cwd, ok := cwds[entry.PID]; ok {
-			info.CWD = cwd
-			info.Project, info.Framework = detectFramework(cwd)
-		}
-
-		results = append(results, info)
-	}
-
-	// Sort by port for consistent output
-	sort.Slice(results, func(i, j int) bool {
-		return results[i].Port < results[j].Port
+	sort.Slice(filtered, func(i, j int) bool {
+		return filtered[i].Port < filtered[j].Port
 	})
 
-	return results, nil
+	return filtered, nil
+}
+
+// enrichProcess fills in framework detection and orphan/zombie classification.
+func enrichProcess(p *ProcessInfo) {
+	if p.CWD != "" {
+		p.Project, p.Framework = detectFramework(p.CWD)
+	}
+	p.IsOrphan = isOrphanProcess(p.PPID, p.Name)
+	p.IsZombie = isZombieProcess(p.State)
 }
 
 // Kill sends SIGTERM to the given PID. Returns an error for protected PIDs.

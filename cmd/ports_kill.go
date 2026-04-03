@@ -83,7 +83,7 @@ func runPortsKill(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	procs, err := portinfo.ScanPorts([]int{port}, portScanner)
+	procs, err := portinfo.ScanPorts([]int{port}, portLister)
 	if err != nil {
 		return fmt.Errorf("scanning port %d: %w", port, err)
 	}
@@ -127,7 +127,7 @@ func runPortsKill(cmd *cobra.Command, args []string) error {
 }
 
 func runKillOrphans(cmd *cobra.Command) error {
-	procs, err := portinfo.Scan(portScanner)
+	procs, err := portinfo.Scan(portLister)
 	if err != nil {
 		return fmt.Errorf("scanning ports: %w", err)
 	}

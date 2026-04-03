@@ -106,20 +106,18 @@ func TestIndexByPort(t *testing.T) {
 	}
 }
 
-// fakePortScanner implements portinfo.Scanner for testing.
-type fakePortScanner struct{}
+// fakePortLister implements portinfo.Lister for testing — returns no processes.
+type fakePortLister struct{}
 
-func (f fakePortScanner) ListeningPorts() (string, error)        { return "", nil }
-func (f fakePortScanner) ProcessInfo(pids []int) (string, error)  { return "", nil }
-func (f fakePortScanner) WorkingDirs(pids []int) (string, error)  { return "", nil }
+func (f fakePortLister) ListProcesses() ([]portinfo.ProcessInfo, error) { return nil, nil }
 
 func TestPortsProject_JSON(t *testing.T) {
 	setupProject(t, testConfigWithHTTP)
 
-	// Replace the scanner with a fake that returns nothing
-	origScanner := portScanner
-	portScanner = fakePortScanner{}
-	t.Cleanup(func() { portScanner = origScanner })
+	// Replace the lister with a fake that returns no processes
+	origLister := portLister
+	portLister = fakePortLister{}
+	t.Cleanup(func() { portLister = origLister })
 
 	// First register the project
 	executeCmd(t, "up")
@@ -142,10 +140,10 @@ func TestPortsProject_JSON(t *testing.T) {
 		t.Fatalf("ports count = %d, want 3", len(result.Ports))
 	}
 
-	// All ports should be down since we're using a fake scanner
+	// All ports should be down since we're using a fake lister
 	for _, entry := range result.Ports {
 		if entry.Up {
-			t.Errorf("port %d should be down with fake scanner", entry.Port)
+			t.Errorf("port %d should be down with fake lister", entry.Port)
 		}
 		if entry.Service == "" {
 			t.Error("service name should not be empty")
@@ -156,9 +154,9 @@ func TestPortsProject_JSON(t *testing.T) {
 func TestPortsAll_JSON(t *testing.T) {
 	setupProject(t, testConfig)
 
-	origScanner := portScanner
-	portScanner = fakePortScanner{}
-	t.Cleanup(func() { portScanner = origScanner })
+	origLister := portLister
+	portLister = fakePortLister{}
+	t.Cleanup(func() { portLister = origLister })
 
 	executeCmd(t, "up")
 
@@ -173,10 +171,10 @@ func TestPortsAll_JSON(t *testing.T) {
 	var result portsAllJSON
 	unwrapJSON(t, output, &result)
 
-	// With fake scanner returning nothing, all managed ports should be down
+	// With fake lister returning nothing, all managed ports should be down
 	for _, entry := range result.Managed {
 		if entry.Up {
-			t.Errorf("managed port %d should be down with fake scanner", entry.Port)
+			t.Errorf("managed port %d should be down with fake lister", entry.Port)
 		}
 	}
 }

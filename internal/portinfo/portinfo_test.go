@@ -1,48 +1,30 @@
-// internal/portinfo/portinfo_test.go
 package portinfo
 
 import (
 	"os"
 	"testing"
+	"time"
 )
 
-type fakeScanner struct {
-	listeningOutput string
-	listeningErr    error
-	psOutput        string
-	psErr           error
-	cwdOutput       string
-	cwdErr          error
+// fakeLister returns canned ProcessInfo for testing.
+type fakeLister struct {
+	processes []ProcessInfo
+	err       error
 }
 
-func (f *fakeScanner) ListeningPorts() (string, error) {
-	return f.listeningOutput, f.listeningErr
-}
-
-func (f *fakeScanner) ProcessInfo(pids []int) (string, error) {
-	return f.psOutput, f.psErr
-}
-
-func (f *fakeScanner) WorkingDirs(pids []int) (string, error) {
-	return f.cwdOutput, f.cwdErr
+func (f *fakeLister) ListProcesses() ([]ProcessInfo, error) {
+	return f.processes, f.err
 }
 
 func TestScan(t *testing.T) {
-	scanner := &fakeScanner{
-		listeningOutput: `COMMAND     PID   USER   FD   TYPE             DEVICE SIZE/OFF NODE NAME
-node      48291  steve   22u  IPv4 0x1234567890      0t0  TCP 127.0.0.1:13542 (LISTEN)
-ruby      51002  steve   10u  IPv6 0x0987654321      0t0  TCP *:3000 (LISTEN)
-`,
-		psOutput: `48291     1 S  142560 02:14:00 node .next/standalone/server.js
-51002  1042 S   98304 23:30:00 ruby bin/rails server -p 3000
-`,
-		cwdOutput: `COMMAND   PID  USER   FD   TYPE DEVICE SIZE/OFF NODE NAME
-node    48291 steve  cwd    DIR    1,4      640 1234 /tmp/fake-myapp
-ruby    51002 steve  cwd    DIR    1,4      320 5678 /tmp/fake-railsapp
-`,
+	lister := &fakeLister{
+		processes: []ProcessInfo{
+			{PID: 48291, PPID: 1, Name: "node", Command: "node .next/standalone/server.js", Port: 13542, RSS: 145981440, Elapsed: 2*time.Hour + 14*time.Minute, State: "S"},
+			{PID: 51002, PPID: 1042, Name: "ruby", Command: "ruby bin/rails server -p 3000", Port: 3000, RSS: 100663296, Elapsed: 23*time.Hour + 30*time.Minute, State: "S"},
+		},
 	}
 
-	results, err := Scan(scanner)
+	results, err := Scan(lister)
 	if err != nil {
 		t.Fatalf("Scan() error: %v", err)
 	}
@@ -73,8 +55,8 @@ ruby    51002 steve  cwd    DIR    1,4      320 5678 /tmp/fake-railsapp
 	if node.PPID != 1 {
 		t.Errorf("node PPID = %d, want 1", node.PPID)
 	}
-	if node.RSS != 142560*1024 {
-		t.Errorf("node RSS = %d, want %d", node.RSS, 142560*1024)
+	if node.RSS != 145981440 {
+		t.Errorf("node RSS = %d, want 145981440", node.RSS)
 	}
 	if !node.IsOrphan {
 		t.Error("node should be orphan (ppid=1, dev process)")
@@ -85,20 +67,15 @@ ruby    51002 steve  cwd    DIR    1,4      320 5678 /tmp/fake-railsapp
 }
 
 func TestScanPorts(t *testing.T) {
-	scanner := &fakeScanner{
-		listeningOutput: `COMMAND     PID   USER   FD   TYPE             DEVICE SIZE/OFF NODE NAME
-node      48291  steve   22u  IPv4 0x1234567890      0t0  TCP 127.0.0.1:13542 (LISTEN)
-ruby      51002  steve   10u  IPv6 0x0987654321      0t0  TCP *:3000 (LISTEN)
-postgres    412  steve    5u  IPv4 0xaabbccddee      0t0  TCP 127.0.0.1:5432 (LISTEN)
-`,
-		psOutput: `48291     1 S  142560 02:14:00 node .next/standalone/server.js
-`,
-		cwdOutput: `COMMAND   PID  USER   FD   TYPE DEVICE SIZE/OFF NODE NAME
-node    48291 steve  cwd    DIR    1,4      640 1234 /tmp/fake-myapp
-`,
+	lister := &fakeLister{
+		processes: []ProcessInfo{
+			{PID: 48291, PPID: 1, Name: "node", Port: 13542, State: "S"},
+			{PID: 51002, PPID: 1042, Name: "ruby", Port: 3000, State: "S"},
+			{PID: 412, PPID: 1, Name: "postgres", Port: 5432, State: "S"},
+		},
 	}
 
-	results, err := ScanPorts([]int{13542}, scanner)
+	results, err := ScanPorts([]int{13542}, lister)
 	if err != nil {
 		t.Fatalf("ScanPorts() error: %v", err)
 	}
@@ -111,10 +88,10 @@ node    48291 steve  cwd    DIR    1,4      640 1234 /tmp/fake-myapp
 	}
 }
 
-func TestScan_EmptyOutput(t *testing.T) {
-	scanner := &fakeScanner{listeningOutput: ""}
+func TestScan_Empty(t *testing.T) {
+	lister := &fakeLister{processes: nil}
 
-	results, err := Scan(scanner)
+	results, err := Scan(lister)
 	if err != nil {
 		t.Fatalf("Scan() error: %v", err)
 	}
@@ -147,5 +124,13 @@ func TestKill_RefuseOwnProcess(t *testing.T) {
 	err := Kill(os.Getpid())
 	if err == nil {
 		t.Error("Kill(own PID) should return error")
+	}
+}
+
+func TestUptimeSeconds(t *testing.T) {
+	p := ProcessInfo{Elapsed: 2*time.Hour + 14*time.Minute + 30*time.Second}
+	got := p.UptimeSeconds()
+	if got != 8070 {
+		t.Errorf("UptimeSeconds() = %d, want 8070", got)
 	}
 }

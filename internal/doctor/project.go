@@ -96,7 +96,7 @@ func ProjectChecks(dir string, cfg *config.Config, configErr error, regPath stri
 			Name:     "Orphaned processes",
 			Category: "Ports",
 			Run: func() *Result {
-				processes, err := portinfo.ScanPorts(allPorts, portinfo.SystemScanner{})
+				processes, err := portinfo.ScanPorts(allPorts, portinfo.SystemLister{})
 				if err != nil {
 					return &Result{
 						Name:    "Orphaned processes",
