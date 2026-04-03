@@ -25,6 +25,8 @@ export default defineConfig({
     ['meta', { name: 'twitter:image', content: 'https://outport.dev/og-image-1280x640.png' }],
     ['link', { rel: 'preload', href: '/fonts/Barlow-Bold.ttf', as: 'font', type: 'font/ttf', crossorigin: '' }],
     ['link', { rel: 'preload', href: '/fonts/Inter.ttf', as: 'font', type: 'font/ttf', crossorigin: '' }],
+    ['script', { async: '', src: 'https://www.googletagmanager.com/gtag/js?id=G-LWX9RYS2J1' }],
+    ['script', {}, "window.dataLayer = window.dataLayer || [];\nfunction gtag(){dataLayer.push(arguments);}\ngtag('js', new Date());\ngtag('config', 'G-LWX9RYS2J1');"],
   ],
 
   themeConfig: {
