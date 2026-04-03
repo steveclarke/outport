@@ -12,6 +12,9 @@
 
 # Outport
 
+> [!NOTE]
+> Outport is in alpha. It's been solid in daily use, but hasn't been widely tested yet. Feedback welcome — [Discord](https://discord.gg/R4SyEskf) · [Discussions](https://github.com/steveclarke/outport/discussions)
+
 **Port orchestration for multi-project development.**
 
 Outport allocates deterministic, non-conflicting ports for all your projects, assigns `.test` hostnames with HTTPS, and writes everything to `.env`. No more port conflicts. No more memorizing port numbers. No more cookie collisions across parallel instances.
