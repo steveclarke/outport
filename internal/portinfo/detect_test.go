@@ -92,14 +92,20 @@ func TestDetectFramework(t *testing.T) {
 			dir := t.TempDir()
 			for relPath, content := range tt.files {
 				fullPath := filepath.Join(dir, relPath)
-				os.MkdirAll(filepath.Dir(fullPath), 0755)
-				os.WriteFile(fullPath, []byte(content), 0644)
+				if err := os.MkdirAll(filepath.Dir(fullPath), 0755); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(fullPath, []byte(content), 0644); err != nil {
+					t.Fatal(err)
+				}
 			}
 
 			cwd := dir
 			if tt.subdir != "" {
 				cwd = filepath.Join(dir, tt.subdir)
-				os.MkdirAll(cwd, 0755)
+				if err := os.MkdirAll(cwd, 0755); err != nil {
+					t.Fatal(err)
+				}
 			}
 
 			proj, frame := detectFramework(cwd)
