@@ -30,7 +30,7 @@ func (s SystemScanner) ProcessInfo(pids []int) (string, error) {
 		pidStrs[i] = fmt.Sprintf("%d", pid)
 	}
 	out, err := exec.Command("ps", "-p", strings.Join(pidStrs, ","),
-		"-o", "pid=,ppid=,stat=,rss=,lstart=,command=").Output()
+		"-o", "pid=,ppid=,stat=,rss=,etime=,command=").Output()
 	if err != nil {
 		return "", fmt.Errorf("ps: %w", err)
 	}

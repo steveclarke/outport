@@ -2,6 +2,7 @@ package portinfo
 
 import (
 	"testing"
+	"time"
 )
 
 
@@ -101,15 +102,23 @@ func TestParsePsOutput(t *testing.T) {
 		want  map[int]psEntry
 	}{
 		{
-			name: "typical output",
-			input: `48291     1 S  142560 Thu Mar 27 09:15:00 2026 node .next/standalone/server.js
-51002  1042 S   98304 Wed Mar 26 14:30:00 2026 ruby bin/rails server -p 3000
-  412     1 Ss  25600 Mon Mar 24 08:00:00 2026 /usr/lib/postgresql/14/bin/postgres -D /var/lib/postgresql/14/main
+			name: "typical output with etime",
+			input: `48291     1 S  142560 02:14:30 node .next/standalone/server.js
+51002  1042 S   98304 23:30:00 ruby bin/rails server -p 3000
+  412     1 Ss  25600 10-08:00:00 /usr/lib/postgresql/14/bin/postgres -D /var/lib/postgresql/14/main
 `,
 			want: map[int]psEntry{
-				48291: {PID: 48291, PPID: 1, State: "S", RSS: 142560, Command: "node .next/standalone/server.js"},
-				51002: {PID: 51002, PPID: 1042, State: "S", RSS: 98304, Command: "ruby bin/rails server -p 3000"},
-				412:   {PID: 412, PPID: 1, State: "Ss", RSS: 25600, Command: "/usr/lib/postgresql/14/bin/postgres -D /var/lib/postgresql/14/main"},
+				48291: {PID: 48291, PPID: 1, State: "S", RSS: 142560, Elapsed: 2*time.Hour + 14*time.Minute + 30*time.Second, Command: "node .next/standalone/server.js"},
+				51002: {PID: 51002, PPID: 1042, State: "S", RSS: 98304, Elapsed: 23*time.Hour + 30*time.Minute, Command: "ruby bin/rails server -p 3000"},
+				412:   {PID: 412, PPID: 1, State: "Ss", RSS: 25600, Elapsed: 10*24*time.Hour + 8*time.Hour, Command: "/usr/lib/postgresql/14/bin/postgres -D /var/lib/postgresql/14/main"},
+			},
+		},
+		{
+			name: "short etime mm:ss",
+			input: `99999     1 S  1024 00:45 node server.js
+`,
+			want: map[int]psEntry{
+				99999: {PID: 99999, PPID: 1, State: "S", RSS: 1024, Elapsed: 45 * time.Second, Command: "node server.js"},
 			},
 		},
 		{
@@ -118,20 +127,12 @@ func TestParsePsOutput(t *testing.T) {
 			want:  map[int]psEntry{},
 		},
 		{
-			name: "EU locale lstart format",
-			input: `73959 73958 S  279200 Tue 31 Mar 22:38:00 2026 /Applications/Docker.app/Contents/MacOS/com.docker.backend services
-`,
-			want: map[int]psEntry{
-				73959: {PID: 73959, PPID: 73958, State: "S", RSS: 279200, Command: "/Applications/Docker.app/Contents/MacOS/com.docker.backend services"},
-			},
-		},
-		{
 			name: "malformed line skipped",
 			input: `not valid ps output
-48291     1 S  142560 Thu Mar 27 09:15:00 2026 node server.js
+48291     1 S  142560 14:30 node server.js
 `,
 			want: map[int]psEntry{
-				48291: {PID: 48291, PPID: 1, State: "S", RSS: 142560, Command: "node server.js"},
+				48291: {PID: 48291, PPID: 1, State: "S", RSS: 142560, Elapsed: 14*time.Minute + 30*time.Second, Command: "node server.js"},
 			},
 		},
 	}
@@ -153,8 +154,8 @@ func TestParsePsOutput(t *testing.T) {
 					gotEntry.Command != wantEntry.Command {
 					t.Errorf("PID %d: got %+v, want %+v", pid, gotEntry, wantEntry)
 				}
-				if gotEntry.StartTime.IsZero() {
-					t.Errorf("PID %d: StartTime is zero", pid)
+				if gotEntry.Elapsed != wantEntry.Elapsed {
+					t.Errorf("PID %d: Elapsed = %v, want %v", pid, gotEntry.Elapsed, wantEntry.Elapsed)
 				}
 			}
 		})

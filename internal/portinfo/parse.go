@@ -65,16 +65,16 @@ func parseLsofListening(output string) ([]lsofEntry, error) {
 
 // psEntry holds parsed fields from a single ps output line.
 type psEntry struct {
-	PID       int
-	PPID      int
-	State     string
-	RSS       int64 // kilobytes from ps
-	StartTime time.Time
-	Command   string
+	PID     int
+	PPID    int
+	State   string
+	RSS     int64 // kilobytes from ps
+	Elapsed time.Duration
+	Command string
 }
 
-// parsePsOutput parses output from "ps -p ... -o pid=,ppid=,stat=,rss=,lstart=,command=".
-// The lstart field is 5 tokens wide (e.g., "Thu Mar 27 09:15:00 2026").
+// parsePsOutput parses output from "ps -p ... -o pid=,ppid=,stat=,rss=,etime=,command=".
+// The etime field is a single token in [[dd-]hh:]mm:ss format.
 // Returns a map of PID → psEntry. Malformed lines are skipped.
 func parsePsOutput(output string) map[int]psEntry {
 	entries := make(map[int]psEntry)
@@ -86,8 +86,8 @@ func parsePsOutput(output string) map[int]psEntry {
 		}
 
 		fields := strings.Fields(line)
-		// Minimum: pid, ppid, stat, rss, lstart (5 tokens), command (1+ tokens) = 9
-		if len(fields) < 9 {
+		// Minimum: pid, ppid, stat, rss, etime, command (1+ tokens) = 6
+		if len(fields) < 6 {
 			continue
 		}
 
@@ -105,44 +105,76 @@ func parsePsOutput(output string) map[int]psEntry {
 			continue
 		}
 
-		// lstart is 5 tokens but format varies by locale:
-		//   US:  "Thu Mar 27 09:15:00 2026"  (Mon Jan _2 15:04:05 2006)
-		//   EU:  "Tue 31 Mar 22:38:00 2026"  (Mon _2 Jan 15:04:05 2006)
-		lstartStr := strings.Join(fields[4:9], " ")
-		startTime, err := parseLstart(lstartStr)
+		elapsed, err := parseEtime(fields[4])
 		if err != nil {
 			continue
 		}
 
-		command := strings.Join(fields[9:], " ")
+		command := strings.Join(fields[5:], " ")
 
 		entries[pid] = psEntry{
-			PID:       pid,
-			PPID:      ppid,
-			State:     state,
-			RSS:       rss,
-			StartTime: startTime,
-			Command:   command,
+			PID:     pid,
+			PPID:    ppid,
+			State:   state,
+			RSS:     rss,
+			Elapsed: elapsed,
+			Command: command,
 		}
 	}
 
 	return entries
 }
 
-// lstartFormats lists the known ps lstart formats across locales.
-var lstartFormats = []string{
-	"Mon Jan _2 15:04:05 2006", // US: "Thu Mar 27 09:15:00 2026"
-	"Mon _2 Jan 15:04:05 2006", // EU: "Tue 31 Mar 22:38:00 2026"
-}
+// parseEtime parses the ps etime format: [[dd-]hh:]mm:ss.
+// Examples: "00:00", "14:30", "02:14:30", "02-14:48:45"
+func parseEtime(s string) (time.Duration, error) {
+	var days, hours, minutes, seconds int
 
-// parseLstart tries each known lstart format and returns the first that succeeds.
-func parseLstart(s string) (time.Time, error) {
-	for _, layout := range lstartFormats {
-		if t, err := time.ParseInLocation(layout, s, time.Local); err == nil {
-			return t, nil
+	// Split off days if present: "02-14:48:45" → days=2, rest="14:48:45"
+	rest := s
+	if i := strings.Index(s, "-"); i >= 0 {
+		d, err := strconv.Atoi(s[:i])
+		if err != nil {
+			return 0, fmt.Errorf("bad etime days: %q", s)
 		}
+		days = d
+		rest = s[i+1:]
 	}
-	return time.Time{}, fmt.Errorf("unrecognized lstart format: %q", s)
+
+	parts := strings.Split(rest, ":")
+	switch len(parts) {
+	case 2: // mm:ss
+		m, err := strconv.Atoi(parts[0])
+		if err != nil {
+			return 0, fmt.Errorf("bad etime minutes: %q", s)
+		}
+		sec, err := strconv.Atoi(parts[1])
+		if err != nil {
+			return 0, fmt.Errorf("bad etime seconds: %q", s)
+		}
+		minutes, seconds = m, sec
+	case 3: // hh:mm:ss
+		h, err := strconv.Atoi(parts[0])
+		if err != nil {
+			return 0, fmt.Errorf("bad etime hours: %q", s)
+		}
+		m, err := strconv.Atoi(parts[1])
+		if err != nil {
+			return 0, fmt.Errorf("bad etime minutes: %q", s)
+		}
+		sec, err := strconv.Atoi(parts[2])
+		if err != nil {
+			return 0, fmt.Errorf("bad etime seconds: %q", s)
+		}
+		hours, minutes, seconds = h, m, sec
+	default:
+		return 0, fmt.Errorf("bad etime format: %q", s)
+	}
+
+	return time.Duration(days)*24*time.Hour +
+		time.Duration(hours)*time.Hour +
+		time.Duration(minutes)*time.Minute +
+		time.Duration(seconds)*time.Second, nil
 }
 
 // parseLsofCwd parses output from "lsof -a -d cwd -p ...".

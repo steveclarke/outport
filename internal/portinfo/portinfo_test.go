@@ -33,8 +33,8 @@ func TestScan(t *testing.T) {
 node      48291  steve   22u  IPv4 0x1234567890      0t0  TCP 127.0.0.1:13542 (LISTEN)
 ruby      51002  steve   10u  IPv6 0x0987654321      0t0  TCP *:3000 (LISTEN)
 `,
-		psOutput: `48291     1 S  142560 Thu Mar 27 09:15:00 2026 node .next/standalone/server.js
-51002  1042 S   98304 Wed Mar 26 14:30:00 2026 ruby bin/rails server -p 3000
+		psOutput: `48291     1 S  142560 02:14:00 node .next/standalone/server.js
+51002  1042 S   98304 23:30:00 ruby bin/rails server -p 3000
 `,
 		cwdOutput: `COMMAND   PID  USER   FD   TYPE DEVICE SIZE/OFF NODE NAME
 node    48291 steve  cwd    DIR    1,4      640 1234 /tmp/fake-myapp
@@ -91,7 +91,7 @@ node      48291  steve   22u  IPv4 0x1234567890      0t0  TCP 127.0.0.1:13542 (L
 ruby      51002  steve   10u  IPv6 0x0987654321      0t0  TCP *:3000 (LISTEN)
 postgres    412  steve    5u  IPv4 0xaabbccddee      0t0  TCP 127.0.0.1:5432 (LISTEN)
 `,
-		psOutput: `48291     1 S  142560 Thu Mar 27 09:15:00 2026 node .next/standalone/server.js
+		psOutput: `48291     1 S  142560 02:14:00 node .next/standalone/server.js
 `,
 		cwdOutput: `COMMAND   PID  USER   FD   TYPE DEVICE SIZE/OFF NODE NAME
 node    48291 steve  cwd    DIR    1,4      640 1234 /tmp/fake-myapp

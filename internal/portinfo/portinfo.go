@@ -16,27 +16,24 @@ import (
 
 // ProcessInfo holds complete information about a process listening on a port.
 type ProcessInfo struct {
-	PID       int       `json:"pid"`
-	PPID      int       `json:"ppid"`
-	Name      string    `json:"name"`
-	Command   string    `json:"command"`
-	Port      int       `json:"port"`
-	RSS       int64     `json:"rss_bytes"`
-	StartTime time.Time `json:"-"`
-	State     string    `json:"-"`
-	CWD       string    `json:"cwd,omitempty"`
-	Project   string    `json:"project,omitempty"`
-	Framework string    `json:"framework,omitempty"`
-	IsOrphan  bool      `json:"is_orphan"`
-	IsZombie  bool      `json:"is_zombie"`
+	PID       int           `json:"pid"`
+	PPID      int           `json:"ppid"`
+	Name      string        `json:"name"`
+	Command   string        `json:"command"`
+	Port      int           `json:"port"`
+	RSS       int64         `json:"rss_bytes"`
+	Elapsed   time.Duration `json:"-"`
+	State     string        `json:"-"`
+	CWD       string        `json:"cwd,omitempty"`
+	Project   string        `json:"project,omitempty"`
+	Framework string        `json:"framework,omitempty"`
+	IsOrphan  bool          `json:"is_orphan"`
+	IsZombie  bool          `json:"is_zombie"`
 }
 
 // UptimeSeconds returns the process uptime as an integer for JSON output.
 func (p ProcessInfo) UptimeSeconds() int64 {
-	if p.StartTime.IsZero() {
-		return 0
-	}
-	return int64(time.Since(p.StartTime).Seconds())
+	return int64(p.Elapsed.Seconds())
 }
 
 // Scanner abstracts the system commands used for port discovery.
@@ -123,7 +120,7 @@ func scan(scanner Scanner, portFilter map[int]bool) ([]ProcessInfo, error) {
 			info.PPID = ps.PPID
 			info.State = ps.State
 			info.RSS = ps.RSS * 1024 // ps reports KB, we store bytes
-			info.StartTime = ps.StartTime
+			info.Elapsed = ps.Elapsed
 			info.Command = ps.Command
 			info.IsOrphan = isOrphanProcess(ps.PPID, entry.ProcessName)
 			info.IsZombie = isZombieProcess(ps.State)
