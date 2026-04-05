@@ -94,8 +94,13 @@ func (p *ProxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Rewrite Host header for tunnel routes so the backend sees the original .test hostname
+	// Rewrite Host header for tunnel routes so the backend sees the original
+	// .test hostname. Preserve the original tunnel hostname in X-Forwarded-Host
+	// so frameworks (Rails, Django, etc.) generate correct redirect URLs back
+	// to the tunnel, not to the unreachable .test domain.
 	if rt.HostOverride != "" {
+		r.Header.Set("X-Forwarded-Host", hostname)
+		r.Header.Set("X-Forwarded-Proto", "https")
 		r.Host = rt.HostOverride
 	}
 

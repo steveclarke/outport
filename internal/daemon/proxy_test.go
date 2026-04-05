@@ -244,9 +244,11 @@ func TestProxyWebSocketUpgrade(t *testing.T) {
 }
 
 func TestProxyHostOverrideRewritesHostHeader(t *testing.T) {
-	var gotHost string
+	var gotHost, gotFwdHost, gotFwdProto string
 	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotHost = r.Host
+		gotFwdHost = r.Header.Get("X-Forwarded-Host")
+		gotFwdProto = r.Header.Get("X-Forwarded-Proto")
 		_, _ = w.Write([]byte("ok"))
 	}))
 	defer backend.Close()
@@ -274,5 +276,11 @@ func TestProxyHostOverrideRewritesHostHeader(t *testing.T) {
 	}
 	if gotHost != "myapp.test" {
 		t.Errorf("backend saw Host %q, want %q", gotHost, "myapp.test")
+	}
+	if gotFwdHost != "abc123.trycloudflare.com" {
+		t.Errorf("backend saw X-Forwarded-Host %q, want %q", gotFwdHost, "abc123.trycloudflare.com")
+	}
+	if gotFwdProto != "https" {
+		t.Errorf("backend saw X-Forwarded-Proto %q, want %q", gotFwdProto, "https")
 	}
 }
