@@ -228,7 +228,7 @@ func runShare(cmd *cobra.Command, args []string) error {
 			svc := ctx.Cfg.Services[svcName]
 			if svc.Subdomains {
 				hostname := alloc.Hostnames[svcName]
-				fmt.Fprintf(cmd.OutOrStderr(), "\nNote: subdomain routing for %s is local-only (tunnels use explicit hostnames)\n", hostname)
+				fmt.Fprintf(cmd.OutOrStdout(), "\nNote: subdomain routing for %s is local-only (tunnels use explicit hostnames)\n", hostname)
 			}
 		}
 	}
