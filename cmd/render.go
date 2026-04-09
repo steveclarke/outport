@@ -28,6 +28,7 @@ type svcJSON struct {
 	EnvFiles      []string                 `json:"env_files"`
 	Up            *bool                    `json:"up,omitempty"`
 	Aliases       map[string]svcAliasJSON  `json:"aliases,omitempty"`
+	Subdomains    bool                     `json:"subdomains,omitempty"`
 }
 
 type computedJSON struct {
@@ -77,6 +78,9 @@ func buildServiceMap(cfg *config.Config, ports map[string]int, hostnames map[str
 					URL:      urlutil.ServiceURL(aliasHostname, ports[name], httpsEnabled),
 				}
 			}
+		}
+		if cfg.Services[name].Subdomains {
+			sj.Subdomains = true
 		}
 		services[name] = sj
 	}
@@ -196,7 +200,11 @@ func serviceURLSuffix(cfg *config.Config, svcName string, hostnames map[string]s
 	}
 	hostname := resolvedHostname(svc, hostnames, svcName)
 	if u := urlutil.ServiceURL(hostname, port, httpsEnabled); u != "" {
-		return "  " + ui.UrlStyle.Render(u)
+		suffix := "  " + ui.UrlStyle.Render(u)
+		if svc.Subdomains {
+			suffix += "  " + ui.DimStyle.Render("(+ subdomains)")
+		}
+		return suffix
 	}
 	if hostname != "" {
 		return "  " + ui.HostnameStyle.Render(hostname)
