@@ -39,17 +39,15 @@ dev-linux:
 dev-linux-down:
     docker compose down
 
-# Install dev build to ~/.local/bin (overrides Homebrew)
+# Install dev build (overrides Homebrew)
 install:
-    @mkdir -p ~/.local/bin
-    go build -ldflags "-X github.com/steveclarke/outport/cmd.version=dev-$(git rev-parse --short HEAD) -X github.com/steveclarke/outport/cmd.commit=$(git rev-parse --short HEAD) -X github.com/steveclarke/outport/cmd.date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" -o ~/.local/bin/outport .
-    @echo "Installed dev build to ~/.local/bin/outport"
+    go install -ldflags "-X github.com/steveclarke/outport/cmd.version=dev-$(git rev-parse --short HEAD) -X github.com/steveclarke/outport/cmd.commit=$(git rev-parse --short HEAD) -X github.com/steveclarke/outport/cmd.date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" .
+    @echo "Installed dev build to $(go env GOBIN)"
     @echo "Run 'just uninstall' to switch back to Homebrew"
 
 # Remove dev build (switch back to Homebrew)
 uninstall:
-    rm -f ~/.local/bin/outport
-    rm -f $(go env GOPATH)/bin/outport
+    rm -f "$(go env GOBIN)/outport"
     @echo "Removed dev build. Using Homebrew version:"
     @outport --version 2>/dev/null || echo "  (not installed via Homebrew)"
 
