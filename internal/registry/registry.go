@@ -47,6 +47,11 @@ type Allocation struct {
 	// Aliases register additional proxy routes to the same port as the primary hostname.
 	Aliases map[string]map[string]string `json:"aliases,omitempty"`
 
+	// Subdomains maps service names to a boolean indicating wildcard subdomain
+	// routing is enabled. When true for a service, all subdomains of its primary
+	// hostname route to the same port (e.g., *.myapp.test → port).
+	Subdomains map[string]bool `json:"subdomains,omitempty"`
+
 	// EnvVars maps environment variable names to their computed values after
 	// template expansion. These are the key=value pairs written into .env files
 	// by the dotenv package. For example, {"PORT": "13542", "DATABASE_URL": "..."}.
