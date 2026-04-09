@@ -176,4 +176,40 @@ This works with absolute paths too:
 env_file: /Users/you/src/frontend/.env
 ```
 
+## Multi-Tenant Subdomain App
+
+A SaaS app where each tenant has their own subdomain (e.g., `acme.myapp.test`, `initech.myapp.test`):
+
+```yaml
+name: myapp
+services:
+  web:
+    env_var: PORT
+    hostname: myapp.test
+    subdomains: true
+  postgres:
+    env_var: DB_PORT
+  redis:
+    env_var: REDIS_PORT
+
+computed:
+  DEFAULT_HOST:
+    value: "${web.hostname}"
+    env_file: .env
+```
+
+With `subdomains: true`, any subdomain of `myapp.test` routes to the same port — no need to list each tenant as an alias. Exact hostname matches still take precedence, so you can combine this with a separate service for a specific subdomain:
+
+```yaml
+services:
+  web:
+    env_var: PORT
+    hostname: myapp.test
+    subdomains: true           # *.myapp.test → web port
+
+  api:
+    env_var: API_PORT
+    hostname: api.myapp.test   # exact match wins → api port
+```
+
 Outport resolves all paths through symlinks before checking boundaries, so tricks like symlinking an external directory into your project won't bypass the approval check.

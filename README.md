@@ -69,7 +69,7 @@ That's it. Outport writes finished environment variables to `.env` — every fra
 
 ### .test Domains with HTTPS
 
-Run `outport system start` once to enable `.test` hostnames. This installs a local DNS server, reverse proxy, and CA — your services become accessible at `https://myapp.test` instead of `http://localhost:24920`. The proxy starts at login and updates routes automatically. Services that respond to multiple hostnames (e.g., subdomain routing) can declare [aliases](https://outport.dev/reference/configuration#aliases) — additional `.test` hostnames routed to the same port.
+Run `outport system start` once to enable `.test` hostnames. This installs a local DNS server, reverse proxy, and CA — your services become accessible at `https://myapp.test` instead of `http://localhost:24920`. The proxy starts at login and updates routes automatically. Services that respond to multiple hostnames can declare [aliases](https://outport.dev/reference/configuration#aliases) — additional `.test` hostnames routed to the same port. Multi-tenant apps can enable [wildcard subdomains](https://outport.dev/reference/configuration#subdomains) so all subdomains of a hostname route automatically.
 
 ### Multiple Instances
 

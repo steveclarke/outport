@@ -168,6 +168,7 @@ myapp [bkrm]   web → 28104   http://myapp-bkrm.test
 | `env_var` | yes | Environment variable name written to `.env` |
 | `hostname` | no | `.test` hostname for this service (e.g., `myapp.test`). Implies HTTP. Non-main instances get the instance code appended. |
 | `aliases` | no | Named alternative hostnames (map of label → hostname). Each alias routes to the same port. Requires `hostname`. |
+| `subdomains` | no | Enable wildcard subdomain routing (`*.myapp.test`). All subdomains route to the same port. Requires `hostname`. |
 | `preferred_port` | no | Port to try first. Falls back to hash-based allocation if already in use |
 | `env_file` | no | Where to write. String or array. Defaults to `.env` in project root |
 
