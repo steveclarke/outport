@@ -35,6 +35,7 @@ func Build(cfg *config.Config, instanceName, dir string, ports map[string]int) r
 		Ports:      ports,
 		Hostnames:  ComputeHostnames(cfg, instanceName),
 		Aliases:    ComputeAliases(cfg, instanceName),
+		Subdomains: ComputeSubdomains(cfg),
 		EnvVars:    computeEnvVars(cfg),
 	}
 }
@@ -93,6 +94,18 @@ func ComputeAliases(cfg *config.Config, instanceName string) map[string]map[stri
 			svcAliases[key] = stem + ".test"
 		}
 		result[svcName] = svcAliases
+	}
+	return result
+}
+
+// ComputeSubdomains builds a map of service name to true for every service
+// that has subdomains enabled. Services without subdomains are omitted.
+func ComputeSubdomains(cfg *config.Config) map[string]bool {
+	result := make(map[string]bool)
+	for name, svc := range cfg.Services {
+		if svc.Subdomains {
+			result[name] = true
+		}
 	}
 	return result
 }

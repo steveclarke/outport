@@ -243,6 +243,77 @@ func TestProxyWebSocketUpgrade(t *testing.T) {
 	}
 }
 
+func TestProxyRoutesWildcardSubdomain(t *testing.T) {
+	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte("tenant backend"))
+	}))
+	defer backend.Close()
+
+	port := backendPort(t, backend)
+	rt := &RouteTable{}
+	rt.updateWithWildcards(
+		map[string]route{"realty120.test": {Port: port}},
+		map[string]route{"realty120.test": {Port: port}},
+	)
+
+	proxy := NewProxy(rt)
+	srv := httptest.NewServer(proxy)
+	defer srv.Close()
+
+	req, _ := http.NewRequest("GET", srv.URL+"/", nil)
+	req.Host = "rp.realty120.test"
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("request: %v", err)
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	if string(body) != "tenant backend" {
+		t.Errorf("got %q, want %q", body, "tenant backend")
+	}
+}
+
+func TestProxyExactMatchWinsOverWildcard(t *testing.T) {
+	wildcard := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte("wildcard"))
+	}))
+	defer wildcard.Close()
+
+	exact := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte("exact"))
+	}))
+	defer exact.Close()
+
+	wildcardPort := backendPort(t, wildcard)
+	exactPort := backendPort(t, exact)
+	rt := &RouteTable{}
+	rt.updateWithWildcards(
+		map[string]route{
+			"realty120.test":     {Port: wildcardPort},
+			"api.realty120.test": {Port: exactPort},
+		},
+		map[string]route{"realty120.test": {Port: wildcardPort}},
+	)
+
+	proxy := NewProxy(rt)
+	srv := httptest.NewServer(proxy)
+	defer srv.Close()
+
+	req, _ := http.NewRequest("GET", srv.URL+"/", nil)
+	req.Host = "api.realty120.test"
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("request: %v", err)
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	if string(body) != "exact" {
+		t.Errorf("got %q, want %q", body, "exact")
+	}
+}
+
 func TestProxyHostOverrideRewritesHostHeader(t *testing.T) {
 	var gotHost, gotFwdHost, gotFwdProto string
 	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

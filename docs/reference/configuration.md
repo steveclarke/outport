@@ -136,6 +136,42 @@ This exposes `approvethis.test`, `app.approvethis.test`, and `admin.approvethis.
 
 Alias hostnames can be referenced in computed values via `${service.alias.NAME}` and `${service.alias_url.NAME}`.
 
+#### `subdomains`
+
+**Type:** `bool` (default: `false`)
+
+Enables wildcard subdomain routing for this service's primary hostname. When `true`, all subdomains of the hostname (e.g., `*.myapp.test`) route to the same port — no explicit aliases needed.
+
+This is useful for multi-tenant apps that use subdomains to identify tenants:
+
+```yaml
+services:
+  web:
+    env_var: PORT
+    hostname: realty120.test
+    subdomains: true
+```
+
+With this config, `rp.realty120.test`, `tina-snow.realty120.test`, and any other subdomain all route to the same port as `realty120.test`.
+
+**Rules:**
+- Requires a primary `hostname`
+- Applies to the primary hostname only, not aliases
+- Exact hostname matches (from other services or aliases) take precedence over the wildcard
+- Subdomain routing is local-only — `outport share` tunnels explicit hostnames, not wildcards
+
+**Combining with explicit aliases:**
+
+```yaml
+services:
+  web:
+    hostname: realty120.test
+    subdomains: true           # *.realty120.test → this port
+
+  api:
+    hostname: api.realty120.test   # exact match wins → different port
+```
+
 #### `preferred_port`
 
 Request a specific port. Useful for services like Postgres or MySQL that expect a conventional port. Outport uses this port if it's available. In the rare case another project has already claimed it, Outport falls back to hash-based allocation — you'll see the actual allocated port in the `outport up` output and in your env file.

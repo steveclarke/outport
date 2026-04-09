@@ -111,6 +111,11 @@ type ServiceJSON struct {
 	// Aliases maps alias keys to their AliasJSON data. Each alias represents an
 	// additional hostname that routes to this service's port.
 	Aliases map[string]AliasJSON `json:"aliases,omitempty"`
+
+	// Subdomains indicates whether wildcard subdomain routing is enabled for
+	// this service. When true, all subdomains of the primary hostname route to
+	// the same port.
+	Subdomains bool `json:"subdomains,omitempty"`
 }
 
 // portEntry maps a port back to the project, instance, and service that own it.
@@ -471,6 +476,8 @@ func (h *Handler) buildStatus() StatusResponse {
 				}
 				sj.Aliases = aliasMap
 			}
+
+			sj.Subdomains = alloc.Subdomains[name]
 
 			ij.Services[name] = sj
 		}

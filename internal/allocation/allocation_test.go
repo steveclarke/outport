@@ -288,6 +288,44 @@ func TestBuildTemplateVars_AliasesWithTunnel(t *testing.T) {
 	}
 }
 
+func TestComputeSubdomains(t *testing.T) {
+	cfg := &config.Config{
+		Name: "myproject",
+		Services: map[string]config.Service{
+			"web":    {Hostname: "myproject.test", Subdomains: true, EnvVar: "PORT"},
+			"api":    {Hostname: "api.myproject.test", EnvVar: "API_PORT"},
+			"worker": {EnvVar: "WORKER_PORT"},
+		},
+	}
+
+	result := ComputeSubdomains(cfg)
+
+	if !result["web"] {
+		t.Error("expected web to have subdomains=true")
+	}
+	if result["api"] {
+		t.Error("expected api to not have subdomains")
+	}
+	if result["worker"] {
+		t.Error("expected worker to not have subdomains")
+	}
+}
+
+func TestComputeSubdomains_NoneSet(t *testing.T) {
+	cfg := &config.Config{
+		Name: "myproject",
+		Services: map[string]config.Service{
+			"web": {Hostname: "myproject.test", EnvVar: "PORT"},
+		},
+	}
+
+	result := ComputeSubdomains(cfg)
+
+	if len(result) != 0 {
+		t.Errorf("expected empty map, got %v", result)
+	}
+}
+
 func TestResolveComputed_Empty(t *testing.T) {
 	cfg := &config.Config{
 		Name:     "myapp",

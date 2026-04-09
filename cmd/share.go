@@ -223,6 +223,14 @@ func runShare(cmd *cobra.Command, args []string) error {
 				maxTunnels, strings.Join(skippedHostnames, ", "))
 		}
 		printExternalFilesWarning(cmd.OutOrStdout(), result.ExternalFiles)
+		// Print note for services with subdomain routing
+		for _, svcName := range services {
+			svc := ctx.Cfg.Services[svcName]
+			if svc.Subdomains {
+				hostname := alloc.Hostnames[svcName]
+				fmt.Fprintf(cmd.OutOrStdout(), "\nNote: subdomain routing for %s is local-only (tunnels use explicit hostnames)\n", hostname)
+			}
+		}
 	}
 
 	// Block until signal

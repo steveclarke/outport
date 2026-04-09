@@ -1709,3 +1709,74 @@ open:
 		t.Errorf("Open = %v, want [web admin]", cfg.Open)
 	}
 }
+
+// --- Subdomains ---
+
+func TestLoad_Subdomains(t *testing.T) {
+	dir := writeConfig(t, `name: myapp
+services:
+  web:
+    env_var: PORT
+    hostname: myapp.test
+    subdomains: true
+`)
+	cfg, err := Load(dir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !cfg.Services["web"].Subdomains {
+		t.Error("web.Subdomains = false, want true")
+	}
+}
+
+func TestLoad_SubdomainsDefaultsFalse(t *testing.T) {
+	dir := writeConfig(t, `name: myapp
+services:
+  web:
+    env_var: PORT
+    hostname: myapp.test
+`)
+	cfg, err := Load(dir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.Services["web"].Subdomains {
+		t.Error("web.Subdomains = true, want false (default)")
+	}
+}
+
+func TestValidateSubdomainsRequiresHostname(t *testing.T) {
+	dir := writeConfig(t, `name: myapp
+services:
+  web:
+    env_var: PORT
+    subdomains: true
+`)
+	_, err := Load(dir)
+	if err == nil {
+		t.Fatal("expected error when subdomains=true with no hostname, got nil")
+	}
+	if !strings.Contains(err.Error(), "subdomains") {
+		t.Errorf("error %q does not mention \"subdomains\"", err.Error())
+	}
+}
+
+func TestLoad_SubdomainsLocalOverride(t *testing.T) {
+	dir := writeConfig(t, `name: myapp
+services:
+  web:
+    env_var: PORT
+    hostname: myapp.test
+`)
+	writeLocalConfig(t, dir, `services:
+  web:
+    subdomains: true
+`)
+	cfg, err := Load(dir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !cfg.Services["web"].Subdomains {
+		t.Error("web.Subdomains = false after local override, want true")
+	}
+}
