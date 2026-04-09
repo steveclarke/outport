@@ -477,9 +477,7 @@ func (h *Handler) buildStatus() StatusResponse {
 				sj.Aliases = aliasMap
 			}
 
-			if alloc.Subdomains[name] {
-				sj.Subdomains = true
-			}
+			sj.Subdomains = alloc.Subdomains[name]
 
 			ij.Services[name] = sj
 		}

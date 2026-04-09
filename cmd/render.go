@@ -79,9 +79,7 @@ func buildServiceMap(cfg *config.Config, ports map[string]int, hostnames map[str
 				}
 			}
 		}
-		if cfg.Services[name].Subdomains {
-			sj.Subdomains = true
-		}
+		sj.Subdomains = svc.Subdomains
 		services[name] = sj
 	}
 	return services
