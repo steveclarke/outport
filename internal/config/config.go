@@ -211,6 +211,11 @@ type Service struct {
 	// Each alias hostname must follow the same rules as the primary hostname.
 	Aliases map[string]string `yaml:"aliases"`
 
+	// Subdomains enables wildcard subdomain routing for this service's primary
+	// hostname. When true, all subdomains (e.g., *.myapp.test) route to the same
+	// port. Requires Hostname to be set. Does not apply to aliases.
+	Subdomains bool `yaml:"subdomains"`
+
 	// rawEnvFile holds the YAML-deserialized env_file value before normalization.
 	// It is cleared during normalize and should not be accessed after Load returns.
 	rawEnvFile envFileField
@@ -227,6 +232,7 @@ type rawService struct {
 	EnvVar        string            `yaml:"env_var"`
 	Hostname      string            `yaml:"hostname"`
 	Aliases       map[string]string `yaml:"aliases"`
+	Subdomains    bool              `yaml:"subdomains"`
 	EnvFile       envFileField      `yaml:"env_file"`
 }
 
@@ -457,6 +463,9 @@ func mergeLocal(dir string, base *rawConfig) error {
 		if localSvc.Aliases != nil {
 			baseSvc.Aliases = localSvc.Aliases
 		}
+		if localSvc.Subdomains {
+			baseSvc.Subdomains = localSvc.Subdomains
+		}
 		if len(localSvc.EnvFile) > 0 {
 			baseSvc.EnvFile = localSvc.EnvFile
 		}
@@ -476,6 +485,7 @@ func toService(rs rawService) Service {
 		EnvVar:        rs.EnvVar,
 		Hostname:      rs.Hostname,
 		Aliases:       rs.Aliases,
+		Subdomains:    rs.Subdomains,
 		rawEnvFile:    rs.EnvFile,
 	}
 }
@@ -574,6 +584,10 @@ func (c *Config) validate() error {
 
 		if len(svc.Aliases) > 0 && svc.Hostname == "" {
 			return fmt.Errorf("service %q: aliases require a primary hostname", name)
+		}
+
+		if svc.Subdomains && svc.Hostname == "" {
+			return fmt.Errorf("service %q: subdomains requires a primary hostname", name)
 		}
 
 		for key, aliasHostname := range svc.Aliases {
