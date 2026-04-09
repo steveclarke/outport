@@ -405,6 +405,10 @@
     link.rel = "noopener";
     row.appendChild(link);
 
+    if (service.subdomains) {
+      row.appendChild(el("span", "svc-subdomain-badge", "+ subdomains"));
+    }
+
     row.appendChild(el("span", "svc-port", String(service.port)));
 
     if (service.url) {

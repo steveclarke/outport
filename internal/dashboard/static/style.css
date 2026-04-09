@@ -286,6 +286,12 @@ html.dark .theme-switch .moon-icon { opacity: 1; }
   text-underline-offset: 2px;
 }
 
+.svc-subdomain-badge {
+  font-size: 11px;
+  color: var(--text-3);
+  margin-left: 6px;
+}
+
 .svc-name {
   color: var(--text-2);
   font-size: 14px;
