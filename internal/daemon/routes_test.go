@@ -20,7 +20,7 @@ func TestBuildRoutes(t *testing.T) {
 		Hostnames:  map[string]string{"rails": "myapp.test"},
 	})
 
-	routes := BuildRoutes(reg)
+	routes, _ := BuildRoutes(reg)
 	if routes["myapp.test"].Port != 24920 {
 		t.Errorf("myapp.test: got %d, want 24920", routes["myapp.test"].Port)
 	}
@@ -36,7 +36,7 @@ func TestBuildRoutesSkipsNilHostnames(t *testing.T) {
 		Ports:      map[string]int{"web": 12000},
 	})
 
-	routes := BuildRoutes(reg)
+	routes, _ := BuildRoutes(reg)
 	if len(routes) != 0 {
 		t.Errorf("expected 0 routes, got %d", len(routes))
 	}
@@ -50,7 +50,7 @@ func TestBuildRoutesIncludesAllHostnames(t *testing.T) {
 		Hostnames:  map[string]string{"web": "myapp.test"},
 	})
 
-	routes := BuildRoutes(reg)
+	routes, _ := BuildRoutes(reg)
 	if routes["myapp.test"].Port != 24920 {
 		t.Errorf("myapp.test: got %d, want 24920", routes["myapp.test"].Port)
 	}
@@ -69,7 +69,7 @@ func TestBuildRoutesMultipleProjects(t *testing.T) {
 		Hostnames:  map[string]string{"web": "app2.test"},
 	})
 
-	routes := BuildRoutes(reg)
+	routes, _ := BuildRoutes(reg)
 	if routes["app1.test"].Port != 10001 {
 		t.Errorf("app1.test: got %d, want 10001", routes["app1.test"].Port)
 	}
@@ -89,7 +89,7 @@ func TestBuildRoutesIncludesAliases(t *testing.T) {
 		},
 	})
 
-	routes := BuildRoutes(reg)
+	routes, _ := BuildRoutes(reg)
 
 	if routes["approvethis.test"].Port != 14139 {
 		t.Errorf("primary: got %d, want 14139", routes["approvethis.test"].Port)
@@ -337,7 +337,7 @@ func TestRouteTableAllocations(t *testing.T) {
 			Hostnames:  map[string]string{"web": "myapp.test"},
 			},
 	}
-	rt.UpdateWithAllocations(map[string]route{"myapp.test": {Port: 10001}}, allocs)
+	rt.UpdateWithAllocations(map[string]route{"myapp.test": {Port: 10001}}, nil, allocs)
 
 	got := rt.Allocations()
 	if len(got) != 1 {
@@ -371,7 +371,7 @@ func TestRouteTableAllPorts(t *testing.T) {
 			Ports:      map[string]int{"web": 10002},
 		},
 	}
-	rt.UpdateWithAllocations(nil, allocs)
+	rt.UpdateWithAllocations(nil, nil, allocs)
 
 	ports := rt.AllPorts()
 	if len(ports) != 3 {
@@ -396,7 +396,7 @@ func TestRouteTableAllPortsDeduplicates(t *testing.T) {
 		"app1/main": {Ports: map[string]int{"web": 10001}},
 		"app2/main": {Ports: map[string]int{"web": 10001}},
 	}
-	rt.UpdateWithAllocations(nil, allocs)
+	rt.UpdateWithAllocations(nil, nil, allocs)
 
 	ports := rt.AllPorts()
 	if len(ports) != 1 {
@@ -438,5 +438,119 @@ func TestWatchAndRebuildMissingFileKeepsRoutes(t *testing.T) {
 		}
 	case <-time.After(2 * time.Second):
 		t.Fatal("timed out waiting for watcher shutdown")
+	}
+}
+
+func TestBuildRoutesWildcardSubdomains(t *testing.T) {
+	reg := &registry.Registry{Projects: make(map[string]registry.Allocation)}
+	reg.Set("realty120", "main", registry.Allocation{
+		ProjectDir: "/src/realty120",
+		Ports:      map[string]int{"web": 10384},
+		Hostnames:  map[string]string{"web": "realty120.test"},
+		Subdomains: map[string]bool{"web": true},
+	})
+
+	routes, wildcards := BuildRoutes(reg)
+
+	if routes["realty120.test"].Port != 10384 {
+		t.Errorf("exact route: got %d, want 10384", routes["realty120.test"].Port)
+	}
+	if wildcards["realty120.test"].Port != 10384 {
+		t.Errorf("wildcard: got %d, want 10384", wildcards["realty120.test"].Port)
+	}
+}
+
+func TestBuildRoutesNoWildcardWithoutFlag(t *testing.T) {
+	reg := &registry.Registry{Projects: make(map[string]registry.Allocation)}
+	reg.Set("myapp", "main", registry.Allocation{
+		ProjectDir: "/src/myapp",
+		Ports:      map[string]int{"web": 24920},
+		Hostnames:  map[string]string{"web": "myapp.test"},
+	})
+
+	_, wildcards := BuildRoutes(reg)
+
+	if _, ok := wildcards["myapp.test"]; ok {
+		t.Error("expected no wildcard without subdomains flag")
+	}
+}
+
+func TestBuildRoutesWildcardWithInstanceSuffix(t *testing.T) {
+	reg := &registry.Registry{Projects: make(map[string]registry.Allocation)}
+	reg.Set("realty120", "bkrm", registry.Allocation{
+		ProjectDir: "/src/realty120-worktree",
+		Ports:      map[string]int{"web": 10384},
+		Hostnames:  map[string]string{"web": "realty120-bkrm.test"},
+		Subdomains: map[string]bool{"web": true},
+	})
+
+	routes, wildcards := BuildRoutes(reg)
+
+	if routes["realty120-bkrm.test"].Port != 10384 {
+		t.Errorf("exact route: got %d, want 10384", routes["realty120-bkrm.test"].Port)
+	}
+	if wildcards["realty120-bkrm.test"].Port != 10384 {
+		t.Errorf("wildcard: got %d, want 10384", wildcards["realty120-bkrm.test"].Port)
+	}
+}
+
+func TestLookupWildcardSubdomain(t *testing.T) {
+	rt := &RouteTable{}
+	rt.updateWithWildcards(
+		map[string]route{"realty120.test": {Port: 10384}},
+		map[string]route{"realty120.test": {Port: 10384}},
+	)
+
+	tests := []struct {
+		name     string
+		hostname string
+		wantPort int
+		wantOK   bool
+	}{
+		{"exact match", "realty120.test", 10384, true},
+		{"subdomain match", "rp.realty120.test", 10384, true},
+		{"deep subdomain no match", "foo.rp.realty120.test", 0, false},
+		{"no match", "other.test", 0, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r, ok := rt.Lookup(tt.hostname)
+			if ok != tt.wantOK {
+				t.Errorf("Lookup(%q) ok = %v, want %v", tt.hostname, ok, tt.wantOK)
+			}
+			if r.Port != tt.wantPort {
+				t.Errorf("Lookup(%q) port = %d, want %d", tt.hostname, r.Port, tt.wantPort)
+			}
+		})
+	}
+}
+
+func TestLookupExactWinsOverWildcard(t *testing.T) {
+	rt := &RouteTable{}
+	rt.updateWithWildcards(
+		map[string]route{
+			"realty120.test":     {Port: 10384},
+			"api.realty120.test": {Port: 20000},
+		},
+		map[string]route{"realty120.test": {Port: 10384}},
+	)
+
+	// Exact match should win
+	r, ok := rt.Lookup("api.realty120.test")
+	if !ok {
+		t.Fatal("expected match for api.realty120.test")
+	}
+	if r.Port != 20000 {
+		t.Errorf("exact match: got port %d, want 20000", r.Port)
+	}
+
+	// Wildcard should catch other subdomains
+	r, ok = rt.Lookup("rp.realty120.test")
+	if !ok {
+		t.Fatal("expected wildcard match for rp.realty120.test")
+	}
+	if r.Port != 10384 {
+		t.Errorf("wildcard match: got port %d, want 10384", r.Port)
 	}
 }

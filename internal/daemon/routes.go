@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/fsnotify/fsnotify"
@@ -35,6 +36,7 @@ type route struct {
 type RouteTable struct {
 	mu          sync.RWMutex
 	routes      map[string]route               // hostname (e.g., "myapp.test") -> route
+	wildcards   map[string]route               // parent hostname -> route (for subdomains: true)
 	allocations map[string]registry.Allocation // full registry data keyed by "project/instance", used by dashboard
 	ports       []int                          // deduplicated list of all allocated ports across all projects
 	// OnUpdate is an optional callback invoked after every route table update.
@@ -50,8 +52,16 @@ type RouteTable struct {
 func (rt *RouteTable) Lookup(hostname string) (route, bool) {
 	rt.mu.RLock()
 	defer rt.mu.RUnlock()
-	r, ok := rt.routes[hostname]
-	return r, ok
+	if r, ok := rt.routes[hostname]; ok {
+		return r, true
+	}
+	if idx := strings.Index(hostname, "."); idx > 0 {
+		parent := hostname[idx+1:]
+		if r, ok := rt.wildcards[parent]; ok {
+			return r, true
+		}
+	}
+	return route{}, false
 }
 
 // update swaps the routing table atomically and fires the OnUpdate callback.
@@ -59,6 +69,18 @@ func (rt *RouteTable) Lookup(hostname string) (route, bool) {
 func (rt *RouteTable) update(routes map[string]route) {
 	rt.mu.Lock()
 	rt.routes = routes
+	rt.wildcards = nil
+	rt.mu.Unlock()
+	if rt.OnUpdate != nil {
+		rt.OnUpdate()
+	}
+}
+
+// updateWithWildcards swaps both routing maps atomically. Used in tests.
+func (rt *RouteTable) updateWithWildcards(routes, wildcards map[string]route) {
+	rt.mu.Lock()
+	rt.routes = routes
+	rt.wildcards = wildcards
 	rt.mu.Unlock()
 	if rt.OnUpdate != nil {
 		rt.OnUpdate()
@@ -71,9 +93,10 @@ func (rt *RouteTable) update(routes map[string]route) {
 // registry changes. The allocation data is stored so the dashboard can display
 // project names, service names, and port assignments. A deduplicated port list
 // is also computed and cached for the dashboard's health checker.
-func (rt *RouteTable) UpdateWithAllocations(routes map[string]route, allocs map[string]registry.Allocation) {
+func (rt *RouteTable) UpdateWithAllocations(routes map[string]route, wildcards map[string]route, allocs map[string]registry.Allocation) {
 	rt.mu.Lock()
 	rt.routes = routes
+	rt.wildcards = wildcards
 	rt.allocations = allocs
 	rt.ports = deduplicatePorts(allocs)
 	rt.mu.Unlock()
@@ -129,14 +152,18 @@ func (rt *RouteTable) Allocations() map[string]registry.Allocation {
 // through the proxy. Alias hostnames are also included, pointing to the same
 // port as the primary hostname. The returned map is intended to be passed to
 // RouteTable.UpdateWithAllocations.
-func BuildRoutes(reg *registry.Registry) map[string]route {
+func BuildRoutes(reg *registry.Registry) (map[string]route, map[string]route) {
 	routes := make(map[string]route)
+	wildcards := make(map[string]route)
 	for _, alloc := range reg.Projects {
 		if alloc.Hostnames == nil {
 			continue
 		}
 		for svcName, hostname := range alloc.Hostnames {
 			routes[hostname] = route{Port: alloc.Ports[svcName]}
+			if alloc.Subdomains[svcName] {
+				wildcards[hostname] = route{Port: alloc.Ports[svcName]}
+			}
 		}
 		for svcName, svcAliases := range alloc.Aliases {
 			for _, aliasHostname := range svcAliases {
@@ -144,7 +171,7 @@ func BuildRoutes(reg *registry.Registry) map[string]route {
 			}
 		}
 	}
-	return routes
+	return routes, wildcards
 }
 
 // BuildTunnelRoutes reads the tunnel state and returns HostOverride routes.
@@ -300,7 +327,7 @@ func rebuildFromFile(regPath string, rt *RouteTable) error {
 	if err := json.Unmarshal(data, &reg); err != nil {
 		return err
 	}
-	routes := BuildRoutes(&reg)
-	rt.UpdateWithAllocations(routes, reg.Projects)
+	routes, wildcards := BuildRoutes(&reg)
+	rt.UpdateWithAllocations(routes, wildcards, reg.Projects)
 	return nil
 }

@@ -280,8 +280,8 @@ func TestDaemonHTTPProxiesTunnelTrafficWithTLS(t *testing.T) {
 	}
 
 	// Populate routes and add a tunnel HostOverride route
-	routes := BuildRoutes(reg)
-	d.routes.UpdateWithAllocations(routes, reg.Projects)
+	routes, wildcards := BuildRoutes(reg)
+	d.routes.UpdateWithAllocations(routes, wildcards, reg.Projects)
 	d.routes.MergeTunnelRoutes(map[string]route{
 		"abc123.trycloudflare.com": {Port: backendPort, HostOverride: "myapp.test"},
 	})
