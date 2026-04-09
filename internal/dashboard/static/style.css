@@ -288,8 +288,8 @@ html.dark .theme-switch .moon-icon { opacity: 1; }
 
 .svc-subdomain-badge {
   font-size: 11px;
+  font-weight: 400;
   color: var(--text-3);
-  margin-left: 6px;
 }
 
 .svc-name {

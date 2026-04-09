@@ -403,11 +403,10 @@
     link.href = service.url;
     link.target = "_blank";
     link.rel = "noopener";
-    row.appendChild(link);
-
     if (service.subdomains) {
-      row.appendChild(el("span", "svc-subdomain-badge", "+ subdomains"));
+      link.appendChild(el("span", "svc-subdomain-badge", " + subdomains"));
     }
+    row.appendChild(link);
 
     row.appendChild(el("span", "svc-port", String(service.port)));
 
