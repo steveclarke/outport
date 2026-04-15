@@ -5,7 +5,8 @@ setup:
     go install github.com/goreleaser/goreleaser/v2@latest
     go install github.com/securego/gosec/v2/cmd/gosec@v2.25.0
     go install golang.org/x/vuln/cmd/govulncheck@latest
-    npm install
+    mise reshim
+    SHARP_IGNORE_GLOBAL_LIBVIPS=1 pnpm install
 
 # Build the binary to dist/
 build:
