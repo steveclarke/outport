@@ -50,6 +50,18 @@ sudo dpkg -i outport_*.deb
 sudo rpm -i outport-*.rpm
 ```
 
+## Arch Linux (AUR)
+
+```bash
+# With an AUR helper (e.g., yay, paru)
+yay -S outport-bin
+
+# Or manually
+git clone https://aur.archlinux.org/outport-bin.git
+cd outport-bin
+makepkg -si
+```
+
 ## From Source
 
 Requires [Go 1.26+](https://go.dev/dl/):
