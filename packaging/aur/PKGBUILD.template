@@ -1,4 +1,4 @@
-# Maintainer: Steve Clarke <steve@outport.dev>
+# Maintainer: Steve Clarke <sclarke77@gmail.com>
 pkgname=outport-bin
 pkgver={{VERSION}}
 pkgrel=1
