@@ -1,0 +1,73 @@
+name: Publish AUR Package
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  aur-publish:
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:base-devel
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install dependencies
+        run: pacman -Sy --noconfirm git openssh
+
+      - name: Extract version
+        id: version
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Download checksums
+        run: |
+          curl -sL "https://github.com/steveclarke/outport/releases/download/${GITHUB_REF_NAME}/checksums.txt" -o checksums.txt
+
+      - name: Extract SHA256 sums
+        id: checksums
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          SHA256_AMD64=$(grep "outport_${VERSION}_linux_amd64.tar.gz" checksums.txt | awk '{print $1}')
+          SHA256_ARM64=$(grep "outport_${VERSION}_linux_arm64.tar.gz" checksums.txt | awk '{print $1}')
+          echo "sha256_amd64=${SHA256_AMD64}" >> "$GITHUB_OUTPUT"
+          echo "sha256_arm64=${SHA256_ARM64}" >> "$GITHUB_OUTPUT"
+
+      - name: Generate PKGBUILD
+        run: |
+          sed \
+            -e "s/{{VERSION}}/${{ steps.version.outputs.version }}/" \
+            -e "s/{{SHA256_AMD64}}/${{ steps.checksums.outputs.sha256_amd64 }}/" \
+            -e "s/{{SHA256_ARM64}}/${{ steps.checksums.outputs.sha256_arm64 }}/" \
+            packaging/aur/PKGBUILD.template > PKGBUILD
+
+      - name: Generate .SRCINFO
+        run: |
+          useradd -m builder
+          chown builder:builder PKGBUILD
+          su builder -c "makepkg --printsrcinfo" > .SRCINFO
+
+      - name: Push to AUR
+        env:
+          AUR_KEY: ${{ secrets.AUR_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$AUR_KEY" > ~/.ssh/aur
+          chmod 600 ~/.ssh/aur
+          cat >> ~/.ssh/config <<EOF
+          Host aur.archlinux.org
+            IdentityFile ~/.ssh/aur
+            StrictHostKeyChecking accept-new
+          EOF
+
+          git clone ssh://aur@aur.archlinux.org/outport-bin.git aur-repo
+          cp PKGBUILD .SRCINFO aur-repo/
+          cd aur-repo
+          git config user.name "Steve Clarke"
+          git config user.email "steve@outport.dev"
+          git add PKGBUILD .SRCINFO
+          git diff --cached --quiet && echo "No changes to push" && exit 0
+          git commit -m "Update to v${{ steps.version.outputs.version }}"
+          git push
