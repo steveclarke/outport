@@ -68,9 +68,9 @@ jobs:
           mkdir -p ~/.ssh
           echo "$AUR_KEY" > ~/.ssh/aur
           chmod 600 ~/.ssh/aur
-          ssh-keyscan aur.archlinux.org >> ~/.ssh/known_hosts 2>/dev/null
+          ssh-keyscan aur.archlinux.org >> ~/.ssh/known_hosts
 
-          export GIT_SSH_COMMAND="ssh -i ~/.ssh/aur"
+          export GIT_SSH_COMMAND="ssh -i ~/.ssh/aur -o StrictHostKeyChecking=accept-new -v"
           git clone ssh://aur@aur.archlinux.org/outport-bin.git aur-repo
           cp PKGBUILD .SRCINFO aur-repo/
           cd aur-repo
