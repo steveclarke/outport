@@ -76,7 +76,7 @@ Tests use table-driven patterns and `t.TempDir()` for filesystem isolation. No m
 
 ## Release
 
-Version injected via ldflags: `-X github.com/steveclarke/outport/cmd.version={{.Version}}`. Releases triggered by pushing `v*` tags. GoReleaser produces: tar.gz archives (with shell completions), `.deb`/`.rpm` Linux packages (with completions in system directories), and a Homebrew formula update to `steveclarke/homebrew-tap`. A `curl|sh` install script (`install.sh`) downloads from GitHub Releases with SHA-256 verification. Release process docs are in the private `backstage` repo.
+Version injected via ldflags: `-X github.com/steveclarke/outport/cmd.version={{.Version}}`. Releases triggered by pushing `v*` tags. GoReleaser produces: tar.gz archives (with shell completions), `.deb`/`.rpm` Linux packages (with completions in system directories), and a Homebrew formula update to `steveclarke/homebrew-tap`. A separate `aur-publish.yml` workflow triggers on `release: published` to update the `outport-bin` AUR package — it runs in an Arch container, generates the PKGBUILD from `packaging/aur/PKGBUILD.template`, and pushes to the AUR git repo via SSH (`AUR_KEY` secret). A `curl|sh` install script (`install.sh`) downloads from GitHub Releases with SHA-256 verification. Release process docs are in the private `backstage` repo.
 
 ## Git Conventions
 

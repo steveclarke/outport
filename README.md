@@ -39,7 +39,7 @@ Or with Homebrew:
 brew install steveclarke/tap/outport
 ```
 
-See all [installation options](https://outport.dev/guide/installation) including .deb/.rpm packages and building from source.
+See all [installation options](https://outport.dev/guide/installation) including .deb/.rpm packages, Arch Linux (AUR), and building from source.
 
 ## Quick Start
 

@@ -1,5 +1,5 @@
 ---
-description: All install methods for Outport — install script, Homebrew, .deb/.rpm package, go install, and building from source. macOS and Linux supported.
+description: All install methods for Outport — install script, Homebrew, .deb/.rpm package, Arch Linux (AUR), go install, and building from source. macOS and Linux supported.
 ---
 
 # Installation
@@ -50,6 +50,18 @@ sudo dpkg -i outport_*.deb
 sudo rpm -i outport-*.rpm
 ```
 
+## Arch Linux (AUR)
+
+```bash
+# With an AUR helper (e.g., yay, paru)
+yay -S outport-bin
+
+# Or manually
+git clone https://aur.archlinux.org/outport-bin.git
+cd outport-bin
+makepkg -si
+```
+
 ## From Source
 
 Requires [Go 1.26+](https://go.dev/dl/):
@@ -77,7 +89,7 @@ just install    # Installs to $GOPATH/bin
 
 ## Shell Completions
 
-Outport supports tab completion for bash, zsh, and fish. Homebrew and .deb/.rpm packages install completions automatically. For other install methods:
+Outport supports tab completion for bash, zsh, and fish. Homebrew, .deb/.rpm, and AUR packages install completions automatically. For other install methods:
 
 ```bash
 # Bash — add to ~/.bashrc
