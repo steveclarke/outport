@@ -57,8 +57,9 @@ jobs:
       - name: Generate .SRCINFO
         run: |
           useradd -m builder
-          chown builder:builder PKGBUILD
-          su builder -c "makepkg --printsrcinfo" > .SRCINFO
+          cp PKGBUILD /home/builder/
+          chown builder:builder /home/builder/PKGBUILD
+          su builder -c "cd ~ && makepkg --printsrcinfo" > .SRCINFO
 
       - name: Push to AUR
         env:
