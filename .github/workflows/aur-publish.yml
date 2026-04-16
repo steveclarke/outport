@@ -70,7 +70,7 @@ jobs:
           chmod 600 ~/.ssh/aur
           ssh-keyscan aur.archlinux.org >> ~/.ssh/known_hosts
 
-          export GIT_SSH_COMMAND="ssh -i ~/.ssh/aur -o StrictHostKeyChecking=accept-new -v"
+          export GIT_SSH_COMMAND="ssh -i ~/.ssh/aur -o StrictHostKeyChecking=accept-new"
           git clone ssh://aur@aur.archlinux.org/outport-bin.git aur-repo
           cp PKGBUILD .SRCINFO aur-repo/
           cd aur-repo
