@@ -7,7 +7,7 @@ require (
 	charm.land/lipgloss/v2 v2.0.3
 	github.com/bored-engineer/go-launchd v0.0.0-20241220214420-b514778f4f80
 	github.com/charmbracelet/x/term v0.2.2
-	github.com/fsnotify/fsnotify v1.9.0
+	github.com/fsnotify/fsnotify v1.10.1
 	github.com/miekg/dns v1.1.72
 	github.com/shirou/gopsutil/v4 v4.26.3
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
