@@ -122,26 +122,29 @@ func resolveOpenTarget(cfg *config.Config, alloc registry.Allocation, name strin
 	return resolveBareAliasTarget(cfg, alloc, name, httpsEnabled)
 }
 
-func resolveServiceTarget(cfg *config.Config, alloc registry.Allocation, name string, httpsEnabled bool) (openTarget, error) {
-	svc, ok := cfg.Services[name]
-	if !ok {
-		return openTarget{}, fmt.Errorf("Service %q not found in outport.yml.", name)
+// servicePort verifies the service exists and has an allocated port.
+func servicePort(cfg *config.Config, alloc registry.Allocation, name string) (int, error) {
+	if _, ok := cfg.Services[name]; !ok {
+		return 0, fmt.Errorf("Service %q not found in outport.yml.", name)
 	}
-
 	port, ok := alloc.Ports[name]
 	if !ok {
-		return openTarget{}, fmt.Errorf("No port allocated for %q. Run 'outport up' first.", name)
+		return 0, fmt.Errorf("No port allocated for %q. Run 'outport up' first.", name)
+	}
+	return port, nil
+}
+
+func resolveServiceTarget(cfg *config.Config, alloc registry.Allocation, name string, httpsEnabled bool) (openTarget, error) {
+	port, err := servicePort(cfg, alloc, name)
+	if err != nil {
+		return openTarget{}, err
 	}
 
-	if svc.Hostname == "" {
+	if cfg.Services[name].Hostname == "" {
 		return openTarget{}, fmt.Errorf("Service %q has no hostname. Add 'hostname' to open it in the browser.", name)
 	}
 
-	h := svc.Hostname
-	if allocated, hok := alloc.Hostnames[name]; hok {
-		h = allocated
-	}
-
+	h := allocHostname(alloc, cfg, name)
 	return openTarget{
 		Kind:     "service",
 		Service:  name,
@@ -171,13 +174,9 @@ func resolveBareAliasTarget(cfg *config.Config, alloc registry.Allocation, alias
 }
 
 func resolveAliasTarget(cfg *config.Config, alloc registry.Allocation, serviceName, aliasName string, httpsEnabled bool) (openTarget, error) {
-	if _, ok := cfg.Services[serviceName]; !ok {
-		return openTarget{}, fmt.Errorf("Service %q not found in outport.yml.", serviceName)
-	}
-
-	port, ok := alloc.Ports[serviceName]
-	if !ok {
-		return openTarget{}, fmt.Errorf("No port allocated for %q. Run 'outport up' first.", serviceName)
+	port, err := servicePort(cfg, alloc, serviceName)
+	if err != nil {
+		return openTarget{}, err
 	}
 
 	hostname, ok := alloc.Aliases[serviceName][aliasName]

@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"bytes"
 	"strings"
 	"testing"
 )
@@ -53,16 +52,9 @@ func captureOpenBrowser(t *testing.T) *[]string {
 	return &opened
 }
 
-func executeCmdAllowError(t *testing.T, args ...string) (string, error) {
-	t.Helper()
-
-	buf := new(bytes.Buffer)
-	rootCmd.SetOut(buf)
-	rootCmd.SetErr(buf)
-	rootCmd.SetArgs(args)
-
-	err := rootCmd.Execute()
-	return buf.String(), err
+// openResult mirrors the JSON envelope emitted by printOpenJSON.
+type openResult struct {
+	Opened []openTarget `json:"opened"`
 }
 
 func TestOpen_ServiceNameWinsOverAlias(t *testing.T) {
@@ -79,16 +71,7 @@ func TestOpen_ServiceNameWinsOverAlias(t *testing.T) {
 		t.Fatalf("opened URL = %q, want service hostname", (*opened)[0])
 	}
 
-	var result struct {
-		Opened []struct {
-			Kind     string `json:"kind"`
-			Service  string `json:"service"`
-			Alias    string `json:"alias,omitempty"`
-			Hostname string `json:"hostname"`
-			URL      string `json:"url"`
-			Port     int    `json:"port"`
-		} `json:"opened"`
-	}
+	var result openResult
 	unwrapJSON(t, output, &result)
 
 	if len(result.Opened) != 1 {
@@ -114,15 +97,7 @@ func TestOpen_UniqueAliasName(t *testing.T) {
 		t.Fatalf("opened URL = %q, want alias hostname", (*opened)[0])
 	}
 
-	var result struct {
-		Opened []struct {
-			Kind     string `json:"kind"`
-			Service  string `json:"service"`
-			Alias    string `json:"alias,omitempty"`
-			Hostname string `json:"hostname"`
-			Port     int    `json:"port"`
-		} `json:"opened"`
-	}
+	var result openResult
 	unwrapJSON(t, output, &result)
 
 	if len(result.Opened) != 1 {
@@ -148,15 +123,7 @@ func TestOpen_ExplicitAliasTarget(t *testing.T) {
 		t.Fatalf("opened URL = %q, want explicit alias hostname", (*opened)[0])
 	}
 
-	var result struct {
-		Opened []struct {
-			Kind     string `json:"kind"`
-			Service  string `json:"service"`
-			Alias    string `json:"alias,omitempty"`
-			Hostname string `json:"hostname"`
-			Port     int    `json:"port"`
-		} `json:"opened"`
-	}
+	var result openResult
 	unwrapJSON(t, output, &result)
 
 	if len(result.Opened) != 1 {
