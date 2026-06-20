@@ -132,7 +132,7 @@ outport down               Remove ports, clean .env
 outport status [--computed] Show project status
 outport ports [--all]      Show ports with live process info
 outport ports kill <target> Kill process on a port
-outport open               Open services in the browser
+outport open [target]      Open services, aliases, or service:alias targets
 outport qr [--tunnel]      QR codes for mobile access
 outport share [service]    Tunnel services to public URLs
 outport rename [old] <new> Rename an instance

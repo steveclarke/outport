@@ -6,22 +6,25 @@ import (
 	"os/exec"
 	"runtime"
 	"slices"
+	"strings"
 
+	"github.com/spf13/cobra"
 	"github.com/steveclarke/outport/internal/certmanager"
 	"github.com/steveclarke/outport/internal/config"
 	"github.com/steveclarke/outport/internal/registry"
 	"github.com/steveclarke/outport/internal/urlutil"
-	"github.com/spf13/cobra"
 )
 
 var openCmd = &cobra.Command{
-	Use:     "open [service]",
+	Use:     "open [target]",
 	Short:   "Open web services in the browser",
-	Long:    "Opens web services for the current project in your default browser. By default, opens all services with a hostname. If the 'open' field is set in outport.yml, only the listed services are opened. Specify a service name to open just that one.",
+	Long:    "Opens web services for the current project in your default browser. By default, opens all services with a hostname. If the 'open' field is set in outport.yml, only the listed services are opened. Specify a service name, alias name, or service:alias target to open just that one.",
 	GroupID: "project",
-	Args:    MaximumArgs(1, "accepts at most one service name"),
+	Args:    MaximumArgs(1, "accepts at most one target"),
 	RunE:    runOpen,
 }
+
+var openBrowserFunc = openBrowser
 
 func init() {
 	rootCmd.AddCommand(openCmd)
@@ -41,7 +44,17 @@ func runOpen(cmd *cobra.Command, args []string) error {
 	httpsEnabled := certmanager.IsCAInstalled()
 
 	if len(args) == 1 {
-		return openService(cmd, ctx.Cfg, alloc, args[0], httpsEnabled)
+		target, err := resolveOpenTarget(ctx.Cfg, alloc, args[0], httpsEnabled)
+		if err != nil {
+			return err
+		}
+		if err := openResolvedTarget(cmd, target); err != nil {
+			return err
+		}
+		if jsonFlag {
+			return printOpenJSON(cmd, []openTarget{target})
+		}
+		return nil
 	}
 
 	// Determine which services to open
@@ -59,19 +72,23 @@ func runOpen(cmd *cobra.Command, args []string) error {
 	}
 
 	opened := 0
+	var targets []openTarget
 	for _, svcName := range serviceNames {
-		svc := ctx.Cfg.Services[svcName]
-		h := svc.Hostname
-		if allocated, ok := alloc.Hostnames[svcName]; ok {
-			h = allocated
-		}
-		url := fmt.Sprintf("%s://%s", urlutil.EffectiveScheme(h, httpsEnabled), h)
-		if err := openBrowser(url); err != nil {
+		target, err := resolveServiceTarget(ctx.Cfg, alloc, svcName, httpsEnabled)
+		if err != nil {
 			fmt.Fprintf(cmd.ErrOrStderr(), "Could not open %s: %v\n", svcName, err)
 			continue
 		}
-		fmt.Fprintf(cmd.OutOrStdout(), "Opened %s → %s\n", svcName, url)
+		if err := openResolvedTarget(cmd, target); err != nil {
+			fmt.Fprintf(cmd.ErrOrStderr(), "Could not open %s: %v\n", svcName, err)
+			continue
+		}
 		opened++
+		targets = append(targets, target)
+	}
+
+	if jsonFlag {
+		return printOpenJSON(cmd, targets)
 	}
 
 	if opened == 0 {
@@ -81,32 +98,128 @@ func runOpen(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func openService(cmd *cobra.Command, cfg *config.Config, alloc registry.Allocation, name string, httpsEnabled bool) error {
-	svc, ok := cfg.Services[name]
-	if !ok {
-		return fmt.Errorf("Service %q not found in outport.yml.", name)
+type openTarget struct {
+	Kind     string `json:"kind"`
+	Service  string `json:"service"`
+	Alias    string `json:"alias,omitempty"`
+	Hostname string `json:"hostname"`
+	URL      string `json:"url"`
+	Port     int    `json:"port"`
+}
+
+func resolveOpenTarget(cfg *config.Config, alloc registry.Allocation, name string, httpsEnabled bool) (openTarget, error) {
+	if serviceName, aliasName, ok := strings.Cut(name, ":"); ok {
+		if serviceName == "" || aliasName == "" || strings.Contains(aliasName, ":") {
+			return openTarget{}, fmt.Errorf("Open target %q must use service:alias.", name)
+		}
+		return resolveAliasTarget(cfg, alloc, serviceName, aliasName, httpsEnabled)
 	}
 
-	_, ok = alloc.Ports[name]
+	if _, ok := cfg.Services[name]; ok {
+		return resolveServiceTarget(cfg, alloc, name, httpsEnabled)
+	}
+
+	return resolveBareAliasTarget(cfg, alloc, name, httpsEnabled)
+}
+
+func resolveServiceTarget(cfg *config.Config, alloc registry.Allocation, name string, httpsEnabled bool) (openTarget, error) {
+	svc, ok := cfg.Services[name]
 	if !ok {
-		return fmt.Errorf("No port allocated for %q. Run 'outport up' first.", name)
+		return openTarget{}, fmt.Errorf("Service %q not found in outport.yml.", name)
+	}
+
+	port, ok := alloc.Ports[name]
+	if !ok {
+		return openTarget{}, fmt.Errorf("No port allocated for %q. Run 'outport up' first.", name)
 	}
 
 	if svc.Hostname == "" {
-		return fmt.Errorf("Service %q has no hostname. Add 'hostname' to open it in the browser.", name)
+		return openTarget{}, fmt.Errorf("Service %q has no hostname. Add 'hostname' to open it in the browser.", name)
 	}
 
 	h := svc.Hostname
 	if allocated, hok := alloc.Hostnames[name]; hok {
 		h = allocated
 	}
-	url := fmt.Sprintf("%s://%s", urlutil.EffectiveScheme(h, httpsEnabled), h)
 
-	if err := openBrowser(url); err != nil {
+	return openTarget{
+		Kind:     "service",
+		Service:  name,
+		Hostname: h,
+		URL:      urlutil.ServiceURL(h, port, httpsEnabled),
+		Port:     port,
+	}, nil
+}
+
+func resolveBareAliasTarget(cfg *config.Config, alloc registry.Allocation, aliasName string, httpsEnabled bool) (openTarget, error) {
+	var matches []string
+	for _, svcName := range slices.Sorted(maps.Keys(alloc.Aliases)) {
+		if _, ok := alloc.Aliases[svcName][aliasName]; ok {
+			matches = append(matches, svcName+":"+aliasName)
+		}
+	}
+
+	if len(matches) == 0 {
+		return openTarget{}, fmt.Errorf("Service or alias %q not found in outport.yml.", aliasName)
+	}
+	if len(matches) > 1 {
+		return openTarget{}, fmt.Errorf("alias %q is ambiguous; use one of: %s.", aliasName, strings.Join(matches, ", "))
+	}
+
+	serviceName, _, _ := strings.Cut(matches[0], ":")
+	return resolveAliasTarget(cfg, alloc, serviceName, aliasName, httpsEnabled)
+}
+
+func resolveAliasTarget(cfg *config.Config, alloc registry.Allocation, serviceName, aliasName string, httpsEnabled bool) (openTarget, error) {
+	if _, ok := cfg.Services[serviceName]; !ok {
+		return openTarget{}, fmt.Errorf("Service %q not found in outport.yml.", serviceName)
+	}
+
+	port, ok := alloc.Ports[serviceName]
+	if !ok {
+		return openTarget{}, fmt.Errorf("No port allocated for %q. Run 'outport up' first.", serviceName)
+	}
+
+	hostname, ok := alloc.Aliases[serviceName][aliasName]
+	if !ok {
+		return openTarget{}, fmt.Errorf("Service %q has no alias %q.", serviceName, aliasName)
+	}
+
+	return openTarget{
+		Kind:     "alias",
+		Service:  serviceName,
+		Alias:    aliasName,
+		Hostname: hostname,
+		URL:      urlutil.ServiceURL(hostname, port, httpsEnabled),
+		Port:     port,
+	}, nil
+}
+
+func openResolvedTarget(cmd *cobra.Command, target openTarget) error {
+	if err := openBrowserFunc(target.URL); err != nil {
 		return fmt.Errorf("Could not open browser: %w.", err)
 	}
-	fmt.Fprintf(cmd.OutOrStdout(), "Opened %s → %s\n", name, url)
+	if !jsonFlag {
+		fmt.Fprintf(cmd.OutOrStdout(), "Opened %s → %s\n", target.label(), target.URL)
+	}
 	return nil
+}
+
+func (t openTarget) label() string {
+	if t.Kind == "alias" {
+		return t.Service + ":" + t.Alias
+	}
+	return t.Service
+}
+
+func printOpenJSON(cmd *cobra.Command, targets []openTarget) error {
+	out := struct {
+		Opened []openTarget `json:"opened"`
+	}{
+		Opened: targets,
+	}
+	n := len(targets)
+	return writeJSON(cmd, out, fmt.Sprintf("%d %s opened", n, pluralize(n, "target", "targets")))
 }
 
 func openBrowser(url string) error {
