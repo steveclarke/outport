@@ -91,8 +91,21 @@ services:
     env_var: DATABASE_PORT
 `
 
-// executeCmd runs a root command with args and returns captured stdout.
+// executeCmd runs a root command with args and returns captured output,
+// failing the test if the command returns an error.
 func executeCmd(t *testing.T, args ...string) string {
+	t.Helper()
+
+	out, err := executeCmdAllowError(t, args...)
+	if err != nil {
+		t.Fatalf("command %v failed: %v", args, err)
+	}
+	return out
+}
+
+// executeCmdAllowError runs a root command with args and returns captured
+// output along with any error, for tests that assert on failure.
+func executeCmdAllowError(t *testing.T, args ...string) (string, error) {
 	t.Helper()
 
 	buf := new(bytes.Buffer)
@@ -100,11 +113,8 @@ func executeCmd(t *testing.T, args ...string) string {
 	rootCmd.SetErr(buf)
 	rootCmd.SetArgs(args)
 
-	if err := rootCmd.Execute(); err != nil {
-		t.Fatalf("command %v failed: %v", args, err)
-	}
-
-	return buf.String()
+	err := rootCmd.Execute()
+	return buf.String(), err
 }
 
 // --- up ---

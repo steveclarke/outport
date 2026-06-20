@@ -29,6 +29,8 @@ outport ports kill <svc>  # Kill process by service name or port number
 outport ports kill --orphans  # Kill all orphaned dev processes
 outport open              # Open HTTP services in browser
 outport open web          # Open a specific service
+outport open admin        # Open a unique alias
+outport open web:admin    # Open a specific service alias
 outport share             # Tunnel HTTP services to public URLs
 outport share web         # Tunnel a specific service
 outport qr                # Show QR codes for mobile device access

@@ -113,11 +113,19 @@ Open HTTP services in the browser.
 ```bash
 outport open         # open default services (or all HTTP services)
 outport open web     # open a specific service
+outport open admin   # open a unique alias
+outport open web:admin  # open a specific service alias
 ```
 
-Opens HTTP services in your default browser. By default, opens all services with a `hostname`. If the `open` field is set in `outport.yml`, only the listed services are opened. Specify a service name to open just that one, regardless of the `open` list.
+Opens HTTP services in your default browser. By default, opens all services with a `hostname`. If the `open` field is set in `outport.yml`, only the listed services are opened.
+
+Specify a service name to open just that one, regardless of the `open` list. You can also specify an alias name shown in status output. Service names win over alias names, and duplicate alias names must be opened explicitly with `service:alias`.
 
 Works best with `.test` domains set up (`outport system start`).
+
+| Flag | Description |
+|------|-------------|
+| `--json` | Output opened target details as JSON |
 
 ### `outport qr`
 
