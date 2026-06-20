@@ -16,7 +16,7 @@ jobs:
       image: archlinux:base-devel
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Install dependencies
         run: pacman -Syu --noconfirm git openssh jq
