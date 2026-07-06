@@ -15,6 +15,10 @@ type projectContext struct {
 	Instance string
 	IsNew    bool
 	Reg      *registry.Registry
+	// Pruned lists registry keys removed as duplicate-directory phantoms while
+	// loading (see registry.PruneDuplicateDirs). The removal is only persisted
+	// when the command saves the registry; commands may surface this to the user.
+	Pruned []string
 }
 
 func loadProjectContext() (*projectContext, error) {
@@ -38,6 +42,11 @@ func loadProjectContext() (*projectContext, error) {
 		return nil, err
 	}
 
+	// Heal any duplicate-directory phantoms before resolving the instance, so
+	// resolution sees a deduped registry (otherwise a command could re-Set a
+	// phantom it just pruned). Persisted when the command saves the registry.
+	pruned := reg.PruneDuplicateDirs()
+
 	inst, isNew, err := instance.Resolve(reg, cfg.Name, dir)
 	if err != nil {
 		return nil, err
@@ -49,6 +58,7 @@ func loadProjectContext() (*projectContext, error) {
 		Instance: inst,
 		IsNew:    isNew,
 		Reg:      reg,
+		Pruned:   pruned,
 	}, nil
 }
 

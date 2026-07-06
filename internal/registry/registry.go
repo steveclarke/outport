@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 )
 
@@ -245,6 +246,82 @@ func instanceOf(key string) string {
 		return parts[1]
 	}
 	return ""
+}
+
+// PruneDuplicateDirs removes redundant registry entries that point at the same
+// filesystem directory as another entry — the phantom instances older versions
+// could create when os.Getwd reported a project path with different casing than
+// the registry had stored (see FindByDir). FindByDir routes around these at
+// lookup time; this removes them from the store so the pollution actually heals.
+//
+// Entries are grouped by filesystem identity via os.SameFile. For each group of
+// two or more entries resolving to one directory, the canonical entry is kept
+// (the "main" instance wins; otherwise the lexicographically smallest key) and
+// the rest are deleted. A single entry per directory is never touched, so
+// legitimate worktrees and clones (distinct directories, distinct inodes) are
+// unaffected. Entries whose ProjectDir no longer exists on disk are also left
+// alone — pruning those is RemoveStale's job. Returns the removed keys (sorted)
+// for caller feedback. Only mutates the in-memory map; call Save to persist.
+func (r *Registry) PruneDuplicateDirs() []string {
+	type entry struct {
+		key  string
+		info os.FileInfo
+	}
+	var entries []entry
+	for key, alloc := range r.Projects {
+		info, err := os.Stat(alloc.ProjectDir)
+		if err != nil {
+			continue // missing dir — leave for RemoveStale
+		}
+		entries = append(entries, entry{key, info})
+	}
+
+	var removed []string
+	used := make([]bool, len(entries))
+	for i := range entries {
+		if used[i] {
+			continue
+		}
+		group := []string{entries[i].key}
+		used[i] = true
+		for j := i + 1; j < len(entries); j++ {
+			if used[j] {
+				continue
+			}
+			if os.SameFile(entries[i].info, entries[j].info) {
+				group = append(group, entries[j].key)
+				used[j] = true
+			}
+		}
+		if len(group) < 2 {
+			continue
+		}
+		keep := canonicalKey(group)
+		for _, key := range group {
+			if key != keep {
+				delete(r.Projects, key)
+				removed = append(removed, key)
+			}
+		}
+	}
+	sort.Strings(removed)
+	return removed
+}
+
+// canonicalKey picks the entry to keep from a set of registry keys that all
+// point at the same directory: the "main" instance if present, otherwise the
+// lexicographically smallest key (a stable, deterministic choice).
+func canonicalKey(keys []string) string {
+	best := ""
+	for _, key := range keys {
+		if instanceOf(key) == "main" {
+			return key
+		}
+		if best == "" || key < best {
+			best = key
+		}
+	}
+	return best
 }
 
 // FindByProject returns all allocations whose registry keys start with the given
