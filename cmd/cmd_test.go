@@ -587,8 +587,54 @@ func TestSystemPrune_NoStaleEntries(t *testing.T) {
 
 	output := executeCmd(t, "system", "prune")
 
-	if !bytes.Contains([]byte(output), []byte("No stale entries")) {
-		t.Errorf("expected 'No stale entries', got:\n%s", output)
+	if !bytes.Contains([]byte(output), []byte("No stale or duplicate entries")) {
+		t.Errorf("expected 'No stale or duplicate entries', got:\n%s", output)
+	}
+}
+
+func TestSystemPrune_RemovesDuplicateDirPhantom(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	jsonFlag = false
+
+	// A real project dir plus a symlinked spelling of it — the phantom scenario.
+	real := t.TempDir()
+	_ = os.WriteFile(filepath.Join(real, "outport.yml"), []byte("name: dup\nservices:\n  web:\n    env_var: PORT\n"), 0644)
+	link := filepath.Join(t.TempDir(), "link")
+	if err := os.Symlink(real, link); err != nil {
+		t.Skipf("symlink unsupported: %v", err)
+	}
+	t.Chdir(real)
+
+	regPath := filepath.Join(home, ".local", "share", "outport", "registry.json")
+	reg, err := registry.Load(regPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	reg.Set("dup", "main", registry.Allocation{ProjectDir: real})
+	reg.Set("dup", "bkrm", registry.Allocation{ProjectDir: link}) // phantom, same dir
+	if err := reg.Save(); err != nil {
+		t.Fatal(err)
+	}
+
+	output := executeCmd(t, "system", "prune")
+
+	if !bytes.Contains([]byte(output), []byte("Removed 1 duplicate")) {
+		t.Errorf("expected duplicate removal message, got:\n%s", output)
+	}
+	if !bytes.Contains([]byte(output), []byte("dup/bkrm")) {
+		t.Errorf("expected phantom key in output, got:\n%s", output)
+	}
+
+	reg2, err := registry.Load(regPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := reg2.Get("dup", "main"); !ok {
+		t.Error("main must survive")
+	}
+	if _, ok := reg2.Get("dup", "bkrm"); ok {
+		t.Error("phantom must be removed")
 	}
 }
 

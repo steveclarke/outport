@@ -269,13 +269,13 @@ Lists every project/instance in the registry with their allocated ports. Prompts
 
 ### `outport system prune`
 
-Remove stale entries from the registry.
+Remove stale and duplicate entries from the registry.
 
 ```bash
 outport system prune
 ```
 
-Scans the registry and removes entries whose project directories or config files no longer exist.
+Scans the registry and removes two kinds of dead entries: **stale** ones, whose project directory or `outport.yml` no longer exists, and **duplicate-directory** ones, where more than one entry points at the same directory (a phantom instance). When duplicates are found, the `main` instance is kept and the extras are removed.
 
 ### `outport system uninstall`
 

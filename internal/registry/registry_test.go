@@ -3,6 +3,7 @@ package registry
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 )
 
@@ -162,6 +163,144 @@ func TestFindByDir(t *testing.T) {
 	_, _, ok = reg.FindByDir("/nonexistent")
 	if ok {
 		t.Error("expected not found for nonexistent dir")
+	}
+}
+
+// TestFindByDir_SameFileFallback verifies that a different path string pointing
+// at the same directory (a symlink here; a case difference on case-insensitive
+// filesystems does the same) resolves to the existing instance instead of
+// missing — the bug that made outport register phantom instances of the main
+// checkout on macOS.
+func TestFindByDir_SameFileFallback(t *testing.T) {
+	real := t.TempDir()
+	link := filepath.Join(t.TempDir(), "link")
+	if err := os.Symlink(real, link); err != nil {
+		t.Skipf("symlink unsupported: %v", err)
+	}
+
+	reg := &Registry{Projects: make(map[string]Allocation)}
+	reg.Set("myapp", "main", Allocation{ProjectDir: real})
+
+	key, _, ok := reg.FindByDir(link)
+	if !ok {
+		t.Fatal("expected same-file fallback to match")
+	}
+	if key != "myapp/main" {
+		t.Errorf("key: got %q, want %q", key, "myapp/main")
+	}
+}
+
+// TestFindByDir_PrefersMain verifies that when a registry is already polluted
+// with two entries for the same directory, the lookup resolves to main
+// deterministically (self-heal).
+func TestFindByDir_PrefersMain(t *testing.T) {
+	real := t.TempDir()
+	linkA := filepath.Join(t.TempDir(), "a")
+	linkB := filepath.Join(t.TempDir(), "b")
+	for _, l := range []string{linkA, linkB} {
+		if err := os.Symlink(real, l); err != nil {
+			t.Skipf("symlink unsupported: %v", err)
+		}
+	}
+
+	reg := &Registry{Projects: make(map[string]Allocation)}
+	reg.Set("myapp", "bkrm", Allocation{ProjectDir: linkA}) // phantom
+	reg.Set("myapp", "main", Allocation{ProjectDir: real})
+
+	// Look up via a third spelling so both entries match only by SameFile.
+	key, _, ok := reg.FindByDir(linkB)
+	if !ok {
+		t.Fatal("expected match")
+	}
+	if key != "myapp/main" {
+		t.Errorf("key: got %q, want %q — main must win over a phantom", key, "myapp/main")
+	}
+}
+
+// TestPruneDuplicateDirs_RemovesPhantomKeepsMain verifies the on-disk self-heal:
+// a phantom entry pointing at the same directory as main is removed, main stays.
+func TestPruneDuplicateDirs_RemovesPhantomKeepsMain(t *testing.T) {
+	real := t.TempDir()
+	link := filepath.Join(t.TempDir(), "link")
+	if err := os.Symlink(real, link); err != nil {
+		t.Skipf("symlink unsupported: %v", err)
+	}
+
+	reg := &Registry{Projects: make(map[string]Allocation)}
+	reg.Set("myapp", "main", Allocation{ProjectDir: real})
+	reg.Set("myapp", "bkrm", Allocation{ProjectDir: link}) // phantom, same dir
+
+	removed := reg.PruneDuplicateDirs()
+
+	if want := []string{"myapp/bkrm"}; !reflect.DeepEqual(removed, want) {
+		t.Errorf("removed: got %v, want %v", removed, want)
+	}
+	if _, ok := reg.Get("myapp", "main"); !ok {
+		t.Error("main must survive pruning")
+	}
+	if _, ok := reg.Get("myapp", "bkrm"); ok {
+		t.Error("phantom must be pruned")
+	}
+}
+
+// TestPruneDuplicateDirs_NoMainKeepsSmallestKey verifies that when duplicates
+// exist but none is main, the lexicographically smallest key is kept (a stable,
+// deterministic choice) and the rest are removed.
+func TestPruneDuplicateDirs_NoMainKeepsSmallestKey(t *testing.T) {
+	real := t.TempDir()
+	linkA := filepath.Join(t.TempDir(), "a")
+	linkB := filepath.Join(t.TempDir(), "b")
+	for _, l := range []string{linkA, linkB} {
+		if err := os.Symlink(real, l); err != nil {
+			t.Skipf("symlink unsupported: %v", err)
+		}
+	}
+
+	reg := &Registry{Projects: make(map[string]Allocation)}
+	reg.Set("myapp", "zzzz", Allocation{ProjectDir: real})
+	reg.Set("myapp", "aaaa", Allocation{ProjectDir: linkA})
+	reg.Set("myapp", "mmmm", Allocation{ProjectDir: linkB})
+
+	removed := reg.PruneDuplicateDirs()
+
+	if want := []string{"myapp/mmmm", "myapp/zzzz"}; !reflect.DeepEqual(removed, want) {
+		t.Errorf("removed: got %v, want %v", removed, want)
+	}
+	if _, ok := reg.Get("myapp", "aaaa"); !ok {
+		t.Error("smallest key must survive")
+	}
+	if len(reg.Projects) != 1 {
+		t.Errorf("expected 1 entry after prune, got %d", len(reg.Projects))
+	}
+}
+
+// TestPruneDuplicateDirs_LeavesDistinctDirs verifies that legitimate separate
+// directories (worktrees, clones) are never grouped or removed.
+func TestPruneDuplicateDirs_LeavesDistinctDirs(t *testing.T) {
+	reg := &Registry{Projects: make(map[string]Allocation)}
+	reg.Set("myapp", "main", Allocation{ProjectDir: t.TempDir()})
+	reg.Set("myapp", "wrkt", Allocation{ProjectDir: t.TempDir()})
+
+	if removed := reg.PruneDuplicateDirs(); len(removed) != 0 {
+		t.Errorf("expected nothing removed, got %v", removed)
+	}
+	if len(reg.Projects) != 2 {
+		t.Errorf("expected 2 entries, got %d", len(reg.Projects))
+	}
+}
+
+// TestPruneDuplicateDirs_IgnoresMissingDirs verifies that entries whose
+// ProjectDir no longer exists are left for RemoveStale, not pruned here.
+func TestPruneDuplicateDirs_IgnoresMissingDirs(t *testing.T) {
+	reg := &Registry{Projects: make(map[string]Allocation)}
+	reg.Set("gone", "main", Allocation{ProjectDir: "/no/such/dir/one"})
+	reg.Set("gone", "bkrm", Allocation{ProjectDir: "/no/such/dir/two"})
+
+	if removed := reg.PruneDuplicateDirs(); len(removed) != 0 {
+		t.Errorf("expected nothing removed for missing dirs, got %v", removed)
+	}
+	if len(reg.Projects) != 2 {
+		t.Errorf("expected 2 entries retained, got %d", len(reg.Projects))
 	}
 }
 
