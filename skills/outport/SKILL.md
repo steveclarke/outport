@@ -43,7 +43,7 @@ outport system stop       # Stop the daemon
 outport system restart    # Re-write plist and restart the daemon
 outport system status     # Show all registered projects
 outport system status --check  # Show with health checks (up/down)
-outport system prune      # Remove stale registry entries
+outport system prune      # Remove stale and duplicate registry entries
 outport system uninstall  # Remove DNS resolver, daemon, and CA
 
 # Instance management

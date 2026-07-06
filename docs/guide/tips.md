@@ -131,15 +131,15 @@ Outport allocates deterministic ports — the same project, instance, and servic
 
 Run `outport status` to see your current allocations and `outport system status` to see all registered projects.
 
-### Stale registry entries
+### Stale or duplicate registry entries
 
-If `outport system status` shows stale entries (projects whose directories no longer exist):
+If `outport system status` shows stale entries (projects whose directories no longer exist), or a project shows up twice for the same directory:
 
 ```bash
 outport system prune
 ```
 
-This removes entries where the project directory or `outport.yml` is missing.
+This removes entries where the project directory or `outport.yml` is missing, and collapses duplicate entries that point at the same directory (keeping the `main` instance).
 
 ### About sudo and system changes
 
