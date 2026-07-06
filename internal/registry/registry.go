@@ -229,7 +229,7 @@ func (r *Registry) FindByDir(dir string) (string, Allocation, bool) {
 		if !os.SameFile(dirInfo, info) {
 			continue
 		}
-		if instanceOf(key) == "main" {
+		if _, inst := ParseKey(key); inst == "main" {
 			return key, alloc, true
 		}
 		if !found {
@@ -237,15 +237,6 @@ func (r *Registry) FindByDir(dir string) (string, Allocation, bool) {
 		}
 	}
 	return fbKey, fbAlloc, found
-}
-
-// instanceOf returns the instance portion of a "project/instance" registry key.
-func instanceOf(key string) string {
-	parts := strings.SplitN(key, "/", 2)
-	if len(parts) == 2 {
-		return parts[1]
-	}
-	return ""
 }
 
 // PruneDuplicateDirs removes redundant registry entries that point at the same
@@ -262,6 +253,7 @@ func instanceOf(key string) string {
 // unaffected. Entries whose ProjectDir no longer exists on disk are also left
 // alone — pruning those is RemoveStale's job. Returns the removed keys (sorted)
 // for caller feedback. Only mutates the in-memory map; call Save to persist.
+// Companion to RemoveStale; both run under "outport system prune".
 func (r *Registry) PruneDuplicateDirs() []string {
 	type entry struct {
 		key  string
@@ -314,7 +306,7 @@ func (r *Registry) PruneDuplicateDirs() []string {
 func canonicalKey(keys []string) string {
 	best := ""
 	for _, key := range keys {
-		if instanceOf(key) == "main" {
+		if _, inst := ParseKey(key); inst == "main" {
 			return key
 		}
 		if best == "" || key < best {

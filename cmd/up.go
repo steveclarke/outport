@@ -6,7 +6,6 @@ import (
 	"maps"
 	"os"
 	"slices"
-	"strings"
 
 	"charm.land/lipgloss/v2"
 	"github.com/steveclarke/outport/internal/allocation"
@@ -53,11 +52,6 @@ func runUp(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	dir, cfg, reg := ctx.Dir, ctx.Cfg, ctx.Reg
-
-	if len(ctx.Pruned) > 0 && !jsonFlag {
-		fmt.Printf("  Cleaned up %d duplicate registry %s: %s\n\n",
-			len(ctx.Pruned), pluralize(len(ctx.Pruned), "entry", "entries"), strings.Join(ctx.Pruned, ", "))
-	}
 
 	if ctx.IsNew && ctx.Instance != "main" {
 		fmt.Printf("  Registered as %s-%s. Use 'outport rename %s <name>' to rename.\n\n",
