@@ -193,13 +193,58 @@ func (r *Registry) Remove(project, instance string) {
 // if found. This is the primary way CLI commands identify which project they
 // are operating on — they resolve the current working directory and look it up
 // in the registry. Returns zero values and false if no match is found.
+//
+// Matching is filesystem-aware. A plain string match is tried first, but on a
+// miss the lookup falls back to os.SameFile so that a different spelling of the
+// same directory resolves to the existing instance. This matters on
+// case-insensitive filesystems (macOS, Windows): os.Getwd can report the
+// project path with different casing than the registry stored (e.g.
+// ".../Connon" vs ".../connon"), and a string compare would miss and register
+// a phantom instance. os.SameFile compares device+inode, so it is correct on
+// case-sensitive filesystems too (distinct dirs stay distinct). When several
+// entries point at the same directory (a registry already polluted by this
+// bug), the "main" instance wins so the lookup is deterministic and self-heals.
 func (r *Registry) FindByDir(dir string) (string, Allocation, bool) {
+	// Fast path: exact string match.
 	for key, alloc := range r.Projects {
 		if alloc.ProjectDir == dir {
 			return key, alloc, true
 		}
 	}
-	return "", Allocation{}, false
+
+	// Fallback: match by filesystem identity.
+	dirInfo, err := os.Stat(dir)
+	if err != nil {
+		return "", Allocation{}, false
+	}
+	var fbKey string
+	var fbAlloc Allocation
+	found := false
+	for key, alloc := range r.Projects {
+		info, err := os.Stat(alloc.ProjectDir)
+		if err != nil {
+			continue
+		}
+		if !os.SameFile(dirInfo, info) {
+			continue
+		}
+		if instanceOf(key) == "main" {
+			return key, alloc, true
+		}
+		if !found {
+			fbKey, fbAlloc, found = key, alloc, true
+		}
+	}
+	return fbKey, fbAlloc, found
+}
+
+// instanceOf returns the instance portion of a "project/instance" registry key.
+func instanceOf(key string) string {
+	parts := strings.SplitN(key, "/", 2)
+	if len(parts) == 2 {
+		return parts[1]
+	}
+	return ""
 }
 
 // FindByProject returns all allocations whose registry keys start with the given

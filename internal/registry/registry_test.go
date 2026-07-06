@@ -165,6 +165,57 @@ func TestFindByDir(t *testing.T) {
 	}
 }
 
+// TestFindByDir_SameFileFallback verifies that a different path string pointing
+// at the same directory (a symlink here; a case difference on case-insensitive
+// filesystems does the same) resolves to the existing instance instead of
+// missing — the bug that made outport register phantom instances of the main
+// checkout on macOS.
+func TestFindByDir_SameFileFallback(t *testing.T) {
+	real := t.TempDir()
+	link := filepath.Join(t.TempDir(), "link")
+	if err := os.Symlink(real, link); err != nil {
+		t.Skipf("symlink unsupported: %v", err)
+	}
+
+	reg := &Registry{Projects: make(map[string]Allocation)}
+	reg.Set("myapp", "main", Allocation{ProjectDir: real})
+
+	key, _, ok := reg.FindByDir(link)
+	if !ok {
+		t.Fatal("expected same-file fallback to match")
+	}
+	if key != "myapp/main" {
+		t.Errorf("key: got %q, want %q", key, "myapp/main")
+	}
+}
+
+// TestFindByDir_PrefersMain verifies that when a registry is already polluted
+// with two entries for the same directory, the lookup resolves to main
+// deterministically (self-heal).
+func TestFindByDir_PrefersMain(t *testing.T) {
+	real := t.TempDir()
+	linkA := filepath.Join(t.TempDir(), "a")
+	linkB := filepath.Join(t.TempDir(), "b")
+	for _, l := range []string{linkA, linkB} {
+		if err := os.Symlink(real, l); err != nil {
+			t.Skipf("symlink unsupported: %v", err)
+		}
+	}
+
+	reg := &Registry{Projects: make(map[string]Allocation)}
+	reg.Set("myapp", "bkrm", Allocation{ProjectDir: linkA}) // phantom
+	reg.Set("myapp", "main", Allocation{ProjectDir: real})
+
+	// Look up via a third spelling so both entries match only by SameFile.
+	key, _, ok := reg.FindByDir(linkB)
+	if !ok {
+		t.Fatal("expected match")
+	}
+	if key != "myapp/main" {
+		t.Errorf("key: got %q, want %q — main must win over a phantom", key, "myapp/main")
+	}
+}
+
 func TestFindByProject(t *testing.T) {
 	reg := &Registry{Projects: make(map[string]Allocation)}
 	reg.Set("myapp", "main", Allocation{ProjectDir: "/src/myapp"})
