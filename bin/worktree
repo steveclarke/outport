@@ -13,10 +13,18 @@
 #   <number>         GitHub issue — looks up title, slugifies, branch = 169-slugified-title
 #   --pr <number>    GitHub PR — fetches the PR's branch name
 #
+# Create flags:
+#   --tmux              After creating, open a tmux-workspace session (if installed)
+#   --agent NAME        Agent to launch in the tmux session (claude|codex|none)
+#   --mode STR          Extra args passed to the agent launch
+#   --no-switch         Don't switch/attach to the new session (for agents)
+#   --tmux-json         Print the session's pane ids as JSON (for agents)
+#
 # Examples:
 #   bin/worktree create refactor-auth
 #   bin/worktree create 169
 #   bin/worktree create --pr 42
+#   bin/worktree create --pr 42 --tmux            Create worktree + open a tmux session
 #   bin/worktree list
 #   bin/worktree remove refactor-auth
 #   cd $(bin/worktree go 169)
@@ -37,7 +45,7 @@ DIM='\033[2m'
 RESET='\033[0m'
 
 usage() {
-  sed -n '3,22s/^# \{0,1\}//p' "$0"
+  sed -n '3,30s/^# \{0,1\}//p' "$0"
   exit 1
 }
 
@@ -102,8 +110,45 @@ find_worktree() {
   return 1
 }
 
+# If requested and available, hand the finished worktree to tmux-workspace.
+maybe_launch_tmux_workspace() {
+  local path="$1" agent="$2" mode="$3" do_switch="$4" want_json="$5"
+
+  if ! command -v tmux-workspace >/dev/null 2>&1; then
+    echo -e "  ${YELLOW}tmux-workspace not installed — skipping session setup.${RESET}"
+    echo -e "  ${DIM}Get it from your dotfiles (bin/tmux-workspace) to enable --tmux.${RESET}"
+    return 0
+  fi
+
+  local args=("$path")
+  [[ -n "$agent" ]] && args+=(--agent "$agent")
+  [[ -n "$mode" ]] && args+=(--mode "$mode")
+  [[ "$do_switch" == "false" ]] && args+=(--no-switch)
+  [[ "$want_json" == "true" ]] && args+=(--json)
+
+  echo -e "\n${BOLD}━━━ tmux-workspace ━━━${RESET}"
+  tmux-workspace "${args[@]}"
+}
+
 # Create a worktree
 cmd_create() {
+  # Extract tmux-workspace flags, leaving the rest for positional parsing below.
+  local use_tmux=false tmux_agent="" tmux_mode="" tmux_switch=true tmux_json=false
+  local _wt_args=()
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --tmux)       use_tmux=true; shift ;;
+      --agent)      tmux_agent="${2:?--agent requires a value}"; shift 2 ;;
+      --agent=*)    tmux_agent="${1#*=}"; shift ;;
+      --mode)       tmux_mode="${2:?--mode requires a value}"; shift 2 ;;
+      --mode=*)     tmux_mode="${1#*=}"; shift ;;
+      --no-switch)  tmux_switch=false; shift ;;
+      --tmux-json)  tmux_json=true; shift ;;
+      *)            _wt_args+=("$1"); shift ;;
+    esac
+  done
+  set -- "${_wt_args[@]+"${_wt_args[@]}"}"
+
   if [[ $# -eq 0 ]]; then
     echo -e "${RED}Error: specify a name, issue number, or --pr <number>${RESET}"
     usage
@@ -187,6 +232,11 @@ Run these to get started:
   if command -v pbcopy >/dev/null 2>&1; then
     echo "$clipboard_text" | pbcopy
     echo -e "  ${DIM}Copied to clipboard — paste into your new Claude session${RESET}"
+  fi
+
+  if [[ "$use_tmux" == "true" ]]; then
+    maybe_launch_tmux_workspace "$worktree_path" \
+      "$tmux_agent" "$tmux_mode" "$tmux_switch" "$tmux_json"
   fi
 }
 
