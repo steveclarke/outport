@@ -14,20 +14,20 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: stable
 
       - uses: golangci/golangci-lint-action@v9
         with:
-          version: v2.11.3
+          version: v2.13.2
 
   test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
 
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: stable
 
@@ -38,7 +38,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: stable
 
@@ -49,7 +49,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: stable
 
@@ -73,7 +73,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: stable
 
@@ -86,11 +86,11 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: stable
 
       - name: Run gosec
         run: |
-          go install github.com/securego/gosec/v2/cmd/gosec@v2.25.0
+          go install github.com/securego/gosec/v2/cmd/gosec@v2.29.0
           gosec -exclude=G104,G204,G301,G304,G306 ./...

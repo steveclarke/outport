@@ -184,7 +184,7 @@ func tunnelAwareRedirect(routes *RouteTable, proxy *ProxyHandler) http.Handler {
 			return
 		}
 		target := "https://" + r.Host + r.RequestURI
-		http.Redirect(w, r, target, http.StatusTemporaryRedirect)
+		http.Redirect(w, r, target, http.StatusTemporaryRedirect) // #nosec G710 -- intentional HTTP→HTTPS upgrade to the same host the client requested
 	})
 }
 

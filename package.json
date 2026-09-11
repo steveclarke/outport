@@ -7,10 +7,10 @@
     "docs:preview": "vitepress preview docs"
   },
   "devDependencies": {
-    "vitepress": "^1.6",
-    "wrangler": "^4.74.0"
+    "vitepress": "^1.6.4",
+    "wrangler": "^4.130.0"
   },
   "dependencies": {
-    "posthog-js": "^1.363.6"
+    "posthog-js": "^1.429.2"
   }
 }
