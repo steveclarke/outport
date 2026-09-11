@@ -49,7 +49,7 @@ func runDaemon(cmd *cobra.Command, args []string) error {
 	}
 
 	// Try launchd HTTP socket activation (darwin only)
-	if httpLn, err := activateLaunchdHTTPSocket(); err == nil && httpLn != nil {
+	if httpLn, err := activateLaunchdHTTPSocket(); err == nil && httpLn != nil { //nolint:staticcheck // always errors on non-darwin stubs
 		cfg.HTTPListener = httpLn
 		cfg.ProxyAddr = httpLn.Addr().String()
 	} else {
@@ -57,7 +57,7 @@ func runDaemon(cmd *cobra.Command, args []string) error {
 	}
 
 	// Try launchd HTTPS socket activation (darwin only)
-	if httpsLn, err := activateLaunchdHTTPSSocket(); err == nil && httpsLn != nil {
+	if httpsLn, err := activateLaunchdHTTPSSocket(); err == nil && httpsLn != nil { //nolint:staticcheck // always errors on non-darwin stubs
 		cfg.HTTPSListener = httpsLn
 	}
 
