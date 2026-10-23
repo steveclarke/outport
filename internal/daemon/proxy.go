@@ -1,11 +1,14 @@
 package daemon
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -91,7 +94,12 @@ func (p *ProxyHandler) getOrCreateProxy(port int) *httputil.ReverseProxy {
 	proxy := httputil.NewSingleHostReverseProxy(target)
 	proxy.Transport = p.transport
 	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
-		log.Printf("proxy error: %s%s -> port %d: %v", r.Host, r.URL.Path, port, err)
+		// A cancelled request is the browser giving up (a reload or a new
+		// page), not a backend failure. The host and path come from the
+		// client, so they are quoted to keep each error on one log line.
+		if !errors.Is(err, context.Canceled) {
+			log.Printf("proxy error: %s -> port %d: %v", strconv.Quote(r.Host+r.URL.Path), port, err)
+		}
 		writeErrorPage(w, http.StatusBadGateway, stripPort(r.Host),
 			"This app isn't running yet.<br>Start your app, then refresh this page.",
 			"")

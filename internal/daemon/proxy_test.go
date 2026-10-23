@@ -1,7 +1,10 @@
 package daemon
 
 import (
+	"bytes"
+	"context"
 	"io"
+	"log"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -474,5 +477,75 @@ func (r *statusRecorder) Write(b []byte) (int, error) {
 func (r *statusRecorder) WriteHeader(status int) {
 	if r.status == 0 {
 		r.status = status
+	}
+}
+
+// captureLog redirects the standard logger to a buffer for the rest of the
+// test.
+func captureLog(t *testing.T) *bytes.Buffer {
+	t.Helper()
+	var buf bytes.Buffer
+	prev := log.Writer()
+	log.SetOutput(&buf)
+	t.Cleanup(func() { log.SetOutput(prev) })
+	return &buf
+}
+
+// closedPort returns a localhost port with nothing listening on it.
+func closedPort(t *testing.T) int {
+	t.Helper()
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("listen: %v", err)
+	}
+	port := ln.Addr().(*net.TCPAddr).Port
+	ln.Close()
+	return port
+}
+
+func TestProxyLogsBackendErrorOnOneLine(t *testing.T) {
+	logs := captureLog(t)
+	port := closedPort(t)
+	routes := &RouteTable{}
+	routes.update(map[string]route{"myapp.test": {Port: port}})
+	proxy := NewProxy(routes)
+
+	// The path is whatever the client sent; an encoded newline must not
+	// start a second, forged log line.
+	req := httptest.NewRequest("GET", "http://myapp.test/a%0Aproxy%20error:%20forged", nil)
+	rec := httptest.NewRecorder()
+	proxy.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadGateway {
+		t.Fatalf("status: got %d, want 502", rec.Code)
+	}
+	out := logs.String()
+	if strings.Count(out, "\n") != 1 {
+		t.Errorf("want exactly one log line, got %q", out)
+	}
+	if !strings.Contains(out, "port "+strconv.Itoa(port)) {
+		t.Errorf("log should name port %d, got %q", port, out)
+	}
+}
+
+func TestProxyDoesNotLogCancelledRequests(t *testing.T) {
+	logs := captureLog(t)
+	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte("ok"))
+	}))
+	defer backend.Close()
+	routes := &RouteTable{}
+	routes.update(map[string]route{"myapp.test": {Port: backendPort(t, backend)}})
+	proxy := NewProxy(routes)
+
+	// A browser cancels every pending request when the user reloads or
+	// navigates away; those are not backend failures.
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	req := httptest.NewRequest("GET", "http://myapp.test/", nil).WithContext(ctx)
+	proxy.ServeHTTP(httptest.NewRecorder(), req)
+
+	if out := logs.String(); out != "" {
+		t.Errorf("cancelled request should not be logged, got %q", out)
 	}
 }
