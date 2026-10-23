@@ -3,7 +3,7 @@ setup:
     go install gotest.tools/gotestsum@latest
     go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
     go install github.com/goreleaser/goreleaser/v2@latest
-    go install github.com/securego/gosec/v2/cmd/gosec@v2.25.0
+    go install github.com/securego/gosec/v2/cmd/gosec@v2.30.0
     go install golang.org/x/vuln/cmd/govulncheck@latest
     mise reshim
     SHARP_IGNORE_GLOBAL_LIBVIPS=1 pnpm install

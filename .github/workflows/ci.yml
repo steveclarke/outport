@@ -20,7 +20,7 @@ jobs:
 
       - uses: golangci/golangci-lint-action@v9
         with:
-          version: v2.13.2
+          version: v2.15.0
 
   test:
     runs-on: ubuntu-latest
@@ -92,5 +92,5 @@ jobs:
 
       - name: Run gosec
         run: |
-          go install github.com/securego/gosec/v2/cmd/gosec@v2.29.0
+          go install github.com/securego/gosec/v2/cmd/gosec@v2.30.0
           gosec -exclude=G104,G204,G301,G304,G306 ./...
