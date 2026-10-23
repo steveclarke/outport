@@ -381,27 +381,20 @@ func TestProxyCapsSimultaneousBackendConnections(t *testing.T) {
 
 	routes := &RouteTable{}
 	routes.update(map[string]route{"myapp.test": {Port: backendPort(t, backend)}})
-	srv := httptest.NewServer(NewProxy(routes))
-	defer srv.Close()
+	proxy := NewProxy(routes)
 
 	// A browser loading a dev server's module graph sends hundreds of
-	// requests at once over one HTTP/2 connection.
+	// requests at once over one HTTP/2 connection, so they reach the
+	// handler together.
 	const burst = 300
-	client := &http.Client{Transport: &http.Transport{MaxIdleConnsPerHost: burst}}
 	var wg sync.WaitGroup
 	statuses := make(chan int, burst)
 	for range burst {
 		wg.Go(func() {
-			req, _ := http.NewRequest("GET", srv.URL+"/", nil)
-			req.Host = "myapp.test"
-			resp, err := client.Do(req)
-			if err != nil {
-				t.Errorf("request: %v", err)
-				return
-			}
-			_, _ = io.Copy(io.Discard, resp.Body)
-			resp.Body.Close()
-			statuses <- resp.StatusCode
+			req, _ := http.NewRequest("GET", "http://myapp.test/", nil)
+			rec := &statusRecorder{header: http.Header{}}
+			proxy.ServeHTTP(rec, req)
+			statuses <- rec.status
 		})
 	}
 	wg.Wait()
@@ -460,4 +453,26 @@ func TestProxyOpenWebSocketsLeaveConnectionsFree(t *testing.T) {
 		t.Fatalf("request with %d WebSockets open: %v", maxBackendConns+1, err)
 	}
 	resp.Body.Close()
+}
+
+// statusRecorder is a minimal concurrent-safe http.ResponseWriter that keeps
+// only the status code.
+type statusRecorder struct {
+	header http.Header
+	status int
+}
+
+func (r *statusRecorder) Header() http.Header { return r.header }
+
+func (r *statusRecorder) Write(b []byte) (int, error) {
+	if r.status == 0 {
+		r.status = http.StatusOK
+	}
+	return io.Discard.Write(b)
+}
+
+func (r *statusRecorder) WriteHeader(status int) {
+	if r.status == 0 {
+		r.status = status
+	}
 }

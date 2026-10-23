@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"strings"
 	"sync"
+	"time"
 )
 
 // ProxyHandler is the core HTTP handler for the daemon's reverse proxy. It
@@ -31,6 +32,10 @@ type ProxyHandler struct {
 	// is updated, so stale proxies are never served.
 	proxies sync.Map
 
+	// transport carries every proxied request to the backends. It is shared
+	// by all cached proxies, so its connection pool survives ClearCache.
+	transport *http.Transport
+
 	// DashboardHandler serves the web dashboard at outport.test. It is set by
 	// the Daemon during initialization. When a request arrives for the hostname
 	// "outport.test", it is handed off to this handler instead of being routed
@@ -44,7 +49,7 @@ type ProxyHandler struct {
 // upgrade requests transparently, so WebSocket connections through .test
 // hostnames work without any special configuration.
 func NewProxy(routes *RouteTable) *ProxyHandler {
-	return &ProxyHandler{routes: routes}
+	return &ProxyHandler{routes: routes, transport: newBackendTransport()}
 }
 
 // ClearCache discards all cached reverse proxies, forcing new ones to be
@@ -53,18 +58,30 @@ func (p *ProxyHandler) ClearCache() {
 	p.proxies.Clear()
 }
 
-// maxBackendConns caps the connections the proxy opens to one backend port at
-// once. A browser sends a dev server's whole module graph (often hundreds of
-// requests) over a single HTTP/2 connection. Opened as one TCP connection per
-// request, that burst overflows the backend's listen queue (128 on macOS) and
-// the kernel resets the extra connections. With the cap, the burst waits in
-// the proxy for a free connection, as browsers do when speaking HTTP/1.1.
-const maxBackendConns = 16
+// maxBackendConns caps the connections the proxy holds to one backend port,
+// counting those being dialled, in use and idle. A browser sends a dev
+// server's whole module graph (often hundreds of requests) over a single
+// HTTP/2 connection. Opened as one TCP connection per request, that burst
+// overflows the backend's listen queue (128 on macOS) and the kernel resets
+// the extra connections. With the cap, the burst waits in the proxy for a
+// free connection, the way a browser speaking HTTP/1.1 does. Upgraded
+// connections (WebSockets) stop counting once the upgrade completes.
+const maxBackendConns = 32
+
+// newBackendTransport returns the transport the proxy uses to reach backends:
+// Go's default transport with connections per backend capped at
+// maxBackendConns and all of them kept alive for reuse.
+func newBackendTransport() *http.Transport {
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.MaxConnsPerHost = maxBackendConns
+	transport.MaxIdleConnsPerHost = maxBackendConns
+	transport.IdleConnTimeout = 90 * time.Second
+	return transport
+}
 
 // getOrCreateProxy returns a cached reverse proxy for the given port, creating
 // one if it does not already exist. The proxy targets http://localhost:<port>
-// through its own transport, which holds at most maxBackendConns connections
-// to the backend and keeps them alive for reuse. Created proxies persist until
+// through the handler's shared transport. Created proxies persist until
 // ClearCache is called (which happens on every route table update).
 func (p *ProxyHandler) getOrCreateProxy(port int) *httputil.ReverseProxy {
 	if v, ok := p.proxies.Load(port); ok {
@@ -72,10 +89,7 @@ func (p *ProxyHandler) getOrCreateProxy(port int) *httputil.ReverseProxy {
 	}
 	target, _ := url.Parse(fmt.Sprintf("http://localhost:%d", port))
 	proxy := httputil.NewSingleHostReverseProxy(target)
-	transport := http.DefaultTransport.(*http.Transport).Clone()
-	transport.MaxConnsPerHost = maxBackendConns
-	transport.MaxIdleConnsPerHost = maxBackendConns
-	proxy.Transport = transport
+	proxy.Transport = p.transport
 	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
 		log.Printf("proxy error: %s%s -> port %d: %v", r.Host, r.URL.Path, port, err)
 		writeErrorPage(w, http.StatusBadGateway, stripPort(r.Host),
