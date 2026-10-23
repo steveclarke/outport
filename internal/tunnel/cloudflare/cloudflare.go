@@ -129,9 +129,13 @@ func stopFunc(cmd *exec.Cmd) func() error {
 			// process is already dead, Wait() will return immediately.
 			_ = cmd.Process.Signal(syscall.SIGTERM)
 
-			// Wait up to 3 seconds for graceful exit
-			done := make(chan error, 1)
-			go func() { done <- cmd.Wait() }()
+			// Wait up to 3 seconds for graceful exit. Wait's error is
+			// ignored: a process stopped by a signal always reports one.
+			done := make(chan struct{})
+			go func() {
+				_ = cmd.Wait()
+				close(done)
+			}()
 
 			timer := time.NewTimer(3 * time.Second)
 			defer timer.Stop()
