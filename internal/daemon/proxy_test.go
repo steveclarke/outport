@@ -8,7 +8,9 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	"golang.org/x/net/websocket"
 )
@@ -354,4 +356,108 @@ func TestProxyHostOverrideRewritesHostHeader(t *testing.T) {
 	if gotFwdProto != "https" {
 		t.Errorf("backend saw X-Forwarded-Proto %q, want %q", gotFwdProto, "https")
 	}
+}
+
+func TestProxyCapsSimultaneousBackendConnections(t *testing.T) {
+	var mu sync.Mutex
+	open, peak := 0, 0
+	backend := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(20 * time.Millisecond)
+		_, _ = w.Write([]byte("ok"))
+	}))
+	backend.Config.ConnState = func(_ net.Conn, state http.ConnState) {
+		mu.Lock()
+		defer mu.Unlock()
+		switch state {
+		case http.StateNew:
+			open++
+			peak = max(peak, open)
+		case http.StateClosed, http.StateHijacked:
+			open--
+		}
+	}
+	backend.Start()
+	defer backend.Close()
+
+	routes := &RouteTable{}
+	routes.update(map[string]route{"myapp.test": {Port: backendPort(t, backend)}})
+	srv := httptest.NewServer(NewProxy(routes))
+	defer srv.Close()
+
+	// A browser loading a dev server's module graph sends hundreds of
+	// requests at once over one HTTP/2 connection.
+	const burst = 300
+	client := &http.Client{Transport: &http.Transport{MaxIdleConnsPerHost: burst}}
+	var wg sync.WaitGroup
+	statuses := make(chan int, burst)
+	for range burst {
+		wg.Go(func() {
+			req, _ := http.NewRequest("GET", srv.URL+"/", nil)
+			req.Host = "myapp.test"
+			resp, err := client.Do(req)
+			if err != nil {
+				t.Errorf("request: %v", err)
+				return
+			}
+			_, _ = io.Copy(io.Discard, resp.Body)
+			resp.Body.Close()
+			statuses <- resp.StatusCode
+		})
+	}
+	wg.Wait()
+	close(statuses)
+
+	for status := range statuses {
+		if status != http.StatusOK {
+			t.Fatalf("status: got %d, want 200", status)
+		}
+	}
+	if peak > maxBackendConns {
+		t.Errorf("backend saw %d simultaneous connections, want at most %d", peak, maxBackendConns)
+	}
+}
+
+func TestProxyOpenWebSocketsLeaveConnectionsFree(t *testing.T) {
+	// Every open tab of a dev server holds a hot-reload WebSocket for as
+	// long as it stays open.
+	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Upgrade") == "" {
+			_, _ = w.Write([]byte("ok"))
+			return
+		}
+		websocket.Handler(func(ws *websocket.Conn) {
+			var msg string
+			_ = websocket.Message.Receive(ws, &msg)
+		}).ServeHTTP(w, r)
+	}))
+	defer backend.Close()
+
+	routes := &RouteTable{}
+	routes.update(map[string]route{"myapp.test": {Port: backendPort(t, backend)}})
+	srv := httptest.NewServer(NewProxy(routes))
+	defer srv.Close()
+	proxyURL, _ := url.Parse(srv.URL)
+
+	for range maxBackendConns + 1 {
+		config, _ := websocket.NewConfig("ws://myapp.test/", "http://myapp.test/")
+		conn, err := net.Dial("tcp", proxyURL.Host)
+		if err != nil {
+			t.Fatalf("dial proxy: %v", err)
+		}
+		ws, err := websocket.NewClient(config, conn)
+		if err != nil {
+			conn.Close()
+			t.Fatalf("ws handshake: %v", err)
+		}
+		defer ws.Close()
+	}
+
+	client := &http.Client{Timeout: 2 * time.Second}
+	req, _ := http.NewRequest("GET", srv.URL+"/", nil)
+	req.Host = "myapp.test"
+	resp, err := client.Do(req)
+	if err != nil {
+		t.Fatalf("request with %d WebSockets open: %v", maxBackendConns+1, err)
+	}
+	resp.Body.Close()
 }

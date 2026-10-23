@@ -2,6 +2,7 @@ package daemon
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -52,18 +53,46 @@ func (p *ProxyHandler) ClearCache() {
 	p.proxies.Clear()
 }
 
+// maxBackendConns caps the connections the proxy opens to one backend port at
+// once. A browser sends a dev server's whole module graph (often hundreds of
+// requests) over a single HTTP/2 connection. Opened as one TCP connection per
+// request, that burst overflows the backend's listen queue (128 on macOS) and
+// the kernel resets the extra connections. With the cap, the burst waits in
+// the proxy for a free connection, as browsers do when speaking HTTP/1.1.
+const maxBackendConns = 16
+
 // getOrCreateProxy returns a cached reverse proxy for the given port, creating
 // one if it does not already exist. The proxy targets http://localhost:<port>
-// and is stored in a sync.Map for lock-free concurrent access. Created proxies
-// persist until ClearCache is called (which happens on every route table update).
+// through its own transport, which holds at most maxBackendConns connections
+// to the backend and keeps them alive for reuse. Created proxies persist until
+// ClearCache is called (which happens on every route table update).
 func (p *ProxyHandler) getOrCreateProxy(port int) *httputil.ReverseProxy {
 	if v, ok := p.proxies.Load(port); ok {
 		return v.(*httputil.ReverseProxy)
 	}
 	target, _ := url.Parse(fmt.Sprintf("http://localhost:%d", port))
 	proxy := httputil.NewSingleHostReverseProxy(target)
-	p.proxies.Store(port, proxy)
-	return proxy
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.MaxConnsPerHost = maxBackendConns
+	transport.MaxIdleConnsPerHost = maxBackendConns
+	proxy.Transport = transport
+	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
+		log.Printf("proxy error: %s%s -> port %d: %v", r.Host, r.URL.Path, port, err)
+		writeErrorPage(w, http.StatusBadGateway, stripPort(r.Host),
+			"This app isn't running yet.<br>Start your app, then refresh this page.",
+			"")
+	}
+	actual, _ := p.proxies.LoadOrStore(port, proxy)
+	return actual.(*httputil.ReverseProxy)
+}
+
+// stripPort removes a trailing ":port" from a Host header value. Browsers
+// include the port for non-standard ports.
+func stripPort(host string) string {
+	if idx := strings.LastIndex(host, ":"); idx != -1 {
+		return host[:idx]
+	}
+	return host
 }
 
 // ServeHTTP handles every incoming HTTP request to the proxy. It strips the
@@ -75,10 +104,7 @@ func (p *ProxyHandler) getOrCreateProxy(port int) *httputil.ReverseProxy {
 // proxy's error handler renders a different 502 page asking the user to
 // start their app.
 func (p *ProxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	hostname := r.Host
-	if idx := strings.LastIndex(hostname, ":"); idx != -1 {
-		hostname = hostname[:idx]
-	}
+	hostname := stripPort(r.Host)
 
 	// Dashboard intercept
 	if hostname == "outport.test" && p.DashboardHandler != nil {
@@ -104,15 +130,5 @@ func (p *ProxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		r.Host = rt.HostOverride
 	}
 
-	proxy := p.getOrCreateProxy(rt.Port)
-	displayHostname := hostname
-	if rt.HostOverride != "" {
-		displayHostname = rt.HostOverride
-	}
-	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
-		writeErrorPage(w, http.StatusBadGateway, displayHostname,
-			"This app isn't running yet.<br>Start your app, then refresh this page.",
-			"")
-	}
-	proxy.ServeHTTP(w, r)
+	p.getOrCreateProxy(rt.Port).ServeHTTP(w, r)
 }
